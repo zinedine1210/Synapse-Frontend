@@ -50,7 +50,7 @@ export default function SuperadminUsersPage() {
         superadminService.getUsers(),
         superadminService.getPlanConfigs(),
       ]);
-      setUsersList(usersData);
+      setUsersList((usersData as any).data ?? usersData);
       setConfigs(configsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal memuat data pengguna.');
@@ -93,8 +93,8 @@ export default function SuperadminUsersPage() {
       label: 'Nama & Email',
       render: (row) => (
         <div>
-          <div style={{ fontWeight: 600, color: 'white' }}>{row.fullName}</div>
-          <div style={{ fontSize: '0.75rem', color: 'rgba(160,160,200,0.6)', marginTop: '0.1rem' }}>{row.email}</div>
+          <div style={{ fontWeight: 600, color: 'rgb(var(--text-primary))' }}>{row.fullName}</div>
+          <div style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))', marginTop: '0.1rem' }}>{row.email}</div>
         </div>
       ),
       exportValue: (row) => `${row.fullName} (${row.email})`,
@@ -124,8 +124,8 @@ export default function SuperadminUsersPage() {
           borderRadius: '6px',
           fontSize: '0.7rem',
           fontWeight: 700,
-          background: row.plan === 'FREE' ? 'rgba(160,160,200,0.1)' : 'rgba(0, 212, 255, 0.15)',
-          color: row.plan === 'FREE' ? 'rgba(160,160,200,0.8)' : 'rgb(0, 212, 255)',
+          background: row.plan === 'FREE' ? 'rgba(var(--text-muted) / 0.1)' : 'rgba(var(--color-primary) / 0.15)',
+          color: row.plan === 'FREE' ? 'rgb(var(--text-muted))' : 'rgb(var(--color-primary))',
         }}>
           {row.plan}
         </span>
@@ -141,7 +141,7 @@ export default function SuperadminUsersPage() {
           gap: '0.3rem',
           fontSize: '0.75rem',
           fontWeight: 600,
-          color: row.role === 'SUPERADMIN' ? 'rgb(248, 113, 113)' : 'rgba(160,160,200,0.7)',
+          color: row.role === 'SUPERADMIN' ? 'rgb(248, 113, 113)' : 'rgb(var(--text-muted))',
         }}>
           {row.role === 'SUPERADMIN' && <Shield size={12} />}
           {row.role}
@@ -159,16 +159,16 @@ export default function SuperadminUsersPage() {
 
           {loading ? (
             <div style={{ minHeight: 'calc(100vh - var(--appbar-height))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Loader2 className="animate-spin" size={48} style={{ color: 'rgb(0, 212, 255)' }} />
+              <Loader2 className="animate-spin" size={48} style={{ color: 'rgb(var(--color-primary))' }} />
             </div>
           ) : (
             <div className="page-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <Users size={24} style={{ color: 'rgb(0, 212, 255)' }} />
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'rgb(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Users size={24} style={{ color: 'rgb(var(--color-primary))' }} />
                   Akun Pengguna Terdaftar
                 </h2>
-                <p style={{ color: 'rgba(160, 160, 200, 0.7)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                <p style={{ color: 'rgb(var(--text-muted))', fontSize: '0.9rem', marginTop: '0.25rem' }}>
                   Kelola semua akun pengguna, lihat detail aktivitas, dan assign paket berlangganan.
                 </p>
               </div>
@@ -177,17 +177,17 @@ export default function SuperadminUsersPage() {
 
               {/* Stats row */}
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{usersList.length}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'rgba(160,160,200,0.6)' }}>Total Pengguna</span>
+                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--text-primary))' }}>{usersList.length}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Total Pengguna</span>
                 </Card>
-                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(0, 245, 160)' }}>{usersList.filter((u) => u.plan === 'PRO').length}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'rgba(160,160,200,0.6)' }}>Pengguna PRO</span>
+                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--color-secondary))' }}>{usersList.filter((u) => u.plan === 'PRO').length}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Pengguna PRO</span>
                 </Card>
-                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgba(160,160,200,0.8)' }}>{usersList.filter((u) => u.plan !== 'PRO').length}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'rgba(160,160,200,0.6)' }}>Pengguna FREE</span>
+                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--text-secondary))' }}>{usersList.filter((u) => u.plan !== 'PRO').length}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Pengguna FREE</span>
                 </Card>
               </div>
 
@@ -214,7 +214,7 @@ export default function SuperadminUsersPage() {
           <form onSubmit={handleAssignPlan} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {assignError && <Alert type="error" message={assignError} />}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(160,160,200,0.8)' }}>Pilih Paket</label>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Pilih Paket</label>
               <select
                 value={assignPlanName}
                 onChange={(e) => setAssignPlanName(e.target.value)}

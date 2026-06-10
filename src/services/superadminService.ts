@@ -4,8 +4,11 @@ export const superadminService = {
   /** GET /api/v1/superadmin/analytics – Ambil data analitik server */
   getAnalytics: () => apiFetch<any>('/superadmin/analytics'),
 
-  /** GET /api/v1/superadmin/users – Ambil daftar semua pengguna */
-  getUsers: () => apiFetch<any[]>('/superadmin/users'),
+  /** GET /api/v1/superadmin/users – Ambil daftar pengguna (paginated) */
+  getUsers: (page = 1, limit = 50) =>
+    apiFetch<{ data: any[]; total: number; page: number; limit: number; totalPages: number }>(
+      `/superadmin/users?page=${page}&limit=${limit}`
+    ),
 
   /** GET /api/v1/superadmin/plan-config – Ambil semua config plan */
   getPlanConfigs: () => apiFetch<any[]>('/superadmin/plan-config'),

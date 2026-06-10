@@ -122,10 +122,13 @@ export function MarkdownRenderer({ content, className, compact = false }: Markdo
             </a>
           ),
 
-          // Images
-          img: ({ src, alt }) => (
+          // Images — block javascript: and data: URIs
+          img: ({ src, alt }) => {
+            const safeSrc = src && /^https?:\/\//i.test(src) ? src : undefined;
+            if (!safeSrc) return null;
+            return (
             <span style={{ display: 'block', margin: '1rem 0', textAlign: 'center' }}>
-              <img src={src} alt={alt || ''} style={{
+              <img src={safeSrc} alt={alt || ''} style={{
                 maxWidth: '100%',
                 maxHeight: '400px',
                 borderRadius: 'var(--radius-lg)',
@@ -138,7 +141,8 @@ export function MarkdownRenderer({ content, className, compact = false }: Markdo
                 </span>
               )}
             </span>
-          ),
+            );
+          },
 
           // Ordered lists - proper numbering reset
           ol: ({ children }) => (

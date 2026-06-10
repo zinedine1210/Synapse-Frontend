@@ -63,14 +63,14 @@ export default function SuperadminClassesPage() {
       render: (row) => (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontWeight: 600, color: 'white' }}>{row.name}</span>
+            <span style={{ fontWeight: 600, color: 'rgb(var(--text-primary))' }}>{row.name}</span>
             {row.code && (
-              <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: 'rgba(0, 212, 255, 0.12)', color: 'rgb(0, 212, 255)', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.6rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: 'rgba(var(--color-primary) / 0.12)', color: 'rgb(var(--color-primary))', fontWeight: 600 }}>
                 {row.code}
               </span>
             )}
           </div>
-          {row.description && <div style={{ fontSize: '0.72rem', color: 'rgba(160,160,200,0.5)', marginTop: '0.1rem', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.description}</div>}
+          {row.description && <div style={{ fontSize: '0.72rem', color: 'rgb(var(--text-muted))', marginTop: '0.1rem', maxWidth: 250, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.description}</div>}
         </div>
       ),
       exportValue: (row) => row.name,
@@ -122,16 +122,16 @@ export default function SuperadminClassesPage() {
 
           {loading ? (
             <div style={{ minHeight: 'calc(100vh - var(--appbar-height))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Loader2 className="animate-spin" size={48} style={{ color: 'rgb(0, 212, 255)' }} />
+              <Loader2 className="animate-spin" size={48} style={{ color: 'rgb(var(--color-primary))' }} />
             </div>
           ) : (
             <div className="page-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <School size={24} style={{ color: 'rgb(0, 245, 160)' }} />
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'rgb(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <School size={24} style={{ color: 'rgb(var(--color-secondary))' }} />
                   Semua Kelas ({classes.length})
                 </h2>
-                <p style={{ color: 'rgba(160, 160, 200, 0.7)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                <p style={{ color: 'rgb(var(--text-muted))', fontSize: '0.9rem', marginTop: '0.25rem' }}>
                   Kelola semua kelas yang terdaftar di platform.
                 </p>
               </div>
@@ -139,17 +139,17 @@ export default function SuperadminClassesPage() {
               {error && <Alert type="error" message={error} />}
 
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{classes.length}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'rgba(160,160,200,0.6)' }}>Total Kelas</span>
+                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--text-primary))' }}>{classes.length}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Total Kelas</span>
                 </Card>
-                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(0, 212, 255)' }}>{classes.reduce((s, c) => s + c._count.members, 0)}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'rgba(160,160,200,0.6)' }}>Total Anggota</span>
+                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--color-primary))' }}>{classes.reduce((s, c) => s + c._count.members, 0)}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Total Anggota</span>
                 </Card>
-                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(0, 245, 160)' }}>{classes.reduce((s, c) => s + c._count.sessions, 0)}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'rgba(160,160,200,0.6)' }}>Total Pertemuan</span>
+                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--color-secondary))' }}>{classes.reduce((s, c) => s + c._count.sessions, 0)}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Total Pertemuan</span>
                 </Card>
               </div>
 

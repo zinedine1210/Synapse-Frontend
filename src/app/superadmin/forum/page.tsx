@@ -57,12 +57,12 @@ export default function SuperadminForumPage() {
     {
       key: 'metric',
       label: 'Metrik',
-      render: (row) => <span style={{ fontWeight: 600, color: 'white' }}>{row.metric}</span>,
+      render: (row) => <span style={{ fontWeight: 600, color: 'rgb(var(--text-primary))' }}>{row.metric}</span>,
     },
     {
       key: 'value',
       label: 'Nilai',
-      render: (row) => <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'rgb(0, 212, 255)' }}>{row.value.toLocaleString()}</span>,
+      render: (row) => <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'rgb(var(--color-primary))' }}>{row.value.toLocaleString()}</span>,
     },
     {
       key: 'description',
@@ -79,16 +79,16 @@ export default function SuperadminForumPage() {
 
           {loading ? (
             <div style={{ minHeight: 'calc(100vh - var(--appbar-height))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Loader2 className="animate-spin" size={48} style={{ color: 'rgb(0, 212, 255)' }} />
+              <Loader2 className="animate-spin" size={48} style={{ color: 'rgb(var(--color-primary))' }} />
             </div>
           ) : (
             <div className="page-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <MessageSquare size={24} style={{ color: 'rgb(0, 212, 255)' }} />
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'rgb(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <MessageSquare size={24} style={{ color: 'rgb(var(--color-primary))' }} />
                   Monitor Forum
                 </h2>
-                <p style={{ color: 'rgba(160, 160, 200, 0.7)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                <p style={{ color: 'rgb(var(--text-muted))', fontSize: '0.9rem', marginTop: '0.25rem' }}>
                   Statistik aktivitas forum di seluruh kelas.
                 </p>
               </div>
@@ -98,32 +98,32 @@ export default function SuperadminForumPage() {
               {stats && (
                 <>
                   <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <MessagesSquare size={20} style={{ color: 'rgb(0, 212, 255)' }} />
+                    <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
+                      <MessagesSquare size={20} style={{ color: 'rgb(var(--color-primary))' }} />
                       <div>
-                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{stats.totalPosts.toLocaleString()}</span>
-                        <div style={{ fontSize: '0.75rem', color: 'rgba(160,160,200,0.6)' }}>Total Post</div>
+                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--text-primary))' }}>{stats.totalPosts.toLocaleString()}</span>
+                        <div style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))' }}>Total Post</div>
                       </div>
                     </Card>
-                    <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <Reply size={20} style={{ color: 'rgb(0, 245, 160)' }} />
+                    <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
+                      <Reply size={20} style={{ color: 'rgb(var(--color-secondary))' }} />
                       <div>
-                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{stats.totalReplies.toLocaleString()}</span>
-                        <div style={{ fontSize: '0.75rem', color: 'rgba(160,160,200,0.6)' }}>Total Balasan</div>
+                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--text-primary))' }}>{stats.totalReplies.toLocaleString()}</span>
+                        <div style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))' }}>Total Balasan</div>
                       </div>
                     </Card>
-                    <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                      <Calendar size={20} style={{ color: 'rgb(255, 193, 7)' }} />
+                    <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
+                      <Calendar size={20} style={{ color: 'rgb(var(--color-warning))' }} />
                       <div>
-                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{stats.postsToday}</span>
-                        <div style={{ fontSize: '0.75rem', color: 'rgba(160,160,200,0.6)' }}>Post Hari Ini</div>
+                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--text-primary))' }}>{stats.postsToday}</span>
+                        <div style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))' }}>Post Hari Ini</div>
                       </div>
                     </Card>
-                    <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
                       <TrendingUp size={20} style={{ color: 'rgb(168, 85, 247)' }} />
                       <div>
-                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{stats.activeClasses}</span>
-                        <div style={{ fontSize: '0.75rem', color: 'rgba(160,160,200,0.6)' }}>Kelas Aktif</div>
+                        <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--text-primary))' }}>{stats.activeClasses}</span>
+                        <div style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))' }}>Kelas Aktif</div>
                       </div>
                     </Card>
                   </div>
@@ -140,9 +140,9 @@ export default function SuperadminForumPage() {
                 </>
               )}
 
-              <Card style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'white', marginBottom: '0.5rem' }}>Ringkasan</h3>
-                <p style={{ fontSize: '0.85rem', color: 'rgba(160, 160, 200, 0.7)', lineHeight: 1.6 }}>
+              <Card style={{ border: '1px solid var(--border-default)' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'rgb(var(--text-primary))', marginBottom: '0.5rem' }}>Ringkasan</h3>
+                <p style={{ fontSize: '0.85rem', color: 'rgb(var(--text-muted))', lineHeight: 1.6 }}>
                   Forum adalah fitur kolaborasi utama di Synapse. Mahasiswa menggunakan forum untuk berdiskusi, bertanya, 
                   membuat polling, dan mengirim pengingat. Setiap kelas memiliki forum real-time dengan fitur chat, reply thread, 
                   dan tag anggota.

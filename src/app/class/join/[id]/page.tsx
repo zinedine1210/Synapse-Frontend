@@ -12,6 +12,7 @@ import {
   Sparkles, GraduationCap, Users, Loader2, ArrowLeft, BookOpen,
   Lock, Eye, EyeOff, ArrowRight, Shield, CheckCircle2, Sun, Moon, Clock,
 } from 'lucide-react';
+import { useTheme } from '@/lib/ThemeContext';
 
 function useJoinTheme(isDark: boolean) {
   return useMemo(() => isDark ? {
@@ -108,16 +109,10 @@ export default function JoinClassPage() {
   const [isJoining, setIsJoining] = useState(false);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isDark, setIsDark] = useState(true);
+  const { theme, toggleTheme: ctxToggleTheme } = useTheme();
+  const isDark = theme === 'dark';
 
   const c = useJoinTheme(isDark);
-
-  // Sync theme
-  useEffect(() => {
-    const saved = localStorage.getItem('synapse-theme');
-    if (saved === 'light') setIsDark(false);
-    else if (saved === 'dark') setIsDark(true);
-  }, []);
 
   useEffect(() => {
     if (!classId) return;
@@ -172,12 +167,7 @@ export default function JoinClassPage() {
     }
   };
 
-  const toggleTheme = () => {
-    const newDark = !isDark;
-    setIsDark(newDark);
-    localStorage.setItem('synapse-theme', newDark ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', newDark ? 'dark' : 'light');
-  };
+  const toggleTheme = ctxToggleTheme;
 
   return (
     <AuthGuard>

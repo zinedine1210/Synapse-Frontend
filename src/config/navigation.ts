@@ -1,4 +1,4 @@
-import { BookOpen, LayoutDashboard, GraduationCap, CreditCard, Settings, TrendingUp, Users, Layers, MessageSquare, School } from 'lucide-react';
+import { BookOpen, LayoutDashboard, GraduationCap, CreditCard, Settings, TrendingUp, Users, Layers, MessageSquare, School, Wallet, MessageCircleHeart, CheckSquare, HelpCircle, Sunrise } from 'lucide-react';
 
 /**
  * 🗺️ Centralized Navigation Registry
@@ -33,6 +33,36 @@ export const navItems: NavItem[] = [
     label: 'Billing',
     path: '/billing',
     icon: CreditCard,
+  },
+  {
+    label: 'Duit Tracker',
+    path: '/duit-tracker',
+    icon: Wallet,
+    badge: 'NEW',
+  },
+  {
+    label: 'Si Bawel',
+    path: '/si-bawel',
+    icon: MessageCircleHeart,
+    badge: 'NEW',
+  },
+  {
+    label: 'To-Do List',
+    path: '/todos',
+    icon: CheckSquare,
+    badge: 'NEW',
+  },
+  {
+    label: 'Q&A',
+    path: '/qna',
+    icon: HelpCircle,
+    badge: 'NEW',
+  },
+  {
+    label: 'Briefing',
+    path: '/briefing',
+    icon: Sunrise,
+    badge: 'NEW',
   },
 ];
 

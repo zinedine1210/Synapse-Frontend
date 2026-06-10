@@ -36,6 +36,11 @@ const ALL_FEATURES = [
   { id: 'canvas', label: 'Canvas Editor' },
   { id: 'notification', label: 'Notifikasi' },
   { id: 'unread_tracking', label: 'Pelacakan Belum Dibaca' },
+  { id: 'duit_tracker', label: 'Duit Tracker' },
+  { id: 'si_bawel', label: 'Si Bawel' },
+  { id: 'todo_list', label: 'To-Do List' },
+  { id: 'qna_public', label: 'Q&A Publik' },
+  { id: 'daily_briefing', label: 'Briefing Harian' },
 ];
 
 const DURATION_PRESETS = [
@@ -199,8 +204,8 @@ export default function SuperadminPlansPage() {
       label: 'Nama Paket',
       render: (row) => (
         <div>
-          <span style={{ fontWeight: 700, color: 'white' }}>{row.name}</span>
-          {row.description && <div style={{ fontSize: '0.72rem', color: 'rgba(160,160,200,0.5)', marginTop: '0.1rem' }}>{row.description}</div>}
+          <span style={{ fontWeight: 700, color: 'rgb(var(--text-primary))' }}>{row.name}</span>
+          {row.description && <div style={{ fontSize: '0.72rem', color: 'rgb(var(--text-muted))', marginTop: '0.1rem' }}>{row.description}</div>}
         </div>
       ),
     },
@@ -208,7 +213,7 @@ export default function SuperadminPlansPage() {
       key: 'price',
       label: 'Harga',
       render: (row) => (
-        <span style={{ fontWeight: 700, color: 'rgb(0, 245, 160)' }}>{formatRupiah(row.price)}</span>
+        <span style={{ fontWeight: 700, color: 'rgb(var(--color-secondary))' }}>{formatRupiah(row.price)}</span>
       ),
       exportValue: (row) => row.price,
     },
@@ -217,7 +222,7 @@ export default function SuperadminPlansPage() {
       label: 'Durasi',
       render: (row) => (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem' }}>
-          <Clock size={12} style={{ color: 'rgba(160,160,200,0.5)' }} />
+          <Clock size={12} style={{ color: 'rgb(var(--text-muted))' }} />
           {formatDuration(row.durationDays || 0)}
         </span>
       ),
@@ -242,8 +247,8 @@ export default function SuperadminPlansPage() {
       sortable: false,
       render: (row) => (
         <span style={{ fontSize: '0.75rem' }}>
-          <span style={{ fontWeight: 700, color: 'rgb(0, 212, 255)' }}>{row.features.length}</span>
-          <span style={{ color: 'rgba(160,160,200,0.5)' }}> / {ALL_FEATURES.length} aktif</span>
+          <span style={{ fontWeight: 700, color: 'rgb(var(--color-primary))' }}>{row.features.length}</span>
+          <span style={{ color: 'rgb(var(--text-muted))' }}> / {ALL_FEATURES.length} aktif</span>
         </span>
       ),
       exportValue: (row) => row.features.join(', '),
@@ -262,17 +267,17 @@ export default function SuperadminPlansPage() {
 
           {loading ? (
             <div style={{ minHeight: 'calc(100vh - var(--appbar-height))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Loader2 className="animate-spin" size={48} style={{ color: 'rgb(0, 212, 255)' }} />
+              <Loader2 className="animate-spin" size={48} style={{ color: 'rgb(var(--color-primary))' }} />
             </div>
           ) : (
             <div className="page-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div>
-                  <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <Layers size={24} style={{ color: 'rgb(0, 245, 160)' }} />
+                  <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'rgb(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <Layers size={24} style={{ color: 'rgb(var(--color-secondary))' }} />
                     Paket Berlangganan
                   </h2>
-                  <p style={{ color: 'rgba(160, 160, 200, 0.7)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+                  <p style={{ color: 'rgb(var(--text-muted))', fontSize: '0.9rem', marginTop: '0.25rem' }}>
                     Buat, edit, dan kelola paket harga, durasi, serta batasan kuota fitur untuk pengguna.
                   </p>
                 </div>
@@ -282,13 +287,13 @@ export default function SuperadminPlansPage() {
               {error && <Alert type="error" message={error} />}
 
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>{configs.length}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'rgba(160,160,200,0.6)' }}>Total Paket</span>
+                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--text-primary))' }}>{configs.length}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Total Paket</span>
                 </Card>
-                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(0, 212, 255)' }}>{ALL_FEATURES.length}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'rgba(160,160,200,0.6)' }}>Total Fitur</span>
+                <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--color-primary))' }}>{ALL_FEATURES.length}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Total Fitur</span>
                 </Card>
               </div>
 
@@ -316,16 +321,16 @@ export default function SuperadminPlansPage() {
                 const plan = configs.find((c) => c.id === expandedPlanId);
                 if (!plan) return null;
                 return (
-                  <Card style={{ border: '1px solid rgba(0, 212, 255, 0.15)', background: 'rgba(0, 212, 255, 0.02)' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(160, 160, 200, 0.6)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
+                  <Card style={{ border: '1px solid rgba(var(--color-primary) / 0.15)', background: 'rgba(var(--color-primary) / 0.02)' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgb(var(--text-muted))', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
                       Fitur Aktif – {plan.name}
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
                       {ALL_FEATURES.map((feat) => {
                         const isChecked = plan.features.includes(feat.id);
                         return (
-                          <label key={feat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.6rem', borderRadius: '6px', background: isChecked ? 'rgba(0, 212, 255, 0.06)' : 'rgba(255, 255, 255, 0.02)', border: isChecked ? '1px solid rgba(0, 212, 255, 0.15)' : '1px solid rgba(255, 255, 255, 0.04)', fontSize: '0.78rem', color: isChecked ? 'white' : 'rgba(160, 160, 200, 0.7)', cursor: 'pointer', transition: 'all 0.15s' }}>
-                            <input type="checkbox" checked={isChecked} onChange={(e) => handleFeatureToggle(plan, feat.id, e.target.checked)} style={{ accentColor: 'rgb(0, 212, 255)', cursor: 'pointer' }} />
+                          <label key={feat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.6rem', borderRadius: '6px', background: isChecked ? 'rgba(var(--color-primary) / 0.06)' : 'rgba(var(--bg-elevated) / 0.5)', border: isChecked ? '1px solid rgba(var(--color-primary) / 0.15)' : '1px solid var(--border-subtle)', fontSize: '0.78rem', color: isChecked ? 'rgb(var(--text-primary))' : 'rgb(var(--text-muted))', cursor: 'pointer', transition: 'all 0.15s' }}>
+                            <input type="checkbox" checked={isChecked} onChange={(e) => handleFeatureToggle(plan, feat.id, e.target.checked)} style={{ accentColor: 'rgb(var(--color-primary))', cursor: 'pointer' }} />
                             <span>{feat.label}</span>
                           </label>
                         );
@@ -382,7 +387,7 @@ export default function SuperadminPlansPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Durasi Kustom (hari)</label>
                 <input type="number" min={1} value={planDurationDays} onChange={(e) => setPlanDurationDays(Number(e.target.value))} required className="themed-input" style={{ width: '100%' }} />
-                <span style={{ fontSize: '0.7rem', color: 'rgba(160,160,200,0.5)' }}>
+                <span style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))' }}>
                   ≈ {planDurationDays >= 30 ? `${(planDurationDays / 30).toFixed(1)} bulan` : `${planDurationDays} hari`}
                   {planDurationDays >= 365 ? ` (${(planDurationDays / 365).toFixed(1)} tahun)` : ''}
                 </span>
@@ -410,7 +415,7 @@ export default function SuperadminPlansPage() {
                 {ALL_FEATURES.map((feat) => {
                   const isChecked = planFeatures.includes(feat.id);
                   return (
-                    <label key={feat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.04)', fontSize: 'var(--font-xs)', color: 'rgb(var(--text-primary))', cursor: 'pointer' }}>
+                    <label key={feat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', background: 'rgba(var(--bg-elevated) / 0.5)', border: '1px solid var(--border-subtle)', fontSize: 'var(--font-xs)', color: 'rgb(var(--text-primary))', cursor: 'pointer' }}>
                       <input type="checkbox" checked={isChecked} onChange={() => setPlanFeatures((prev) => isChecked ? prev.filter((x) => x !== feat.id) : [...prev, feat.id])} style={{ accentColor: 'rgb(var(--color-primary))' }} />
                       <span>{feat.label}</span>
                     </label>

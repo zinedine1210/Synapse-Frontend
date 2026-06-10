@@ -57,7 +57,7 @@ export function AIPhotoInput({ onExtracted, mode, className = '', label = 'Gunak
       onExtracted(result);
       showToast('Analisis AI berhasil!', 'success');
     } catch (err) {
-      console.error(err);
+      if (process.env.NODE_ENV === 'development') console.error(err);
       showToast(err instanceof Error ? err.message : 'Terjadi kesalahan saat memproses gambar.', 'error');
     } finally {
       setIsLoading(false);

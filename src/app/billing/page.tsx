@@ -72,7 +72,7 @@ export default function BillingPage() {
               showToast('Akun Anda berhasil ditingkatkan!', 'success');
               await refetchProfile();
             } catch (err) {
-              console.error('Gagal verifikasi pembayaran:', err);
+              if (process.env.NODE_ENV === 'development') console.error('Gagal verifikasi pembayaran:', err);
               showToast('Gagal memverifikasi status pembayaran secara instan.', 'warning');
             }
             setTimeout(() => {

@@ -96,7 +96,7 @@ export default function QuizPage() {
         const list = await classService.getClassSessions(selectedClassId);
         setSessions((list as any) || []);
       } catch (err) {
-        console.error('Gagal memuat sesi kelas:', err);
+        if (process.env.NODE_ENV === 'development') console.error('Gagal memuat sesi kelas:', err);
       } finally {
         setLoadingSessions(false);
       }

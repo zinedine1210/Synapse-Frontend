@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await apiFetch<User>('/auth/me');
       setUser(data);
     } catch (err) {
-      console.error('Gagal memuat profil user dari backend:', err);
+      if (process.env.NODE_ENV === 'development') console.error('Gagal memuat profil user dari backend:', err);
       setUser(null);
     }
   };

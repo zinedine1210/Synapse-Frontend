@@ -11,6 +11,7 @@ import {
   ArrowLeft, Sun, Moon, Target, Users, BarChart3, FileText,
   CheckCircle2, ArrowRight, Shield, Loader2,
 } from 'lucide-react';
+import { useTheme } from '@/lib/ThemeContext';
 
 const SIDE_FEATURES = [
   { icon: Brain, label: 'AI Summarizer', sub: 'Rangkum materi otomatis dengan AI', color: '#00D4FF' },
@@ -103,7 +104,8 @@ export default function AuthPage() {
   const router = useRouter();
   const { user, session, refetchProfile } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
-  const [isDark, setIsDark] = useState(true);
+  const { theme, toggleTheme: ctxToggleTheme } = useTheme();
+  const isDark = theme === 'dark';
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -115,13 +117,6 @@ export default function AuthPage() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const c = useAuthTheme(isDark);
-
-  // Sync theme from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('synapse-theme');
-    if (saved === 'light') setIsDark(false);
-    else if (saved === 'dark') setIsDark(true);
-  }, []);
 
   useEffect(() => {
     if (session && user) {
@@ -199,19 +194,14 @@ export default function AuthPage() {
         }
       }
     } catch (err) {
-      console.error(err);
+      if (process.env.NODE_ENV === 'development') console.error(err);
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan.');
     } finally {
       setLoading(false);
     }
   };
 
-  const toggleTheme = () => {
-    const newDark = !isDark;
-    setIsDark(newDark);
-    localStorage.setItem('synapse-theme', newDark ? 'dark' : 'light');
-    document.documentElement.setAttribute('data-theme', newDark ? 'dark' : 'light');
-  };
+  const toggleTheme = ctxToggleTheme;
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '0.7rem 0.9rem', borderRadius: 12,

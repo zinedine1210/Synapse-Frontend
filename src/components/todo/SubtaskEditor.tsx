@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { CheckCircle2, Circle, Plus, ListChecks } from 'lucide-react';
+import { TextInput } from '@/components/ui';
 
 export interface DraftSubtask {
   /** Present when the subtask already exists on the server */
@@ -67,14 +68,9 @@ export function SubtaskEditor({ value, onChange }: SubtaskEditorProps) {
       )}
 
       <div style={{ display: 'flex', gap: 6 }}>
-        <input
-          className="input"
-          placeholder="Tambah langkah / sub-task..."
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
-          style={{ flex: 1, fontSize: 13, padding: '9px 12px', borderRadius: 10 }}
-        />
+        <div style={{ flex: 1 }}>
+          <TextInput placeholder="Tambah langkah / sub-task..." value={title} onChange={setTitle} />
+        </div>
         <button
           type="button"
           onClick={add}

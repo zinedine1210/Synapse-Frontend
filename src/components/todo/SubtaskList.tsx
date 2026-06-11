@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { CheckSquare, Square, Plus, X } from 'lucide-react';
 import { TodoSubtask } from '@/services/todoService';
+import { TextInput } from '@/components/ui';
 
 interface SubtaskListProps {
   subtasks: TodoSubtask[];
@@ -94,14 +95,9 @@ export function SubtaskList({ subtasks, todoId, onAdd, onToggle }: SubtaskListPr
       {/* Add subtask */}
       {showInput ? (
         <form onSubmit={handleAdd} style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-          <input
-            className="input"
-            placeholder="Sub-task baru..."
-            value={newTitle}
-            onChange={e => setNewTitle(e.target.value)}
-            autoFocus
-            style={{ flex: 1, fontSize: 12, padding: '6px 10px', borderRadius: 8 }}
-          />
+          <div style={{ flex: 1 }}>
+            <TextInput placeholder="Sub-task baru..." value={newTitle} onChange={setNewTitle} autoFocus />
+          </div>
           <button
             type="submit"
             disabled={adding || !newTitle.trim()}

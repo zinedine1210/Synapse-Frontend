@@ -392,7 +392,7 @@ export default function InsightPage() {
   }, [timeRange]);
 
   return (
-    <AuthGuard>
+    <AuthGuard requiredFeature="ai_insight">
       <div className="app-shell">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <div className="app-main">

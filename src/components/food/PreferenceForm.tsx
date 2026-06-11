@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Button, CurrencyInput, parseCurrency } from '@/components/ui';
+import { Button, CurrencyInput, parseCurrency, TextInput } from '@/components/ui';
 import { FoodPreference } from '@/services/foodService';
 
 const SPICY = [
@@ -113,13 +113,7 @@ export function PreferenceForm({ pref, onSave }: PreferenceFormProps) {
       {/* Disliked ingredients */}
       <div>
         <label style={labelStyle}>🙅 Bahan yang tidak disukai</label>
-        <input
-          className="input"
-          placeholder="Pisahkan dengan koma: terong, petai"
-          value={disliked}
-          onChange={e => setDisliked(e.target.value)}
-          style={{ width: '100%', borderRadius: 'var(--radius-md)', padding: '10px 14px' }}
-        />
+        <TextInput placeholder="Pisahkan dengan koma: terong, petai" value={disliked} onChange={setDisliked} />
       </div>
 
       <Button

@@ -51,6 +51,7 @@ export function Sidebar({ userRole = 'USER', collapsed: controlledCollapsed, onT
         <Link
           href={item.path}
           title={collapsed ? item.label : undefined}
+          data-tour={item.path.replace('/', '')}
           style={{
             display: 'flex',
             alignItems: 'center',

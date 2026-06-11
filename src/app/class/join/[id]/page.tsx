@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useAuth } from '@/lib/AuthContext';
 import { classService } from '@/services/classService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
-import { useToast } from '@/components/ui';
+import { useToast, PasswordInput } from '@/components/ui';
 import { brand } from '@/config/brand';
 import {
   Sparkles, GraduationCap, Users, Loader2, ArrowLeft, BookOpen,
@@ -170,7 +170,7 @@ export default function JoinClassPage() {
   const toggleTheme = ctxToggleTheme;
 
   return (
-    <AuthGuard>
+    <AuthGuard requiredFeature="class">
       <main style={{
         minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: c.bg, padding: '1.5rem', position: 'relative', overflow: 'hidden',
@@ -319,33 +319,7 @@ export default function JoinClassPage() {
                 {/* Password Input */}
                 {classInfo?.hasPassword && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: 600, color: c.textSub, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                      <Lock size={12} /> Password Kelas
-                    </label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="Masukkan password kelas"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        style={{
-                          width: '100%', padding: '0.7rem 2.5rem 0.7rem 0.9rem', borderRadius: 12,
-                          border: `1px solid ${c.inputBorder}`, background: c.inputBg,
-                          color: c.inputText, fontSize: '0.88rem', fontFamily: 'inherit',
-                          outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s',
-                        }}
-                        onFocus={(e) => { e.currentTarget.style.borderColor = c.inputFocusBorder; e.currentTarget.style.boxShadow = `0 0 0 3px ${isDark ? 'rgba(0,212,255,0.08)' : 'rgba(0,150,200,0.08)'}`; }}
-                        onBlur={(e) => { e.currentTarget.style.borderColor = c.inputBorder; e.currentTarget.style.boxShadow = 'none'; }}
-                      />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} style={{
-                        position: 'absolute', right: '0.65rem', top: '50%', transform: 'translateY(-50%)',
-                        background: 'none', border: 'none', cursor: 'pointer', color: c.textMuted,
-                        padding: '0.25rem', display: 'flex', alignItems: 'center',
-                      }}>
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
+                    <PasswordInput label="Password Kelas" value={password} onChange={setPassword} placeholder="Masukkan password kelas" required />
                   </div>
                 )}
 

@@ -2,16 +2,16 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Modal, useToast } from '@/components/ui';
+import { Button, Modal, useToast, SelectOption, TextInput } from '@/components/ui';
 import { duitTrackerService } from '@/services/duitTrackerService';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { Plus, X, Camera, Wallet, CheckSquare, HelpCircle, Loader2, Sparkles, Check, ImageIcon } from 'lucide-react';
 
 const FAB_ITEMS = [
-  { key: 'scan', icon: Camera, label: 'Scan Struk', color: 'var(--color-warning)', requiredFeature: 'duit_tracker' },
+  { key: 'scan', icon: Camera, label: 'Scan Struk', color: 'var(--color-warning)', requiredFeature: 'receipt_scanner' },
   { key: 'catat', icon: Wallet, label: 'Catat Cepat', color: 'var(--color-primary)', requiredFeature: 'duit_tracker' },
-  { key: 'todo', icon: CheckSquare, label: 'Todo Cepat', color: 'var(--color-success)', requiredFeature: 'todo' },
-  { key: 'tanya', icon: HelpCircle, label: 'Tanya', color: 'var(--color-secondary)', requiredFeature: 'qna' },
+  { key: 'todo', icon: CheckSquare, label: 'Todo Cepat', color: 'var(--color-success)', requiredFeature: 'todo_list' },
+  { key: 'tanya', icon: HelpCircle, label: 'Tanya', color: 'var(--color-secondary)', requiredFeature: 'qna_public' },
 ] as const;
 
 type ActionType = typeof FAB_ITEMS[number]['key'] | null;
@@ -279,9 +279,7 @@ export function QuickActionFAB() {
                       <input type="checkbox" checked={item.selected} onChange={() => { const n = [...scanResult.items]; n[i].selected = !n[i].selected; setScanResult({ ...scanResult, items: n }); }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>{item.name} {item.quantity > 1 ? `x${item.quantity}` : ''}</div>
-                        <select className="themed-input" value={item.category} onChange={e => { const n = [...scanResult.items]; n[i].category = e.target.value; setScanResult({ ...scanResult, items: n }); }} style={{ fontSize: '11px', padding: '2px 6px', marginTop: 4 }}>
-                          {CATEGORY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
+                        <SelectOption value={item.category} onChange={v => { const n = [...scanResult.items]; n[i].category = v; setScanResult({ ...scanResult, items: n }); }} options={CATEGORY_OPTIONS.map(c => ({ value: c, label: c }))} />
                       </div>
                       <span style={{ fontWeight: 700, fontSize: 'var(--font-sm)', whiteSpace: 'nowrap' }}>Rp {item.subtotal.toLocaleString('id-ID')}</span>
                     </div>
@@ -298,14 +296,11 @@ export function QuickActionFAB() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <input
-              className="themed-input"
+            <TextInput
               placeholder={placeholder}
               value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              onChange={v => setInput(v)}
               autoFocus
-              style={{ width: '100%' }}
             />
             <Button onClick={handleSubmit} disabled={submitting || !input.trim()} style={{ width: '100%' }}>
               {submitting ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <><Sparkles size={15} /> Simpan</>}

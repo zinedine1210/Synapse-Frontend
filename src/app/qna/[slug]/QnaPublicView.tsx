@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
 import { MarkdownRenderer, Button, useToast, useConfirm } from '@/components/ui';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { qnaService } from '@/services/qnaService';
 import { ThumbsUp, CheckCircle, MessageSquare, Eye, Clock, ArrowLeft, LogIn, Flag, Loader2, Share2, Hash, HelpCircle, Award } from 'lucide-react';
 import { brand } from '@/config/brand';
@@ -80,6 +81,7 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
   const { user } = useAuth();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { hasFeature } = useFeatureAccess();
   const [question, setQuestion] = useState<Question>(initialQuestion);
   const [answerHtml, setAnswerHtml] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -437,7 +439,7 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           {/* Upvote button - show login CTA for unauthenticated */}
-                          {user ? (
+                          {user && hasFeature('qna_voting') ? (
                             <button
                               onClick={() => handleUpvote(answer.id)}
                               style={{

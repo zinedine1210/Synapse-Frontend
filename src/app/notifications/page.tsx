@@ -267,7 +267,7 @@ export default function NotificationsPage() {
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <AuthGuard>
+    <AuthGuard requiredFeature="notification">
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       <Appbar title="Notifikasi" sidebarCollapsed={sidebarCollapsed} />
 

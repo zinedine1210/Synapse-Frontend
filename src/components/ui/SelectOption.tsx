@@ -1,274 +1,119 @@
 'use client';
 
-import React, { useState, useId, useRef, useEffect, useMemo, useCallback } from 'react';
-import { ChevronDown } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
+import { ChevronDown, Check } from 'lucide-react';
 import { FormField, getFormInputStyle } from './FormField';
 import type { FormFieldProps } from './types';
 
 export interface SelectOptionItem {
-  /** Unique value for this option */
   value: string;
-  /** Display label for this option */
   label: string;
-  /** Whether this option is disabled */
   disabled?: boolean;
+  icon?: React.ReactNode;
 }
 
 export interface SelectOptionProps extends FormFieldProps {
-  /** Currently selected value */
   value: string;
-  /** Change handler — receives selected value string */
   onChange: (value: string) => void;
-  /** Blur handler */
-  onBlur?: () => void;
-  /** List of selectable options */
   options: SelectOptionItem[];
-  /** Placeholder text when no value is selected */
   placeholder?: string;
-  /** Input name attribute */
-  name?: string;
 }
 
-/**
- * SelectOption — A styled dropdown select component.
- * Wraps FormField for consistent label, error, and hint rendering.
- * Provides smooth focus animation and supports dark/light mode.
- */
-export function SelectOption({
-  label,
-  error,
-  hint,
-  required,
-  disabled,
-  className,
-  value,
-  onChange,
-  onBlur,
-  options,
-  placeholder = 'Pilih opsi',
-  name,
-}: SelectOptionProps) {
+export function SelectOption({ label, error, hint, required, disabled, className, value, onChange, options, placeholder = 'Pilih...' }: SelectOptionProps) {
+  const [open, setOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
-  const inputId = useId();
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const [dropUp, setDropUp] = useState(false);
-  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const inputId = useId();
 
-  // Find selected option label
-  const selectedLabel = useMemo(() => {
-    const found = options.find(opt => opt.value === value);
-    return found?.label || '';
-  }, [options, value]);
+  const selected = options.find(o => o.value === value);
 
   // Close on outside click
   useEffect(() => {
-    if (!isOpen) return;
+    if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-        setIsFocused(false);
-        onBlur?.();
-      }
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [isOpen, onBlur]);
+  }, [open]);
 
-  // Determine drop direction
-  useEffect(() => {
-    if (!isOpen || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    setDropUp(spaceBelow < 220);
-  }, [isOpen]);
-
-  // Scroll highlighted item into view
-  useEffect(() => {
-    if (!isOpen || highlightedIndex < 0) return;
-    const items = listRef.current?.querySelectorAll('[role="option"]');
-    items?.[highlightedIndex]?.scrollIntoView({ block: 'nearest' });
-  }, [isOpen, highlightedIndex]);
-
-  const handleOpen = useCallback(() => {
-    if (disabled) return;
-    setIsOpen(prev => !prev);
-    setIsFocused(true);
-    // Set highlighted index to currently selected value
-    const idx = options.findIndex(o => o.value === value);
-    setHighlightedIndex(idx >= 0 ? idx : 0);
-  }, [disabled, options, value]);
-
-  const handleSelect = useCallback((optValue: string) => {
-    onChange(optValue);
-    setIsOpen(false);
-    setIsFocused(false);
-    onBlur?.();
-  }, [onChange, onBlur]);
-
+  // Keyboard navigation
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!isOpen) {
-      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
-        e.preventDefault();
-        handleOpen();
+    if (e.key === 'Escape') { setOpen(false); return; }
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      if (!open) { setOpen(true); return; }
+      if (highlightIndex >= 0 && !options[highlightIndex]?.disabled) {
+        onChange(options[highlightIndex].value);
+        setOpen(false);
       }
       return;
     }
+    if (!open) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); setHighlightIndex(prev => Math.min(prev + 1, options.length - 1)); }
+    if (e.key === 'ArrowUp') { e.preventDefault(); setHighlightIndex(prev => Math.max(prev - 1, 0)); }
+  }, [open, highlightIndex, options, onChange]);
 
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setHighlightedIndex(prev => {
-          const next = prev + 1;
-          return next >= options.length ? 0 : next;
-        });
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setHighlightedIndex(prev => {
-          const next = prev - 1;
-          return next < 0 ? options.length - 1 : next;
-        });
-        break;
-      case 'Enter':
-      case ' ':
-        e.preventDefault();
-        if (highlightedIndex >= 0 && !options[highlightedIndex]?.disabled) {
-          handleSelect(options[highlightedIndex].value);
-        }
-        break;
-      case 'Escape':
-        e.preventDefault();
-        setIsOpen(false);
-        setIsFocused(false);
-        onBlur?.();
-        break;
-    }
-  }, [isOpen, highlightedIndex, options, handleOpen, handleSelect, onBlur]);
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (!open || highlightIndex < 0 || !listRef.current) return;
+    const item = listRef.current.children[highlightIndex] as HTMLElement;
+    item?.scrollIntoView({ block: 'nearest' });
+  }, [highlightIndex, open]);
 
-  const inputStyle = getFormInputStyle({
-    hasError: !!error,
-    isFocused,
-    isDisabled: disabled,
-  });
+  const inputStyle = getFormInputStyle({ hasError: !!error, isFocused: isFocused || open, isDisabled: disabled });
 
   return (
-    <FormField
-      label={label}
-      error={error}
-      hint={hint}
-      required={required}
-      disabled={disabled}
-      className={className}
-      htmlFor={inputId}
-    >
-      <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-        {/* Trigger button */}
-        <button
-          id={inputId}
-          type="button"
-          onClick={handleOpen}
-          onKeyDown={handleKeyDown}
+    <FormField label={label} error={error} hint={hint} required={required} disabled={disabled} className={className} htmlFor={inputId}>
+      <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
+        <button type="button" id={inputId} role="combobox" aria-expanded={open} aria-haspopup="listbox"
           disabled={disabled}
-          role="combobox"
-          aria-invalid={!!error}
-          aria-expanded={isOpen}
-          aria-haspopup="listbox"
-          aria-controls={`${inputId}-listbox`}
+          onClick={() => { if (!disabled) setOpen(!open); }}
+          onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)}
+          onKeyDown={handleKeyDown}
           style={{
-            ...inputStyle,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            textAlign: 'left',
-          }}
-        >
-          <span style={{ flex: 1, color: selectedLabel ? 'inherit' : 'rgb(var(--text-muted))' }}>
-            {selectedLabel || placeholder}
+            ...inputStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: '0.5rem', cursor: disabled ? 'not-allowed' : 'pointer', textAlign: 'left',
+            color: selected ? 'rgb(var(--text-primary))' : 'rgb(var(--text-muted))',
+          }}>
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            {selected?.icon}{selected?.label || placeholder}
           </span>
-          <ChevronDown
-            size={16}
-            style={{
-              opacity: 0.5,
-              flexShrink: 0,
-              transition: 'transform 150ms ease',
-              transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-            }}
-          />
+          <ChevronDown size={15} style={{ flexShrink: 0, opacity: 0.4, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} />
         </button>
 
-        {/* Hidden input for form submission */}
-        {name && <input type="hidden" name={name} value={value} />}
-
-        {/* Options dropdown */}
-        {isOpen && (
-          <div
-            ref={listRef}
-            id={`${inputId}-listbox`}
-            role="listbox"
-            aria-label={label || 'Pilih opsi'}
+        {open && (
+          <div ref={listRef} role="listbox"
             style={{
-              position: 'absolute',
-              [dropUp ? 'bottom' : 'top']: '100%',
-              left: 0,
-              right: 0,
-              marginTop: dropUp ? undefined : '0.25rem',
-              marginBottom: dropUp ? '0.25rem' : undefined,
-              background: 'var(--card-bg, #fff)',
-              border: '1px solid var(--input-border)',
-              borderRadius: 'var(--radius-lg, 0.75rem)',
-              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
-              zIndex: 50,
-              maxHeight: '200px',
-              overflowY: 'auto',
-              padding: '0.25rem',
+              position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+              background: 'rgb(var(--bg-surface))', border: '1.5px solid var(--border-default)',
+              borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 50,
+              maxHeight: 220, overflowY: 'auto', padding: '4px',
               animation: 'fadeSlideIn 0.15s ease',
-            }}
-          >
-            {options.map((opt, idx) => {
+            }}>
+            {options.map((opt, i) => {
               const isSelected = opt.value === value;
-              const isHighlighted = idx === highlightedIndex;
-
+              const isHighlighted = i === highlightIndex;
               return (
-                <div
-                  key={opt.value}
-                  role="option"
-                  aria-selected={isSelected}
-                  aria-disabled={opt.disabled}
-                  onClick={() => !opt.disabled && handleSelect(opt.value)}
-                  onMouseEnter={() => setHighlightedIndex(idx)}
+                <div key={opt.value} role="option" aria-selected={isSelected}
+                  onClick={() => { if (!opt.disabled) { onChange(opt.value); setOpen(false); } }}
+                  onMouseEnter={() => setHighlightIndex(i)}
                   style={{
-                    padding: '0.5rem 0.75rem',
-                    fontSize: 'var(--font-sm, 0.875rem)',
-                    borderRadius: 'var(--radius-sm, 0.375rem)',
-                    cursor: opt.disabled ? 'not-allowed' : 'pointer',
-                    background: isSelected
-                      ? 'rgba(var(--color-primary) / 0.1)'
-                      : isHighlighted
-                        ? 'rgba(var(--color-primary) / 0.05)'
-                        : 'transparent',
-                    color: opt.disabled
-                      ? 'rgb(var(--text-muted))'
-                      : isSelected
-                        ? 'rgba(var(--color-primary) / 1)'
-                        : 'rgb(var(--text-primary))',
-                    fontWeight: isSelected ? 600 : 400,
-                    opacity: opt.disabled ? 0.5 : 1,
-                    transition: 'all 150ms ease',
-                  }}
-                >
-                  {opt.label}
+                    padding: '0.5rem 0.65rem', borderRadius: '7px', cursor: opt.disabled ? 'not-allowed' : 'pointer',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem',
+                    background: isHighlighted ? 'rgba(var(--color-primary) / 0.06)' : 'transparent',
+                    color: opt.disabled ? 'rgb(var(--text-muted))' : 'rgb(var(--text-primary))',
+                    fontWeight: isSelected ? 600 : 400, opacity: opt.disabled ? 0.5 : 1,
+                    transition: 'background 0.1s',
+                  }}>
+                  {opt.icon}
+                  <span style={{ flex: 1 }}>{opt.label}</span>
+                  {isSelected && <Check size={14} style={{ color: 'rgb(var(--color-primary))', flexShrink: 0 }} />}
                 </div>
               );
             })}
-
-            {options.length === 0 && (
-              <div style={{ padding: '0.75rem', textAlign: 'center', color: 'rgb(var(--text-muted))', fontSize: 'var(--font-sm)' }}>
-                Tidak ada opsi
-              </div>
-            )}
           </div>
         )}
       </div>

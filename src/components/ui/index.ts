@@ -3,6 +3,8 @@ export { FormField, formInputStyles, getFormInputStyle } from './FormField';
 export type { FormFieldProps } from './types';
 export { TextInput } from './TextInput';
 export type { TextInputProps } from './TextInput';
+export { TextArea } from './TextArea';
+export type { TextAreaProps } from './TextArea';
 export { NumberInput } from './NumberInput';
 export type { NumberInputProps } from './NumberInput';
 export { Card } from './Card';

@@ -6,7 +6,7 @@ import { useTheme } from '@/lib/ThemeContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, useToast, useConfirm, TextInput, TagInput } from '@/components/ui';
+import { Card, Button, useToast, useConfirm, TextInput, TagInput, TimePicker, SelectOption } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import {
@@ -563,47 +563,12 @@ function ProfileTab({
 
         {/* Full Name */}
         <div style={{ marginBottom: '1rem' }}>
-          <label style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: 500, marginBottom: '0.4rem' }}>
-            Nama Lengkap
-          </label>
-          <input
-            type="text"
-            value={fullName}
-            onChange={e => setFullName(e.target.value)}
-            placeholder="Masukkan nama lengkap"
-            style={{
-              width: '100%',
-              padding: '0.6rem 0.75rem',
-              fontSize: 'var(--font-base)',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--input-bg)',
-              color: 'rgb(var(--text-primary))',
-              fontFamily: 'inherit',
-            }}
-          />
+          <TextInput label="Nama Lengkap" value={fullName} onChange={setFullName} placeholder="Masukkan nama lengkap" />
         </div>
 
         {/* Email (read only) */}
         <div style={{ marginBottom: '1.25rem' }}>
-          <label style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: 500, marginBottom: '0.4rem', color: 'rgb(var(--text-muted))' }}>
-            Email
-          </label>
-          <input
-            type="email"
-            value={user?.email || ''}
-            disabled
-            style={{
-              width: '100%',
-              padding: '0.6rem 0.75rem',
-              fontSize: 'var(--font-base)',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)',
-              background: 'rgba(var(--text-muted) / 0.05)',
-              color: 'rgb(var(--text-muted))',
-              fontFamily: 'inherit',
-            }}
-          />
+          <TextInput label="Email" value={user?.email || ''} onChange={() => {}} disabled placeholder="" />
         </div>
 
         <Button
@@ -761,43 +726,21 @@ function NotificationsTab({
         </p>
 
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginBottom: '0.25rem' }}>
-              Mulai
-            </label>
-            <input
-              type="time"
+          <div style={{ flex: 1, minWidth: 120 }}>
+            <TimePicker
+              label="Mulai"
               value={quietStart}
-              onChange={e => setQuietStart(e.target.value)}
-              style={{
-                padding: '0.5rem 0.75rem',
-                fontSize: 'var(--font-sm)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--input-bg)',
-                color: 'rgb(var(--text-primary))',
-                fontFamily: 'inherit',
-              }}
+              onChange={setQuietStart}
+              minuteStep={15}
             />
           </div>
-          <span style={{ color: 'rgb(var(--text-muted))', marginTop: '1rem' }}>—</span>
-          <div>
-            <label style={{ display: 'block', fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginBottom: '0.25rem' }}>
-              Selesai
-            </label>
-            <input
-              type="time"
+          <span style={{ color: 'rgb(var(--text-muted))', marginTop: '1.5rem' }}>—</span>
+          <div style={{ flex: 1, minWidth: 120 }}>
+            <TimePicker
+              label="Selesai"
               value={quietEnd}
-              onChange={e => setQuietEnd(e.target.value)}
-              style={{
-                padding: '0.5rem 0.75rem',
-                fontSize: 'var(--font-sm)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--input-bg)',
-                color: 'rgb(var(--text-primary))',
-                fontFamily: 'inherit',
-              }}
+              onChange={setQuietEnd}
+              minuteStep={15}
             />
           </div>
         </div>
@@ -922,23 +865,10 @@ function AppearanceTab({
           Pilih bahasa tampilan aplikasi.
         </p>
 
-        <select
-          value={language}
-          onChange={e => handleLanguageChange(e.target.value as 'id' | 'en')}
-          style={{
-            padding: '0.6rem 0.75rem',
-            fontSize: 'var(--font-base)',
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-md)',
-            background: 'var(--input-bg)',
-            color: 'rgb(var(--text-primary))',
-            fontFamily: 'inherit',
-            minWidth: '200px',
-          }}
-        >
-          <option value="id">🇮🇩 Bahasa Indonesia</option>
-          <option value="en">🇬🇧 English</option>
-        </select>
+        <SelectOption value={language} onChange={v => handleLanguageChange(v as 'id' | 'en')} options={[
+          { value: 'id', label: '🇮🇩 Bahasa Indonesia' },
+          { value: 'en', label: '🇬🇧 English' },
+        ]} />
       </Card>
     </div>
   );
@@ -1129,23 +1059,7 @@ function DataTab() {
               Ketik <strong style={{ color: 'rgb(var(--color-error))' }}>HAPUS AKUN</strong> di bawah ini untuk mengonfirmasi penghapusan akun.
             </p>
 
-            <input
-              type="text"
-              value={confirmationText}
-              onChange={(e) => setConfirmationText(e.target.value)}
-              placeholder='Ketik "HAPUS AKUN"'
-              autoFocus
-              style={{
-                width: '100%',
-                padding: '0.7rem 0.75rem',
-                fontSize: 'var(--font-base)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-md)',
-                background: 'var(--input-bg)',
-                color: 'rgb(var(--text-primary))',
-                fontFamily: 'inherit',
-              }}
-            />
+            <TextInput value={confirmationText} onChange={setConfirmationText} placeholder='Ketik "HAPUS AKUN"' />
 
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.25rem' }}>
               <Button

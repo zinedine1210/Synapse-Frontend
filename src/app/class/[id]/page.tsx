@@ -7,7 +7,8 @@ import { useClassDetail } from '@/viewmodels/useClassDetail';
 import { classService } from '@/services/classService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Button, Modal, useToast, useConfirm, PasswordInput } from '@/components/ui';
+import { Button, Modal, useToast, useConfirm, PasswordInput, TextInput, SelectOption, TextArea } from '@/components/ui';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { ForumTab } from '@/components/ForumTab';
 import { PertemuanTab } from '@/components/PertemuanTab';
 import { KolektifTab } from '@/components/KolektifTab';
@@ -81,6 +82,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { hasFeature } = useFeatureAccess();
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
@@ -257,7 +259,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
     }
   };
 
-  const hasQuizFeature = user?.pricingPlan?.features?.includes('quiz') ?? false;
+  const hasQuizFeature = hasFeature('quiz');
 
   const PERMISSION_SECTIONS: { section: string; permissions: { key: string; label: string }[] }[] = [
     { section: '🏫 Kelas', permissions: [
@@ -384,21 +386,20 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
   }, [classData?.id]);
 
   const FEATURES = [
-    { id: 'forum' as const, label: 'Forum', icon: MessagesSquare },
-    { id: 'pertemuan' as const, label: 'Pertemuan', icon: BookOpen },
-    { id: 'tugas' as const, label: 'Tugas', icon: ClipboardList },
-    { id: 'kolektif' as const, label: 'Kas', icon: Wallet },
-    { id: 'kelompok' as const, label: 'Kelompok', icon: Users },
-    { id: 'prediksi' as const, label: 'Prediksi Ujian', icon: Target },
-    { id: 'info' as const, label: 'Info Kelas', icon: Info },
+    { id: 'forum' as const, label: 'Forum', icon: MessagesSquare, featureKey: 'forum' },
+    { id: 'pertemuan' as const, label: 'Pertemuan', icon: BookOpen, featureKey: 'class_sessions' },
+    { id: 'tugas' as const, label: 'Tugas', icon: ClipboardList, featureKey: 'task' },
+    { id: 'kolektif' as const, label: 'Kas', icon: Wallet, featureKey: 'kolektif' },
+    { id: 'kelompok' as const, label: 'Kelompok', icon: Users, featureKey: 'group' },
+    { id: 'prediksi' as const, label: 'Prediksi Ujian', icon: Target, featureKey: 'exam_prediction' },
+    { id: 'info' as const, label: 'Info Kelas', icon: Info, featureKey: null },
   ];
 
-  const userFeatures = user?.pricingPlan?.features || ['class', 'pdf_export', 'pertemuan', 'tugas'];
   // Info tab is always available
-  const availableFeatures = FEATURES.filter(f => f.id === 'info' || userFeatures.includes(f.id));
+  const availableFeatures = FEATURES.filter(f => !f.featureKey || hasFeature(f.featureKey));
 
   return (
-    <AuthGuard>
+    <AuthGuard requiredFeature="class">
       <div className="app-shell">
         <Sidebar userRole={user?.role} collapsed={sidebarCollapsed} onToggle={setSidebarCollapsed} />
 
@@ -433,7 +434,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                 </div>
                 <div className="class-header-actions" style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
                   <Button variant="ghost" size="sm" leftIcon={<Share2 size={13} />} onClick={handleShareClass}><span>Bagikan</span></Button>
-                  {(classData?.memberRole === 'OWNER' || classData?.memberRole === 'ADMIN') && (
+                  {(classData?.memberRole === 'OWNER' || classData?.memberRole === 'ADMIN') && hasFeature('class_settings') && (
                     <Button variant="ghost" size="sm" leftIcon={<Pencil size={13} />} onClick={handleOpenEditClassModal}><span>Edit</span></Button>
                   )}
                 </div>
@@ -563,7 +564,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                         {classData.room && <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))' }}>🏫 {classData.room}</div>}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))' }}>🔑 Kode: <span style={{ fontFamily: 'monospace', fontWeight: 700, color: 'rgb(var(--color-primary))' }}>{classData.code || classData.id.slice(0, 8).toUpperCase()}</span></div>
                       </div>
-                      {(classData.memberRole === 'OWNER' || classData.memberRole === 'ADMIN') && (
+                      {(classData.memberRole === 'OWNER' || classData.memberRole === 'ADMIN') && hasFeature('class_settings') && (
                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
                           <Button size="sm" leftIcon={<Pencil size={13} />} onClick={handleOpenEditClassModal}>Edit Kelas</Button>
                           <Button size="sm" variant="ghost" leftIcon={<Share2 size={13} />} onClick={handleShareClass}>Bagikan</Button>
@@ -572,7 +573,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                     </div>
 
                     {/* Roles management (Owner only) */}
-                    {classData.memberRole === 'OWNER' && (
+                    {classData.memberRole === 'OWNER' && hasFeature('class_settings') && (
                       <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: '1rem', marginBottom: '1.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
                           <h4 style={{ fontSize: 'var(--font-md)', fontWeight: 600, color: 'rgb(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -612,7 +613,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                     )}
 
                     {/* Join Settings (Owner only) */}
-                    {classData.memberRole === 'OWNER' && (
+                    {classData.memberRole === 'OWNER' && hasFeature('class_settings') && (
                       <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: '1rem', marginBottom: '1.5rem' }}>
                         <h4 style={{ fontSize: 'var(--font-md)', fontWeight: 600, color: 'rgb(var(--text-primary))', marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                           ⚙️ Pengaturan Bergabung
@@ -625,20 +626,20 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                                 {classData.joinMode === 'APPROVAL' ? 'Anggota baru harus disetujui admin' : 'Siapapun bisa langsung masuk'}
                               </p>
                             </div>
-                            <select
+                            <SelectOption
                               value={classData.joinMode || 'PUBLIC'}
-                              onChange={async (e) => {
+                              onChange={async (v) => {
                                 try {
-                                  await classService.updateClassSettings(classData.id, { joinMode: e.target.value });
-                                  setClassData((prev: any) => prev ? { ...prev, joinMode: e.target.value } : prev);
+                                  await classService.updateClassSettings(classData.id, { joinMode: v });
+                                  setClassData((prev: any) => prev ? { ...prev, joinMode: v } : prev);
                                   showToast('Pengaturan berhasil diubah.', 'success');
                                 } catch (err) { showToast(err instanceof Error ? err.message : 'Gagal mengubah pengaturan.', 'error'); }
                               }}
-                              style={{ fontSize: 'var(--font-xs)', padding: '0.25rem 0.4rem', borderRadius: '4px', border: '1px solid var(--border-default)', background: 'var(--input-bg)', color: 'rgb(var(--text-secondary))', cursor: 'pointer' }}
-                            >
-                              <option value="PUBLIC">Public (Langsung Masuk)</option>
-                              <option value="APPROVAL">Approval (Perlu Persetujuan)</option>
-                            </select>
+                              options={[
+                                { value: 'PUBLIC', label: 'Public (Langsung Masuk)' },
+                                { value: 'APPROVAL', label: 'Approval (Perlu Persetujuan)' },
+                              ]}
+                            />
                           </div>
                           <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem 0.65rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)', cursor: 'pointer' }}>
                             <div>
@@ -710,16 +711,16 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                                 </div>
                                 {classData.memberRole === 'OWNER' && m.role !== 'OWNER' && (
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0 }}>
-                                    <select
+                                    <div style={{ maxWidth: 130 }}>
+                                    <SelectOption
                                       value={m.classRoleId || ''}
-                                      onChange={(e) => handleAssignRole(m.userId, e.target.value || null)}
-                                      style={{ fontSize: 'var(--font-xs)', padding: '0.15rem 0.3rem', borderRadius: '4px', border: '1px solid var(--border-default)', background: 'var(--input-bg)', color: 'rgb(var(--text-secondary))', cursor: 'pointer', maxWidth: 120 }}
-                                    >
-                                      <option value="">Tanpa Jabatan</option>
-                                      {classRoles.map((r) => (
-                                        <option key={r.id} value={r.id}>{r.name}</option>
-                                      ))}
-                                    </select>
+                                      onChange={(v) => handleAssignRole(m.userId, v || null)}
+                                      options={[
+                                        { value: '', label: 'Tanpa Jabatan' },
+                                        ...classRoles.map((r) => ({ value: r.id, label: r.name })),
+                                      ]}
+                                    />
+                                    </div>
                                     <button onClick={() => handleKickMember(m.userId, m.user.fullName)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '0.15rem' }} title="Keluarkan">
                                       <X size={13} />
                                     </button>
@@ -731,7 +732,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                       </div>
                       {classData.memberRole === 'OWNER' && (
                         <form onSubmit={handleAddMember} style={{ display: 'flex', gap: '0.35rem', marginTop: '0.75rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.75rem' }}>
-                          <input type="email" placeholder="Tambah anggota via email..." className="themed-input" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} style={{ flex: 1, padding: '0.35rem 0.6rem', fontSize: 'var(--font-sm)' }} required />
+                          <TextInput type="email" placeholder="Tambah anggota via email..." value={inviteEmail} onChange={v => setInviteEmail(v)} required />
                           <Button type="submit" size="sm" isLoading={isAddingMember}>Tambah</Button>
                         </form>
                       )}
@@ -747,37 +748,17 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
       {/* Edit class modal */}
       <Modal isOpen={showEditClassModal} onClose={() => setShowEditClassModal(false)} title="Edit Info Kelas">
         <form onSubmit={handleSaveClassInfo} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Nama Kelas</label>
-            <input className="themed-input" type="text" value={editClassName} onChange={(e) => setEditClassName(e.target.value)} placeholder="Contoh: Algoritma & Pemrograman" />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Deskripsi</label>
-            <textarea className="themed-input" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} placeholder="Deskripsi kelas (opsional)..." rows={2} style={{ resize: 'vertical' }} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Nama Dosen</label>
-            <input className="themed-input" type="text" value={editLecturer} onChange={(e) => setEditLecturer(e.target.value)} placeholder="Dr. Ahmad, M.Kom" />
-          </div>
+          <TextInput label="Nama Kelas" value={editClassName} onChange={v => setEditClassName(v)} placeholder="Contoh: Algoritma & Pemrograman" />
+          <TextArea label="Deskripsi" value={editDescription} onChange={setEditDescription} placeholder="Deskripsi kelas (opsional)..." rows={2} />
+          <TextInput label="Nama Dosen" value={editLecturer} onChange={v => setEditLecturer(v)} placeholder="Dr. Ahmad, M.Kom" />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Hari</label>
-              <select className="themed-input" value={editDay} onChange={(e) => setEditDay(e.target.value)}>
-                <option value="">Pilih Hari</option>
-                {['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Jam</label>
-              <input className="themed-input" type="text" value={editTime} onChange={(e) => setEditTime(e.target.value)} placeholder="08:00 - 10:30" />
-            </div>
+            <SelectOption label="Hari" value={editDay} onChange={v => setEditDay(v)} options={[
+              { value: '', label: 'Pilih Hari' },
+              ...['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].map(d => ({ value: d, label: d })),
+            ]} />
+            <TextInput label="Jam" value={editTime} onChange={v => setEditTime(v)} placeholder="08:00 - 10:30" />
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Ruang Kelas</label>
-            <input className="themed-input" type="text" value={editRoom} onChange={(e) => setEditRoom(e.target.value)} placeholder="Lab Komputer 3 / A-305" />
-          </div>
+          <TextInput label="Ruang Kelas" value={editRoom} onChange={v => setEditRoom(v)} placeholder="Lab Komputer 3 / A-305" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Password Kelas (Opsional)</label>
             <PasswordInput
@@ -810,14 +791,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
           <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: '1rem' }}>
             <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Link Bergabung</label>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.3rem' }}>
-              <input
-                className="themed-input"
-                type="text"
-                readOnly
-                value={classData ? `${window.location.origin}/class/join/${classData.id}` : ''}
-                style={{ flex: 1, fontSize: 'var(--font-xs)' }}
-                onClick={(e) => (e.target as HTMLInputElement).select()}
-              />
+              <TextInput value={classData ? `${window.location.origin}/class/join/${classData.id}` : ''} onChange={() => {}} disabled placeholder="" />
               <Button size="sm" variant="ghost" onClick={copyShareLink}>Salin</Button>
             </div>
           </div>
@@ -827,10 +801,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
       {/* Role create/edit modal */}
       <Modal isOpen={showRoleModal} onClose={() => setShowRoleModal(false)} title={editingRole ? `Edit Jabatan: ${editingRole.name}` : 'Buat Jabatan Baru'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Nama Jabatan</label>
-            <input className="themed-input" type="text" value={roleName} onChange={(e) => setRoleName(e.target.value)} placeholder="Contoh: Bendahara, Sekretaris, Koordinator..." disabled={editingRole?.isDefault} />
-          </div>
+          <TextInput label="Nama Jabatan" value={roleName} onChange={v => setRoleName(v)} placeholder="Contoh: Bendahara, Sekretaris, Koordinator..." disabled={editingRole?.isDefault} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Hak Akses (Permissions)</label>
             <div style={{ maxHeight: 350, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

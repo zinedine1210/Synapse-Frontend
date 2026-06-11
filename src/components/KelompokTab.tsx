@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { groupService, TaskGroupFull } from '@/services/groupService';
-import { Card, Button, Modal, useToast, useConfirm } from '@/components/ui';
+import { Card, Button, Modal, useToast, useConfirm, NumberInput, TextInput } from '@/components/ui';
 import {
   Users, Plus, Trash2, Loader2, Shuffle, UserPlus, UserMinus, ChevronRight,
 } from 'lucide-react';
@@ -146,7 +146,7 @@ export function KelompokTab({ classId, memberRole, permissions, userId, classMem
           return (
             <div style={{ marginTop: '0.3rem' }}>
               <h4 style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-muted))', textTransform: 'uppercase', marginBottom: '0.3rem' }}>Tambah Anggota</h4>
-              <input className="themed-input" type="text" value={addMemberSearch} onChange={(e) => setAddMemberSearch(e.target.value)} placeholder="Cari nama anggota kelas..." style={{ marginBottom: '0.3rem', width: '100%' }} />
+              <TextInput value={addMemberSearch} onChange={setAddMemberSearch} placeholder="Cari nama anggota kelas..." />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', maxHeight: 180, overflowY: 'auto' }}>
                 {filtered.slice(0, 10).map((cm) => (
                   <Card key={cm.userId} style={{ padding: '0.4rem 0.55rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -218,7 +218,7 @@ export function KelompokTab({ classId, memberRole, permissions, userId, classMem
       {/* Create group modal */}
       <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="Buat Kelompok">
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <input className="themed-input" type="text" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} placeholder="Nama kelompok" required />
+          <TextInput value={newGroupName} onChange={setNewGroupName} placeholder="Nama kelompok" required />
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowCreate(false)}>Batal</Button>
             <Button type="submit" size="sm" isLoading={isCreating}>Buat</Button>
@@ -230,7 +230,16 @@ export function KelompokTab({ classId, memberRole, permissions, userId, classMem
       <Modal isOpen={showAutoGen} onClose={() => setShowAutoGen(false)} title="Generate Kelompok Otomatis">
         <form onSubmit={handleAutoGenerate} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))' }}>Acak semua anggota kelas ke dalam kelompok secara merata.</p>
-          <input className="themed-input" type="number" value={autoCount} onChange={(e) => setAutoCount(e.target.value)} min="2" max="20" placeholder="Jumlah kelompok" required />
+          <NumberInput
+            label="Jumlah kelompok"
+            value={autoCount}
+            onChange={setAutoCount}
+            min={2}
+            max={20}
+            placeholder="Jumlah kelompok"
+            required
+            showStepper
+          />
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowAutoGen(false)}>Batal</Button>
             <Button type="submit" size="sm" isLoading={isAutoGen} leftIcon={<Shuffle size={12} />}>Generate</Button>

@@ -5,7 +5,8 @@ import { Session, Class } from '@/models/Class';
 import { Material } from '@/models/File';
 import { aiService } from '@/services/aiService';
 import { classService } from '@/services/classService';
-import { Card, Button, Alert, Modal, useToast, useConfirm, MarkdownRenderer } from '@/components/ui';
+import { Card, Button, Alert, Modal, useToast, useConfirm, MarkdownRenderer, TextInput } from '@/components/ui';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { TugasTab } from '@/components/TugasTab';
 import {
   Upload, FileText, Music, CheckCircle2, XCircle, Loader2, Sparkles, Download,
@@ -43,6 +44,7 @@ export function PertemuanTab({
 }: PertemuanTabProps) {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { hasFeature } = useFeatureAccess();
 
   const hasPerm = (perm: string) => classData?.memberRole === 'OWNER' || (classData?.permissions || []).includes(perm);
   const canSession = hasPerm('MANAGE_SESSIONS');
@@ -302,7 +304,7 @@ export function PertemuanTab({
           <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-default)' }}>
             {([
               { id: 'materi' as const, label: 'Materi' },
-              { id: 'digitalisasi' as const, label: 'Digitalisasi AI' },
+              ...(hasFeature('ai_digitalization') ? [{ id: 'digitalisasi' as const, label: 'Digitalisasi AI' }] : []),
               ...(hasQuizFeature ? [{ id: 'kuis' as const, label: 'Kuis' }] : []),
               { id: 'tugas' as const, label: 'Tugas' },
             ]).map((tab) => (
@@ -357,8 +359,10 @@ export function PertemuanTab({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <Search size={13} style={{ color: 'rgb(var(--text-muted))' }} />
-                <input className="themed-input" type="text" value={searchQuery} onChange={(e) => handleDocumentSearch(e.target.value)} placeholder="Cari..." style={{ flex: 1 }} />
-                {combinedSummary.trim() && <Button size="sm" variant="ghost" leftIcon={<Download size={12} />} onClick={() => handleExportB5(selectedSession.title, combinedSummary)}>PDF</Button>}
+                <div style={{ flex: 1 }}>
+                  <TextInput value={searchQuery} onChange={handleDocumentSearch} placeholder="Cari..." leftIcon={undefined} />
+                </div>
+                {combinedSummary.trim() && hasFeature('pdf_export') && <Button size="sm" variant="ghost" leftIcon={<Download size={12} />} onClick={() => handleExportB5(selectedSession.title, combinedSummary)}>PDF</Button>}
               </div>
               {searchQuery && searchResults.length > 0 && (
                 <Card style={{ maxHeight: 150, overflowY: 'auto', padding: '0.3rem' }}>
@@ -471,17 +475,7 @@ export function PertemuanTab({
       >
         <form onSubmit={handleSessionSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>
-              Nama Pertemuan
-            </label>
-            <input 
-              className="themed-input" 
-              style={{ width: '100%' }} 
-              type="text" 
-              value={sessionModalValue} 
-              onChange={(e) => setSessionModalValue(e.target.value)} 
-              placeholder="e.g. Pertemuan 1: Pengenalan" 
-            />
+            <TextInput label="Nama Pertemuan" value={sessionModalValue} onChange={setSessionModalValue} placeholder="e.g. Pertemuan 1: Pengenalan" />
           </div>
           <div style={{ display: 'flex', justifyContent: 'end', gap: '0.5rem', borderTop: '1px solid var(--border-default)', paddingTop: '1rem', marginTop: '0.5rem' }}>
             <Button type="button" variant="outline" style={{ borderRadius: 'var(--radius-md)' }} onClick={() => setShowSessionModal(false)}>Batal</Button>

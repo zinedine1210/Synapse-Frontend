@@ -12,7 +12,8 @@ import { detectDayOfWeekPatterns, DayOfWeekPattern } from '@/services/contextual
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, Alert, Modal, useToast, useConfirm, PullToRefresh, AnimatedNumber } from '@/components/ui';
+import { useFeatureAccess } from '@/lib/feature-access';
+import { Card, Button, Alert, Modal, useToast, useConfirm, PullToRefresh, AnimatedNumber, TextInput, TextArea } from '@/components/ui';
 import { TodaysBriefing, BriefingData } from '@/components/dashboard/TodaysBriefing';
 import { AiBriefingCard, AiBriefingSkeleton } from '@/components/dashboard/AiBriefingCard';
 import { ContextualBubbles } from '@/components/dashboard/ContextualBubbles';
@@ -49,6 +50,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { hasFeature } = useFeatureAccess();
   const { classes, isLoading, error, isCreating, createClass, deleteClass } = useDashboard();
   const { deadlines, isLoading: deadlinesLoading } = useDeadlines();
   const { suggestion: contextSuggestion, suggestAction } = useContextualSuggestion();
@@ -302,33 +304,38 @@ export default function DashboardPage() {
               </div>
 
               {/* ═══════ SECTION 2: TODAY'S BRIEFING (AI-powered) ═══════ */}
-              {aiBriefingLoading ? (
-                <AiBriefingSkeleton />
-              ) : aiBriefing ? (
-                <AiBriefingCard
-                  briefing={aiBriefing}
-                  onRefresh={handleRefreshAiBriefing}
-                  isRefreshing={aiBriefingRefreshing}
-                />
-              ) : aiBriefingFailed && briefingData ? (
-                /* Fallback to the rule-based briefing if the AI request failed */
-                <TodaysBriefing data={briefingData} isLoading={briefingLoading && summaryLoading} />
-              ) : null}
+              {hasFeature('daily_briefing') && (
+                aiBriefingLoading ? (
+                  <AiBriefingSkeleton />
+                ) : aiBriefing ? (
+                  <AiBriefingCard
+                    briefing={aiBriefing}
+                    onRefresh={handleRefreshAiBriefing}
+                    isRefreshing={aiBriefingRefreshing}
+                  />
+                ) : aiBriefingFailed && briefingData ? (
+                  /* Fallback to the rule-based briefing if the AI request failed */
+                  <TodaysBriefing data={briefingData} isLoading={briefingLoading && summaryLoading} />
+                ) : null
+              )}
 
               {/* ═══════ SECTION 3: SI BAWEL CONTEXTUAL BUBBLES ═══════ */}
-              {patterns.length > 0 && (
+              {patterns.length > 0 && hasFeature('si_bawel') && (
                 <ContextualBubbles patterns={patterns} />
               )}
 
               {/* ═══════ SECTION 4: QUICK ACTIONS ═══════ */}
               <div className="dashboard-quick-actions" style={{ display: 'flex', gap: 10, marginBottom: 24, overflowX: 'auto', paddingBottom: 4 }}>
                 {[
-                  { label: 'Scan Struk', icon: '📸', href: '/duit-tracker' },
-                  { label: 'Catat', icon: '💸', href: '/duit-tracker' },
-                  { label: 'Todo', icon: '✅', href: '/todos' },
-                  { label: 'Q&A', icon: '❓', href: '/qna' },
-                  { label: 'Kelas', icon: '📚', href: '/classes' },
-                ].map(action => (
+                  { label: 'Scan Struk', icon: '📸', href: '/duit-tracker', feature: 'receipt_scanner' },
+                  { label: 'Catat', icon: '💸', href: '/duit-tracker', feature: 'duit_tracker' },
+                  { label: 'Todo', icon: '✅', href: '/todos', feature: 'todo_list' },
+                  { label: 'Q&A', icon: '❓', href: '/qna', feature: 'qna_public' },
+                  { label: 'Kelas', icon: '📚', href: '/classes', feature: 'class' },
+                  { label: 'Split Bill', icon: '🧾', href: '/split-bill', feature: 'split_bill' },
+                  { label: 'Makan', icon: '🍜', href: '/makan', feature: 'food_recommend' },
+                  { label: 'Insight', icon: '💡', href: '/insight', feature: 'ai_insight' },
+                ].filter(a => hasFeature(a.feature)).map(action => (
                   <Link key={action.label} href={action.href} style={{ textDecoration: 'none' }}>
                     <div className="quick-action-chip" style={{ padding: '10px 18px', borderRadius: 12, background: 'var(--card-bg)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap', fontSize: 14, fontWeight: 500 }}>
                       <span style={{ fontSize: 16 }}>{action.icon}</span> {action.label}
@@ -338,6 +345,7 @@ export default function DashboardPage() {
               </div>
 
               {/* ═══════ SECTION 5: KEUANGAN SNAPSHOT ═══════ */}
+              {hasFeature('duit_tracker') && (
               <Card style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                   <h3 style={{ fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
@@ -396,7 +404,7 @@ export default function DashboardPage() {
                     )}
 
                     {/* Si Bawel inline bubble */}
-                    {summary.bawelBubble && (
+                    {summary.bawelBubble && hasFeature('si_bawel') && (
                       <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(var(--color-primary), 0.04)', border: '1px solid rgba(var(--color-primary), 0.08)', fontSize: 13, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                         <SiBawelAvatar size="inline" />
                         <span style={{ fontStyle: 'italic', opacity: 0.85 }}>{summary.bawelBubble}</span>
@@ -410,8 +418,10 @@ export default function DashboardPage() {
                   </div>
                 )}
               </Card>
+              )}
 
               {/* ═══════ SECTION 6: TODO HARI INI ═══════ */}
+              {hasFeature('todo_list') && (
               <Card style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                   <h3 style={{ fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
@@ -454,13 +464,9 @@ export default function DashboardPage() {
 
                 {/* Quick Add Todo — conversational prompt */}
                 <form onSubmit={handleQuickTodo} style={{ display: 'flex', gap: 6 }}>
-                  <input
-                    className="input"
-                    placeholder='Mau catat apa?'
-                    value={quickTodo}
-                    onChange={e => setQuickTodo(e.target.value)}
-                    style={{ fontSize: 13, flex: 1, padding: '8px 12px' }}
-                  />
+                  <div style={{ flex: 1 }}>
+                    <TextInput placeholder='Mau catat apa?' value={quickTodo} onChange={setQuickTodo} />
+                  </div>
                   {quickTodo && (
                     <Button size="sm" type="submit" disabled={addingTodo} style={{ padding: '6px 10px' }}>
                       {addingTodo ? <Loader2 className="spin" size={14} /> : <Plus size={14} />}
@@ -468,9 +474,10 @@ export default function DashboardPage() {
                   )}
                 </form>
               </Card>
+              )}
 
               {/* ═══════ SECTION 7: RINGKASAN AKADEMIK ═══════ */}
-              {summary?.academicSummary && (
+              {summary?.academicSummary && hasFeature('class') && (
                 <Card style={{ marginBottom: 16, padding: '18px 22px' }}>
                   <h3 style={{ fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 16px' }}>
                     <BookOpen size={16} style={{ color: 'rgb(var(--color-primary))' }} /> Ringkasan Akademik
@@ -511,7 +518,7 @@ export default function DashboardPage() {
               )}
 
               {/* ═══════ SECTION 8: GAMIFIKASI ═══════ */}
-              {summary?.gamification && (
+              {hasFeature('gamification') && summary?.gamification && (
                 <Card style={{ marginBottom: 16, padding: '18px 22px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                     <h3 style={{ fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
@@ -574,13 +581,13 @@ export default function DashboardPage() {
               )}
 
               {/* ═══════ SECTION 9: SOCIAL PROOF — CLASS COMPARISON ═══════ */}
-              <ClassComparisonCard comparisons={classComparisons} />
+              {hasFeature('dashboard_class_comparison') && <ClassComparisonCard comparisons={classComparisons} />}
 
               {/* ═══════ SECTION 10: SOCIAL PROOF — TRENDING Q&A ═══════ */}
-              <TrendingQnA questions={trendingQuestions} />
+              {hasFeature('dashboard_trending_qna') && <TrendingQnA questions={trendingQuestions} />}
 
               {/* ═══════ SECTION 11: SOCIAL PROOF — WEEKLY CHALLENGE ═══════ */}
-              {weeklyChallenge && <WeeklyChallengeCard challenge={weeklyChallenge} />}
+              {hasFeature('gamification_streak') && weeklyChallenge && <WeeklyChallengeCard challenge={weeklyChallenge} />}
 
               {/* ═══════ SECTION 12: COLLAPSIBLE DEADLINES ═══════ */}
               {!deadlinesLoading && deadlines && deadlines.length > 0 && (
@@ -639,13 +646,13 @@ export default function DashboardPage() {
                 <div style={{ overflow: 'hidden', maxHeight: showClasses ? 2000 : 0, transition: 'max-height 0.4s ease-in-out' }}>
                   <div style={{ paddingTop: 12 }}>
                     {/* Schedule Upload */}
-                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 10, border: '1px dashed var(--border-default)', marginBottom: 14, cursor: 'pointer', transition: 'border-color 0.2s' }}>
+                    {hasFeature('schedule_parser') && <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 10, border: '1px dashed var(--border-default)', marginBottom: 14, cursor: 'pointer', transition: 'border-color 0.2s' }}>
                       <div style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, opacity: 0.7 }}>
                         <Sparkles size={14} /> Upload foto KRS → AI buatkan kelas
                       </div>
                       {isParsing ? <Loader2 className="spin" size={16} /> : <Upload size={16} style={{ opacity: 0.5 }} />}
                       <input type="file" accept="image/*" onChange={handleScheduleUpload} style={{ display: 'none' }} disabled={isParsing} />
-                    </label>
+                    </label>}
 
                     {parseError && <Alert type="error" message={parseError} />}
 
@@ -717,8 +724,8 @@ export default function DashboardPage() {
       <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Buat Kelas Baru">
         <form onSubmit={handleCreateClass} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {createError && <Alert type="error" message={createError} />}
-          <input className="input" placeholder="Nama mata kuliah" value={newClassName} onChange={e => setNewClassName(e.target.value)} required />
-          <textarea className="input" placeholder="Deskripsi (opsional)" value={newClassDesc} onChange={e => setNewClassDesc(e.target.value)} rows={2} />
+          <TextInput label="Nama Kelas" value={newClassName} onChange={setNewClassName} placeholder="Nama mata kuliah" required />
+          <TextArea placeholder="Deskripsi (opsional)" value={newClassDesc} onChange={setNewClassDesc} rows={2} />
           <Button type="submit" disabled={isCreating}>{isCreating ? <Loader2 className="spin" size={16} /> : 'Buat Kelas'}</Button>
         </form>
       </Modal>

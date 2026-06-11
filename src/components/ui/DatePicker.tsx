@@ -1,394 +1,149 @@
 'use client';
 
-import React, { useState, useId, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { FormField, getFormInputStyle } from './FormField';
 import type { FormFieldProps } from './types';
 
+const MONTH_NAMES = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const DAY_LABELS = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+
 export interface DatePickerProps extends FormFieldProps {
-  /** Current date value in YYYY-MM-DD format */
   value: string;
-  /** Change handler — receives date string in YYYY-MM-DD format */
   onChange: (value: string) => void;
-  /** Blur handler */
-  onBlur?: () => void;
-  /** Placeholder text */
   placeholder?: string;
-  /** Minimum selectable date (YYYY-MM-DD) */
-  min?: string;
-  /** Maximum selectable date (YYYY-MM-DD) */
-  max?: string;
-  /** Input name attribute */
-  name?: string;
+  minDate?: string;
+  maxDate?: string;
 }
 
-// ─── Helpers ───
-const MONTHS_ID = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-];
-const DAYS_ID = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+function parseYMD(s: string) { const p = s.split('-').map(Number); return new Date(p[0], p[1]-1, p[2]); }
+function toYMD(d: Date) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function isSameDay(a: Date, b: Date) { return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
 
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-function getFirstDayOfMonth(year: number, month: number) {
-  return new Date(year, month, 1).getDay();
-}
-
-function pad(n: number) {
-  return n < 10 ? `0${n}` : `${n}`;
-}
-
-function formatDateDisplay(dateStr: string): string {
-  if (!dateStr) return '';
-  const [y, m, d] = dateStr.split('-').map(Number);
-  if (!y || !m || !d) return dateStr;
-  return `${d} ${MONTHS_ID[m - 1]} ${y}`;
-}
-
-/**
- * DatePicker — A date input with calendar dropdown styled in Tailwind.
- * Wraps FormField for consistent label, error, and hint rendering.
- * Provides smooth focus animation and supports dark/light mode.
- */
-export function DatePicker({
-  label,
-  error,
-  hint,
-  required,
-  disabled,
-  className,
-  value,
-  onChange,
-  onBlur,
-  placeholder = 'Pilih tanggal',
-  min,
-  max,
-  name,
-}: DatePickerProps) {
+export function DatePicker({ label, error, hint, required, disabled, className, value, onChange, placeholder = 'Pilih tanggal', minDate, maxDate }: DatePickerProps) {
+  const [open, setOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
+  const [viewDate, setViewDate] = useState(() => value ? parseYMD(value) : new Date());
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const inputId = useId();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [dropUp, setDropUp] = useState(false);
 
-  // Parse value for calendar navigation
-  const parsed = value ? value.split('-').map(Number) : null;
-  const [viewYear, setViewYear] = useState(parsed?.[0] || new Date().getFullYear());
-  const [viewMonth, setViewMonth] = useState(parsed ? parsed[1] - 1 : new Date().getMonth());
+  const today = new Date();
+  const selected = value ? parseYMD(value) : null;
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  // Sync view when value changes externally
   useEffect(() => {
-    if (value) {
-      const [y, m] = value.split('-').map(Number);
-      if (y && m) {
-        setViewYear(y);
-        setViewMonth(m - 1);
-      }
-    }
-  }, [value]);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!isOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-        setIsFocused(false);
-        onBlur?.();
-      }
-    };
+    if (!open) return;
+    const handler = (e: MouseEvent) => { if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [isOpen, onBlur]);
+  }, [open]);
 
-  // Determine drop direction
-  useEffect(() => {
-    if (!isOpen || !containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    setDropUp(spaceBelow < 340);
-  }, [isOpen]);
+  const isDisabledDate = useCallback((d: Date) => {
+    if (minDate && d < parseYMD(minDate)) return true;
+    if (maxDate && d > parseYMD(maxDate)) return true;
+    return false;
+  }, [minDate, maxDate]);
 
-  const handleOpen = useCallback(() => {
-    if (disabled) return;
-    setIsOpen(true);
-    setIsFocused(true);
-  }, [disabled]);
+  const handleSelect = (day: number) => {
+    const d = new Date(year, month, day);
+    if (isDisabledDate(d)) return;
+    onChange(toYMD(d));
+    setOpen(false);
+  };
 
-  const handleDateSelect = useCallback((dateStr: string) => {
-    onChange(dateStr);
-    setIsOpen(false);
-    setIsFocused(false);
-    onBlur?.();
-  }, [onChange, onBlur]);
+  const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
-  const prevMonth = useCallback(() => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear(y => y - 1);
-    } else {
-      setViewMonth(m => m - 1);
-    }
-  }, [viewMonth]);
-
-  const nextMonth = useCallback(() => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear(y => y + 1);
-    } else {
-      setViewMonth(m => m + 1);
-    }
-  }, [viewMonth]);
-
-  // Build calendar grid
-  const calendarCells = useMemo(() => {
-    const daysInMonth = getDaysInMonth(viewYear, viewMonth);
-    const firstDay = getFirstDayOfMonth(viewYear, viewMonth);
-    const prevMonthDays = getDaysInMonth(viewYear, viewMonth - 1);
-    const cells: { day: number; current: boolean; dateStr: string }[] = [];
-
-    // Previous month padding
-    for (let i = firstDay - 1; i >= 0; i--) {
-      const d = prevMonthDays - i;
-      const m = viewMonth === 0 ? 11 : viewMonth - 1;
-      const y = viewMonth === 0 ? viewYear - 1 : viewYear;
-      cells.push({ day: d, current: false, dateStr: `${y}-${pad(m + 1)}-${pad(d)}` });
-    }
-
-    // Current month
-    for (let d = 1; d <= daysInMonth; d++) {
-      cells.push({ day: d, current: true, dateStr: `${viewYear}-${pad(viewMonth + 1)}-${pad(d)}` });
-    }
-
-    // Next month padding
-    const remaining = 42 - cells.length;
-    for (let d = 1; d <= remaining; d++) {
-      const m = viewMonth === 11 ? 0 : viewMonth + 1;
-      const y = viewMonth === 11 ? viewYear + 1 : viewYear;
-      cells.push({ day: d, current: false, dateStr: `${y}-${pad(m + 1)}-${pad(d)}` });
-    }
-
-    return cells;
-  }, [viewYear, viewMonth]);
-
-  const todayStr = useMemo(() => {
-    const t = new Date();
-    return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`;
-  }, []);
-
-  const inputStyle = getFormInputStyle({
-    hasError: !!error,
-    isFocused,
-    isDisabled: disabled,
-  });
-
-  const displayValue = formatDateDisplay(value);
+  const displayValue = selected ? `${selected.getDate()} ${MONTH_NAMES[selected.getMonth()]} ${selected.getFullYear()}` : '';
+  const inputStyle = getFormInputStyle({ hasError: !!error, isFocused: isFocused || open, isDisabled: disabled });
 
   return (
-    <FormField
-      label={label}
-      error={error}
-      hint={hint}
-      required={required}
-      disabled={disabled}
-      className={className}
-      htmlFor={inputId}
-    >
-      <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-        {/* Trigger button styled as input */}
-        <button
-          id={inputId}
-          type="button"
-          onClick={handleOpen}
-          disabled={disabled}
-          aria-invalid={!!error}
-          aria-expanded={isOpen}
-          aria-haspopup="dialog"
+    <FormField label={label} error={error} hint={hint} required={required} disabled={disabled} className={className} htmlFor={inputId}>
+      <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
+        <button type="button" id={inputId} disabled={disabled}
+          onClick={() => { if (!disabled) { setOpen(!open); if (!open && value) setViewDate(parseYMD(value)); } }}
+          onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)}
           style={{
-            ...inputStyle,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            textAlign: 'left',
-          }}
-        >
-          <Calendar size={16} style={{ opacity: 0.5, flexShrink: 0 }} />
-          <span style={{ flex: 1, color: displayValue ? 'inherit' : 'rgb(var(--text-muted))' }}>
-            {displayValue || placeholder}
-          </span>
+            ...inputStyle, display: 'flex', alignItems: 'center', gap: '0.5rem',
+            cursor: disabled ? 'not-allowed' : 'pointer', textAlign: 'left',
+            color: displayValue ? 'rgb(var(--text-primary))' : 'rgb(var(--text-muted))',
+          }}>
+          <Calendar size={15} style={{ flexShrink: 0, opacity: 0.45 }} />
+          <span style={{ flex: 1 }}>{displayValue || placeholder}</span>
         </button>
 
-        {/* Hidden input for form submission */}
-        {name && <input type="hidden" name={name} value={value} />}
-
-        {/* Calendar dropdown */}
-        {isOpen && (
-          <div
-            role="dialog"
-            aria-label="Pilih tanggal"
-            style={{
-              position: 'absolute',
-              [dropUp ? 'bottom' : 'top']: '100%',
-              left: 0,
-              right: 0,
-              marginTop: dropUp ? undefined : '0.25rem',
-              marginBottom: dropUp ? '0.25rem' : undefined,
-              background: 'var(--card-bg, #fff)',
-              border: '1px solid var(--input-border)',
-              borderRadius: 'var(--radius-lg, 0.75rem)',
-              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)',
-              zIndex: 50,
-              padding: '0.75rem',
-              animation: 'fadeSlideIn 0.15s ease',
-            }}
-          >
-            {/* Month navigation */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={prevMonth}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '0.25rem',
-                  borderRadius: 'var(--radius-sm, 0.375rem)',
-                  color: 'rgb(var(--text-primary))',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-                aria-label="Bulan sebelumnya"
-              >
-                <ChevronLeft size={18} />
+        {open && (
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 4px)', left: 0, width: 280,
+            background: 'rgb(var(--bg-surface))', border: '1.5px solid var(--border-default)',
+            borderRadius: '12px', boxShadow: '0 12px 32px rgba(0,0,0,0.14)', zIndex: 50,
+            padding: '12px', animation: 'fadeSlideIn 0.15s ease',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <button type="button" onClick={prevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: 'rgb(var(--text-secondary))', display: 'flex' }}>
+                <ChevronLeft size={16} />
               </button>
-              <span style={{ fontWeight: 600, fontSize: 'var(--font-sm)', color: 'rgb(var(--text-primary))' }}>
-                {MONTHS_ID[viewMonth]} {viewYear}
-              </span>
-              <button
-                type="button"
-                onClick={nextMonth}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '0.25rem',
-                  borderRadius: 'var(--radius-sm, 0.375rem)',
-                  color: 'rgb(var(--text-primary))',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-                aria-label="Bulan selanjutnya"
-              >
-                <ChevronRight size={18} />
+              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>{MONTH_NAMES[month]} {year}</span>
+              <button type="button" onClick={nextMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, borderRadius: 6, color: 'rgb(var(--text-secondary))', display: 'flex' }}>
+                <ChevronRight size={16} />
               </button>
             </div>
 
             {/* Day headers */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', marginBottom: '0.25rem' }}>
-              {DAYS_ID.map(d => (
-                <div
-                  key={d}
-                  style={{
-                    textAlign: 'center',
-                    fontSize: '0.7rem',
-                    fontWeight: 500,
-                    color: 'rgb(var(--text-muted))',
-                    padding: '0.25rem 0',
-                  }}
-                >
-                  {d}
-                </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, marginBottom: 4 }}>
+              {DAY_LABELS.map(d => (
+                <div key={d} style={{ textAlign: 'center', fontSize: '0.65rem', fontWeight: 700, color: 'rgb(var(--text-muted))', padding: '4px 0', textTransform: 'uppercase' }}>{d}</div>
               ))}
             </div>
 
-            {/* Calendar grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
-              {calendarCells.map((cell, i) => {
-                const isSelected = cell.dateStr === value;
-                const isToday = cell.dateStr === todayStr;
-                const isDisabled = (min && cell.dateStr < min) || (max && cell.dateStr > max);
+            {/* Days grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1 }}>
+              {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1;
+                const date = new Date(year, month, day);
+                const isToday = isSameDay(date, today);
+                const isSelected = selected && isSameDay(date, selected);
+                const isDis = isDisabledDate(date);
 
                 return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => !isDisabled && handleDateSelect(cell.dateStr)}
-                    disabled={!!isDisabled}
+                  <button key={day} type="button" onClick={() => handleSelect(day)} disabled={isDis}
                     style={{
-                      border: 'none',
-                      background: isSelected
-                        ? 'rgba(var(--color-primary) / 1)'
-                        : isToday
-                          ? 'rgba(var(--color-primary) / 0.1)'
-                          : 'transparent',
-                      color: isSelected
-                        ? '#fff'
-                        : isDisabled
-                          ? 'rgb(var(--text-muted))'
-                          : !cell.current
-                            ? 'rgb(var(--text-muted))'
-                            : 'rgb(var(--text-primary))',
-                      borderRadius: 'var(--radius-sm, 0.375rem)',
-                      padding: '0.35rem',
-                      fontSize: '0.8rem',
-                      fontWeight: isSelected || isToday ? 600 : 400,
-                      cursor: isDisabled ? 'not-allowed' : 'pointer',
-                      opacity: isDisabled ? 0.4 : !cell.current ? 0.5 : 1,
-                      transition: 'all 150ms ease',
-                    }}
-                  >
-                    {cell.day}
+                      width: '100%', aspectRatio: '1', borderRadius: '8px', border: 'none',
+                      cursor: isDis ? 'not-allowed' : 'pointer', fontSize: '0.8rem', fontFamily: 'inherit',
+                      fontWeight: isSelected || isToday ? 700 : 400,
+                      background: isSelected ? 'rgb(var(--color-primary))' : isToday ? 'rgba(var(--color-primary) / 0.08)' : 'transparent',
+                      color: isSelected ? '#fff' : isDis ? 'rgb(var(--text-muted))' : isToday ? 'rgb(var(--color-primary))' : 'rgb(var(--text-primary))',
+                      opacity: isDis ? 0.35 : 1, transition: 'all 0.15s',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                    {day}
                   </button>
                 );
               })}
             </div>
 
             {/* Quick actions */}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', borderTop: '1px solid var(--input-border)', paddingTop: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => handleDateSelect(todayStr)}
-                style={{
-                  flex: 1,
-                  padding: '0.3rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
-                  border: '1px solid var(--input-border)',
-                  borderRadius: 'var(--radius-sm, 0.375rem)',
-                  background: 'transparent',
-                  color: 'rgb(var(--text-primary))',
-                  cursor: 'pointer',
-                  transition: 'all 150ms ease',
-                }}
-              >
-                Hari Ini
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const t = new Date();
-                  t.setDate(t.getDate() + 1);
-                  handleDateSelect(`${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`);
-                }}
-                style={{
-                  flex: 1,
-                  padding: '0.3rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 500,
-                  border: '1px solid var(--input-border)',
-                  borderRadius: 'var(--radius-sm, 0.375rem)',
-                  background: 'transparent',
-                  color: 'rgb(var(--text-primary))',
-                  cursor: 'pointer',
-                  transition: 'all 150ms ease',
-                }}
-              >
-                Besok
-              </button>
+            <div style={{ display: 'flex', gap: 6, marginTop: 8, borderTop: '1px solid var(--border-default)', paddingTop: 8 }}>
+              {[
+                { label: 'Hari Ini', d: today },
+                { label: 'Besok', d: new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1) },
+              ].map(q => (
+                <button key={q.label} type="button"
+                  onClick={() => { if (!isDisabledDate(q.d)) { onChange(toYMD(q.d)); setViewDate(q.d); setOpen(false); } }}
+                  style={{
+                    flex: 1, padding: '6px 8px', borderRadius: '7px', border: 'none',
+                    background: 'rgba(var(--color-primary) / 0.06)', color: 'rgb(var(--color-primary))',
+                    fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                    transition: 'background 0.15s',
+                  }}>
+                  {q.label}
+                </button>
+              ))}
             </div>
           </div>
         )}

@@ -146,6 +146,7 @@ export function Appbar({
         <button
           onClick={() => openCommandPalette()}
           className="appbar-search-trigger"
+          data-tour="search"
           aria-label="Open search (Ctrl+K)"
           style={{
             display: 'flex',

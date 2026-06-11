@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Button, useToast, PullToRefresh, BottomSheet, TagInput } from '@/components/ui';
+import { Button, useToast, PullToRefresh, BottomSheet, TagInput, TextInput, SelectOption, TextArea } from '@/components/ui';
 import { stripMarkdown } from '@/components/ui/MarkdownRenderer';
 import { InfiniteScroll } from '@/components/ui/InfiniteScroll';
 import { qnaService, QnaQuestion, QnaPaginated, UserReputation } from '@/services/qnaService';
@@ -205,7 +205,7 @@ export default function QnaPage() {
   const openAsk = () => { setAskBodyError(''); setShowAskModal(true); };
 
   return (
-    <AuthGuard>
+    <AuthGuard requiredFeature="qna_public">
       <div className="app-shell">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <div className="app-main">
@@ -321,8 +321,7 @@ export default function QnaPage() {
 
                 {/* Search */}
                 <div style={{ position: 'relative', marginBottom: 14 }}>
-                  <Search size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', opacity: 0.3 }} />
-                  <input className="input" placeholder="Cari pertanyaan, tag, atau topik..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} style={{ paddingLeft: 38, borderRadius: 12, padding: '12px 14px 12px 38px', fontSize: 14 }} />
+                  <TextInput placeholder="Cari pertanyaan, tag, atau topik..." value={search} onChange={v => { setSearch(v); setPage(1); }} leftIcon={<Search size={16} />} />
                 </div>
 
                 {/* Tab Pills */}
@@ -345,16 +344,11 @@ export default function QnaPage() {
 
                 {/* Mobile category filter — visible only on mobile where sidebar is hidden */}
                 <div className="qna-mobile-cat-filter" style={{ display: 'none', marginBottom: 14 }}>
-                  <select
-                    className="themed-input"
+                  <SelectOption
                     value={selectedCategory}
-                    onChange={e => { setSelectedCategory(e.target.value); setPage(1); }}
-                    style={{ width: '100%', fontSize: 13, padding: '9px 12px', borderRadius: 10, fontWeight: 600 }}
-                  >
-                    {QNA_CATEGORIES.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.emoji} {cat.label}</option>
-                    ))}
-                  </select>
+                    onChange={v => { setSelectedCategory(v); setPage(1); }}
+                    options={QNA_CATEGORIES.map(cat => ({ value: cat.id, label: `${cat.emoji} ${cat.label}` }))}
+                  />
                 </div>
 
                 {/* Question Feed with Infinite Scroll */}
@@ -579,14 +573,12 @@ export default function QnaPage() {
                 {/* Title */}
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: 'block', opacity: 0.6 }}>Judul pertanyaan</label>
-                  <input
-                    className="input"
+                  <TextInput
                     placeholder="cth: Gimana cara kerja rekursi di Python?"
                     value={askForm.title}
-                    onChange={e => setAskForm({ ...askForm, title: e.target.value })}
+                    onChange={v => setAskForm({ ...askForm, title: v })}
                     required
                     autoFocus
-                    style={{ fontSize: 16, padding: '14px 16px', borderRadius: 12, fontWeight: 600 }}
                   />
                   <p style={{ fontSize: 11, opacity: 0.4, marginTop: 5 }}>Tulis spesifik & langsung ke inti — bayangkan kamu lagi nanya ke teman.</p>
                 </div>
@@ -594,28 +586,18 @@ export default function QnaPage() {
                 {/* Detail */}
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: 'block', opacity: 0.6 }}>Detail <span style={{ opacity: 0.6, fontWeight: 400 }}>(opsional)</span></label>
-                  <textarea
-                    className="input"
+                  <TextArea
                     placeholder="Jelaskan konteksnya: apa yang sudah kamu coba, error yang muncul, dll. Semakin jelas, semakin cepat dijawab..."
                     value={askForm.body}
-                    onChange={e => {
-                      setAskForm({ ...askForm, body: e.target.value });
-                      if (askBodyError && e.target.value.replace(/<[^>]+>/g, '').trim().length >= MIN_BODY_LEN) {
+                    onChange={v => {
+                      setAskForm({ ...askForm, body: v });
+                      if (askBodyError && v.replace(/<[^>]+>/g, '').trim().length >= MIN_BODY_LEN) {
                         setAskBodyError('');
                       }
                     }}
                     rows={5}
-                    style={{
-                      borderRadius: 12, padding: '12px 14px', resize: 'vertical', fontSize: 14, lineHeight: 1.6,
-                      borderColor: askBodyError ? 'var(--color-error)' : undefined,
-                    }}
+                    error={askBodyError}
                   />
-                  {/* Anti-spam inline error message */}
-                  {askBodyError && (
-                    <p style={{ color: 'var(--color-error)', fontSize: 12, marginTop: 5, fontWeight: 500 }}>
-                      ⚠️ {askBodyError}
-                    </p>
-                  )}
                   {/* Character count hint */}
                   {bodyPlainLen > 0 && bodyPlainLen < MIN_BODY_LEN && !askBodyError && (
                     <p style={{ color: 'rgb(var(--text-muted))', fontSize: 11, marginTop: 5 }}>

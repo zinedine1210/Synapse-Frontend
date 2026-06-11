@@ -38,8 +38,8 @@ interface BottomNavTab {
 const TABS: BottomNavTab[] = [
   { key: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { key: 'duit-tracker', label: 'Duit', path: '/duit-tracker', icon: Wallet, requiredFeature: 'duit_tracker' },
-  { key: 'todos', label: 'Todo', path: '/todos', icon: CheckSquare, requiredFeature: 'todo' },
-  { key: 'qna', label: 'Q&A', path: '/qna', icon: HelpCircle, requiredFeature: 'qna' },
+  { key: 'todos', label: 'Todo', path: '/todos', icon: CheckSquare, requiredFeature: 'todo_list' },
+  { key: 'qna', label: 'Q&A', path: '/qna', icon: HelpCircle, requiredFeature: 'qna_public' },
   { key: 'more', label: 'More', path: '#more', icon: MoreHorizontal },
 ];
 

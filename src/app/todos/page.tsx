@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/AuthContext';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, useToast, BottomSheet, PullToRefresh } from '@/components/ui';
+import { Card, Button, useToast, BottomSheet, PullToRefresh, TextInput, SelectOption } from '@/components/ui';
 import { todoService, PersonalTodo, TodoStats } from '@/services/todoService';
 import { Plus, Loader2, CheckSquare, Sparkles, ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import { useCelebration } from '@/components/shared/CelebrationOverlay';
@@ -68,6 +69,7 @@ interface TodoGroup { label: string; emoji: string; todos: PersonalTodo[]; color
 
 export default function TodosPage() {
   const { user } = useAuth();
+  const { hasFeature } = useFeatureAccess();
   const { showToast } = useToast();
   const { showUndoToast, triggerConfetti } = useCelebration();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -436,7 +438,7 @@ export default function TodosPage() {
       : 'Belum ada tugas untuk hari ini ✨';
 
   return (
-    <AuthGuard>
+    <AuthGuard requiredFeature="todo_list">
       <div className="app-shell">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <div className="app-main">
@@ -494,13 +496,11 @@ export default function TodosPage() {
                 <form onSubmit={handleQuickAdd} style={{ marginBottom: 16 }}>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <div style={{ flex: 1, position: 'relative' }}>
-                      <Sparkles size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'rgb(var(--color-primary))', opacity: 0.7 }} />
-                      <input
-                        className="input"
+                      <TextInput
                         placeholder='Ketik cepat: "kerjakan PR fisika besok jam 3 sore"'
                         value={quickText}
-                        onChange={e => setQuickText(e.target.value)}
-                        style={{ paddingLeft: 40, fontSize: 14, borderRadius: 14, padding: '14px 16px 14px 40px', width: '100%' }}
+                        onChange={v => setQuickText(v)}
+                        leftIcon={<Sparkles size={16} />}
                       />
                     </div>
                     {quickText ? (
@@ -520,7 +520,16 @@ export default function TodosPage() {
 
                 {/* ─── View switcher ─── */}
                 <div style={{ marginBottom: 14 }}>
-                  <ViewSegmentedControl value={viewMode} onChange={setViewMode} />
+                  <ViewSegmentedControl
+                    value={viewMode}
+                    onChange={setViewMode}
+                    allowedModes={[
+                      'time' as TodoViewMode,
+                      ...(hasFeature('todo_categories') ? ['category' as TodoViewMode] : []),
+                      ...(hasFeature('todo_calendar') ? ['calendar' as TodoViewMode] : []),
+                      ...(hasFeature('todo_timeline') ? ['timeline' as TodoViewMode] : []),
+                    ]}
+                  />
                 </div>
 
                 {/* ─── Filters (hidden for timeline) ─── */}
@@ -556,18 +565,19 @@ export default function TodosPage() {
                       </button>
                     </div>
                     <div className="todo-cat-mobile" style={{ display: 'none', gap: 6, alignItems: 'center' }}>
-                      <select
-                        className="themed-input"
-                        value={categoryFilter}
-                        onChange={e => setCategoryFilter(e.target.value)}
-                        style={{ flex: 1, fontSize: 13, padding: '8px 12px', borderRadius: 10, fontWeight: 600 }}
-                      >
-                        <option value="">🌐 Semua ({todos.length})</option>
-                        {allCategories.map(cat => {
-                          const count = todos.filter(t => t.category === cat.id).length;
-                          return <option key={cat.id} value={cat.id}>{cat.emoji} {cat.label.replace(cat.emoji + ' ', '')} ({count})</option>;
-                        })}
-                      </select>
+                      <div style={{ flex: 1 }}>
+                        <SelectOption
+                          value={categoryFilter}
+                          onChange={v => setCategoryFilter(v)}
+                          options={[
+                            { value: '', label: `🌐 Semua (${todos.length})` },
+                            ...allCategories.map(cat => {
+                              const count = todos.filter(t => t.category === cat.id).length;
+                              return { value: cat.id, label: `${cat.emoji} ${cat.label.replace(cat.emoji + ' ', '')} (${count})` };
+                            }),
+                          ]}
+                        />
+                      </div>
                       <button onClick={() => setShowCategoryCreator(true)} style={{ ...chipStyle(false), whiteSpace: 'nowrap', opacity: 0.65, flexShrink: 0 }}>
                         <Plus size={12} /> Kategori
                       </button>

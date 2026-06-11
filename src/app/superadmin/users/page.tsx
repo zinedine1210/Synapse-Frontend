@@ -6,7 +6,7 @@ import { superadminService } from '@/services/superadminService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Button, Alert, Modal, useToast, DataTable, Card } from '@/components/ui';
+import { Button, Alert, Modal, useToast, DataTable, Card, SelectOption } from '@/components/ui';
 import type { Column } from '@/components/ui';
 import { Users, Shield, Loader2 } from 'lucide-react';
 
@@ -214,17 +214,7 @@ export default function SuperadminUsersPage() {
           <form onSubmit={handleAssignPlan} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {assignError && <Alert type="error" message={assignError} />}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Pilih Paket</label>
-              <select
-                value={assignPlanName}
-                onChange={(e) => setAssignPlanName(e.target.value)}
-                className="themed-input"
-                style={{ width: '100%' }}
-              >
-                {configs.map((c) => (
-                  <option key={c.id} value={c.name}>{c.name}</option>
-                ))}
-              </select>
+              <SelectOption label="Pilih Paket" value={assignPlanName} onChange={v => setAssignPlanName(v)} options={configs.map((c) => ({ value: c.name, label: c.name }))} />
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <Button type="button" variant="ghost" onClick={() => setShowAssignModal(false)}>Batal</Button>

@@ -6,7 +6,7 @@ import { superadminService } from '@/services/superadminService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Button, Alert, Modal, useToast, useConfirm, DataTable, Card, CurrencyInput } from '@/components/ui';
+import { Button, Alert, Modal, useToast, useConfirm, DataTable, Card, CurrencyInput, TextInput, SelectOption, NumberInput } from '@/components/ui';
 import type { Column } from '@/components/ui';
 import { Layers, Loader2, Clock } from 'lucide-react';
 
@@ -30,12 +30,24 @@ const FEATURE_SECTIONS: FeatureSection[] = [
     section: '📚 Akademik & Kelas',
     items: [
       { id: 'class', label: 'Akses Kelas' },
+      { id: 'class_settings', label: 'Pengaturan Kelas (Edit Info, Roles)' },
+      { id: 'class_sessions', label: 'Pertemuan & Materi Kuliah' },
+      { id: 'class_custom_tabs', label: 'Tab Kustom Kelas' },
       { id: 'forum', label: 'Forum & Chat' },
+      { id: 'forum_announcement', label: 'Pengumuman Forum' },
+      { id: 'forum_poll', label: 'Polling / Voting Forum' },
+      { id: 'forum_reminder', label: 'Reminder Otomatis Forum' },
+      { id: 'forum_file_upload', label: 'Upload File di Forum' },
+      { id: 'forum_discussion', label: 'Pembahasan Topik Forum' },
       { id: 'quiz', label: 'Pembuatan Kuis' },
-      { id: 'task', label: 'Tugas & AI Solver' },
-      { id: 'kolektif', label: 'Kas Kelas' },
-      { id: 'group', label: 'Kelompok' },
-      { id: 'exam_prediction', label: 'Prediksi Ujian' },
+      { id: 'task', label: 'Tugas Kelas' },
+      { id: 'task_ai_solver', label: 'AI Solver Tugas' },
+      { id: 'task_image_ocr', label: 'Upload Foto Soal (OCR)' },
+      { id: 'kolektif', label: 'Kas Kelas (Kolektif)' },
+      { id: 'group', label: 'Pembagian Kelompok' },
+      { id: 'exam_prediction', label: 'Prediksi Ujian AI' },
+      { id: 'exam_manual', label: 'Bank Soal Manual' },
+      { id: 'exam_kisi_kisi', label: 'Upload Kisi-Kisi (AI Vision)' },
       { id: 'canvas', label: 'Canvas Editor' },
       { id: 'unread_tracking', label: 'Pelacakan Belum Dibaca' },
     ],
@@ -48,22 +60,34 @@ const FEATURE_SECTIONS: FeatureSection[] = [
       { id: 'pdf_export', label: 'Smart B5 Printer' },
       { id: 'ai_insight', label: 'AI Insight Mingguan' },
       { id: 'daily_briefing', label: 'Briefing Harian AI' },
+      { id: 'ai_briefing_tips', label: 'Tips & Motivasi AI' },
     ],
   },
   {
     section: '💰 Keuangan',
     items: [
-      { id: 'duit_tracker', label: 'Duit Tracker' },
+      { id: 'duit_tracker', label: 'Duit Tracker (Catat Transaksi)' },
+      { id: 'duit_tracker_budget', label: 'Budget / Anggaran' },
+      { id: 'duit_tracker_saving_tree', label: 'Pohon Tabungan' },
+      { id: 'duit_tracker_summary', label: 'Ringkasan & Grafik Keuangan' },
+      { id: 'duit_tracker_quick_input', label: 'Input Cepat (AI Parse)' },
       { id: 'si_bawel', label: 'Si Bawel (AI Keuangan)' },
       { id: 'split_bill', label: 'Split Bill' },
-      { id: 'receipt_scanner', label: 'Scan Struk' },
+      { id: 'receipt_scanner', label: 'Scan Struk (OCR)' },
     ],
   },
   {
     section: '📋 Produktivitas',
     items: [
       { id: 'todo_list', label: 'To-Do List' },
+      { id: 'todo_calendar', label: 'Kalender View Todo' },
+      { id: 'todo_timeline', label: 'Timeline View Todo' },
+      { id: 'todo_categories', label: 'Kategori & Label Todo' },
+      { id: 'todo_subtasks', label: 'Sub-tugas (Nested Checklist)' },
+      { id: 'todo_recurring', label: 'Tugas Berulang (Harian/Mingguan)' },
       { id: 'qna_public', label: 'Q&A Publik' },
+      { id: 'qna_voting', label: 'Voting Q&A' },
+      { id: 'qna_ai_answer', label: 'Jawaban AI di Q&A' },
       { id: 'food_recommend', label: 'Rekomendasi Makan' },
     ],
   },
@@ -71,9 +95,20 @@ const FEATURE_SECTIONS: FeatureSection[] = [
     section: '🎮 Gamifikasi & UX',
     items: [
       { id: 'gamification', label: 'Gamifikasi & XP' },
+      { id: 'gamification_streak', label: 'Streak & Tantangan Mingguan' },
+      { id: 'gamification_leaderboard', label: 'Leaderboard & Perbandingan' },
       { id: 'notification', label: 'Notifikasi' },
       { id: 'command_palette', label: 'Command Palette' },
       { id: 'quick_action', label: 'Quick Action FAB' },
+    ],
+  },
+  {
+    section: '👤 Profil & Personalisasi',
+    items: [
+      { id: 'profile_ai_context', label: 'Konteks AI Personal' },
+      { id: 'profile_avatar', label: 'Upload Avatar Profil' },
+      { id: 'dashboard_class_comparison', label: 'Perbandingan Kelas (Dashboard)' },
+      { id: 'dashboard_trending_qna', label: 'Trending Q&A (Dashboard)' },
     ],
   },
 ];
@@ -392,14 +427,8 @@ export default function SuperadminPlansPage() {
           <form onSubmit={handleSavePlan} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {planError && <Alert type="error" message={planError} />}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Nama Paket</label>
-              <input type="text" value={planName} onChange={(e) => setPlanName(e.target.value)} disabled={!!editingPlan && (editingPlan.name === 'FREE' || editingPlan.name === 'PRO')} required placeholder="e.g. PRO_PLUS" className="themed-input" style={{ width: '100%' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Deskripsi</label>
-              <input type="text" value={planDescription} onChange={(e) => setPlanDescription(e.target.value)} placeholder="Deskripsi singkat paket" className="themed-input" style={{ width: '100%' }} />
-            </div>
+            <TextInput label="Nama Paket" value={planName} onChange={v => setPlanName(v)} disabled={!!editingPlan && (editingPlan.name === 'FREE' || editingPlan.name === 'PRO')} required placeholder="e.g. PRO_PLUS" />
+            <TextInput label="Deskripsi" value={planDescription} onChange={v => setPlanDescription(v)} placeholder="Deskripsi singkat paket" />
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
@@ -410,27 +439,23 @@ export default function SuperadminPlansPage() {
                 <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>
                   Durasi Berlaku
                 </label>
-                <select
-                  value={DURATION_PRESETS.find((d) => d.days === planDurationDays) ? planDurationDays : 'custom'}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val !== 'custom') setPlanDurationDays(Number(val));
+                <SelectOption
+                  value={String(DURATION_PRESETS.find((d) => d.days === planDurationDays) ? planDurationDays : 'custom')}
+                  onChange={(v) => {
+                    if (v !== 'custom') setPlanDurationDays(Number(v));
                   }}
-                  className="themed-input"
-                  style={{ width: '100%' }}
-                >
-                  {DURATION_PRESETS.map((d) => (
-                    <option key={d.days} value={d.days}>{d.label}</option>
-                  ))}
-                  <option value="custom">Kustom...</option>
-                </select>
+                  options={[
+                    ...DURATION_PRESETS.map((d) => ({ value: String(d.days), label: d.label })),
+                    { value: 'custom', label: 'Kustom...' },
+                  ]}
+                />
               </div>
             </div>
 
             {!DURATION_PRESETS.find((d) => d.days === planDurationDays) && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Durasi Kustom (hari)</label>
-                <input type="number" min={1} value={planDurationDays} onChange={(e) => setPlanDurationDays(Number(e.target.value))} required className="themed-input" style={{ width: '100%' }} />
+                <NumberInput value={String(planDurationDays)} onChange={v => setPlanDurationDays(Number(v))} min={1} />
                 <span style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))' }}>
                   ≈ {planDurationDays >= 30 ? `${(planDurationDays / 30).toFixed(1)} bulan` : `${planDurationDays} hari`}
                   {planDurationDays >= 365 ? ` (${(planDurationDays / 365).toFixed(1)} tahun)` : ''}
@@ -439,18 +464,9 @@ export default function SuperadminPlansPage() {
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Max Upload / Bulan</label>
-                <input type="number" min={0} value={planMaxUpload} onChange={(e) => setPlanMaxUpload(Number(e.target.value))} required className="themed-input" style={{ width: '100%' }} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Max File Size (MB)</label>
-                <input type="number" min={1} value={planMaxSize} onChange={(e) => setPlanMaxSize(Number(e.target.value))} required className="themed-input" style={{ width: '100%' }} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Kuota AI / Bulan</label>
-                <input type="number" min={0} value={planAiLimit} onChange={(e) => setPlanAiLimit(Number(e.target.value))} required className="themed-input" style={{ width: '100%' }} />
-              </div>
+              <NumberInput label="Max Upload / Bulan" value={String(planMaxUpload)} onChange={v => setPlanMaxUpload(Number(v))} min={0} />
+              <NumberInput label="Max File Size (MB)" value={String(planMaxSize)} onChange={v => setPlanMaxSize(Number(v))} min={1} />
+              <NumberInput label="Kuota AI / Bulan" value={String(planAiLimit)} onChange={v => setPlanAiLimit(Number(v))} min={0} />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { classService, CustomTab, CustomTabFile } from '@/services/classService';
-import { Button, useToast, useConfirm, MarkdownRenderer } from '@/components/ui';
+import { Button, useToast, useConfirm, MarkdownRenderer, TextArea } from '@/components/ui';
 import {
   Loader2, Upload, Trash2, FileText, Image as ImageIcon,
   File as FileIcon, Pencil, Eye, Save, X, Download,
@@ -153,24 +153,13 @@ export function CustomTabContent({ tabId, classId, memberRole, permissions }: Cu
 
         {isEditing ? (
           <div>
-            <textarea
-              ref={textareaRef}
+            <TextArea
+              inputRef={textareaRef}
               value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
+              onChange={setEditContent}
               placeholder="Tulis konten tab di sini... (mendukung Markdown)"
-              style={{
-                width: '100%',
-                minHeight: 300,
-                padding: '0.75rem',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-default)',
-                background: 'rgb(var(--bg-primary))',
-                color: 'rgb(var(--text-primary))',
-                fontFamily: 'inherit',
-                fontSize: 'var(--font-sm)',
-                resize: 'vertical',
-                lineHeight: 1.7,
-              }}
+              rows={10}
+              minHeight={300}
             />
             <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginTop: '0.35rem' }}>
               💡 Mendukung format Markdown: **bold**, *italic*, # heading, - list, ```code```, dll.

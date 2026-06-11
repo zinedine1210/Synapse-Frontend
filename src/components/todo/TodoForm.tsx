@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { Button, DateTimePicker, CategoryPicker } from '@/components/ui';
+import { Button, DateTimePicker, CategoryPicker, TextInput, TextArea } from '@/components/ui';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { RecurrenceSelector } from '@/components/todo/RecurrenceSelector';
 import { SubtaskEditor, DraftSubtask } from '@/components/todo/SubtaskEditor';
 
@@ -45,32 +46,23 @@ const fieldLabel: React.CSSProperties = {
  * recurrence selector and a draft subtask editor.
  */
 export function TodoForm({ form, setForm, subtasks, setSubtasks, categories, submitting, editing, onSubmit }: TodoFormProps) {
+  const { hasFeature } = useFeatureAccess();
   return (
     <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       {/* Big title */}
       <div>
-        <input
-          className="input"
+        <TextInput
           placeholder="Apa yang mau kamu selesaikan? ✨"
           value={form.title}
-          onChange={e => setForm({ ...form, title: e.target.value })}
+          onChange={v => setForm({ ...form, title: v })}
           required
           autoFocus
-          style={{ fontSize: 18, fontWeight: 600, padding: '14px 16px', borderRadius: 14 }}
         />
       </div>
 
       {/* Description */}
       <div>
-        <label style={fieldLabel}>Catatan (opsional)</label>
-        <textarea
-          className="input"
-          placeholder="Detail tambahan, link, atau konteks..."
-          value={form.description}
-          onChange={e => setForm({ ...form, description: e.target.value })}
-          rows={2}
-          style={{ borderRadius: 12, padding: '11px 14px', resize: 'none', fontSize: 14, width: '100%' }}
-        />
+        <TextArea label="Catatan (opsional)" placeholder="Detail tambahan, link, atau konteks..." value={form.description} onChange={v => setForm({ ...form, description: v })} rows={2} resize="none" />
       </div>
 
       {/* Priority — colorful segmented buttons */}
@@ -126,10 +118,10 @@ export function TodoForm({ form, setForm, subtasks, setSubtasks, categories, sub
       </div>
 
       {/* Recurrence */}
-      <RecurrenceSelector value={form.recurrence} onChange={val => setForm({ ...form, recurrence: val })} />
+      {hasFeature('todo_recurring') && <RecurrenceSelector value={form.recurrence} onChange={val => setForm({ ...form, recurrence: val })} />}
 
       {/* Subtasks */}
-      <SubtaskEditor value={subtasks} onChange={setSubtasks} />
+      {hasFeature('todo_subtasks') && <SubtaskEditor value={subtasks} onChange={setSubtasks} />}
 
       <Button type="submit" disabled={submitting} style={{ borderRadius: 12, padding: '13px 0', marginTop: 2, justifyContent: 'center', fontSize: 15 }}>
         {submitting ? <Loader2 className="spin" size={16} /> : (editing ? '💾 Simpan Perubahan' : '✅ Tambah Tugas')}

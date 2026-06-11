@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Calendar } from 'lucide-react';
+import { DatePicker } from '@/components/ui';
 import { TimeRange } from '@/services/financial.helpers';
 
 interface TimeRangeSelectorProps {
@@ -58,24 +59,22 @@ export function TimeRangeSelector({
       {showCustomPicker && value === 'custom' && (
         <div className="trs-custom animate-fade-in">
           <div className="trs-field">
-            <label htmlFor="trs-start">Dari</label>
-            <input
-              id="trs-start"
-              type="date"
+            <DatePicker
+              label="Dari"
               value={customStart}
-              max={customEnd || undefined}
-              onChange={(e) => onCustomStartChange(e.target.value)}
+              maxDate={customEnd || undefined}
+              onChange={onCustomStartChange}
+              placeholder="Tanggal mulai"
             />
           </div>
           <div className="trs-arrow" aria-hidden>→</div>
           <div className="trs-field">
-            <label htmlFor="trs-end">Sampai</label>
-            <input
-              id="trs-end"
-              type="date"
+            <DatePicker
+              label="Sampai"
               value={customEnd}
-              min={customStart || undefined}
-              onChange={(e) => onCustomEndChange(e.target.value)}
+              minDate={customStart || undefined}
+              onChange={onCustomEndChange}
+              placeholder="Tanggal akhir"
             />
           </div>
         </div>
@@ -141,30 +140,7 @@ export function TimeRangeSelector({
         }
         .trs-field {
           flex: 1;
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
-        }
-        .trs-field label {
-          font-size: var(--font-xs);
-          color: rgb(var(--text-muted));
-          font-weight: 600;
-        }
-        .trs-field input {
-          width: 100%;
-          padding: 9px 12px;
-          border-radius: var(--radius-md);
-          border: 1px solid var(--border-default);
-          background: rgb(var(--bg-base));
-          color: rgb(var(--text-primary));
-          font-size: var(--font-sm);
-          font-family: inherit;
-          outline: none;
-          transition: var(--transition-fast);
-        }
-        .trs-field input:focus {
-          border-color: rgba(var(--color-primary) / 0.5);
-          box-shadow: 0 0 0 3px rgba(var(--color-primary) / 0.1);
+          min-width: 0;
         }
         .trs-arrow {
           padding-bottom: 10px;

@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, Alert, Modal, useToast, useConfirm, CurrencyInput, parseCurrency, DateTimePicker, PullToRefresh } from '@/components/ui';
+import { Card, Button, Alert, Modal, useToast, useConfirm, CurrencyInput, parseCurrency, DateTimePicker, PullToRefresh, SelectOption, TextInput, TextArea } from '@/components/ui';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { duitTrackerService, Transaction, Summary, SavingTree, CategoryBudget } from '@/services/duitTrackerService';
 import { siBawelService, BawelSetting, WeeklyRoast } from '@/services/siBawelService';
@@ -164,6 +165,7 @@ function getCatEmoji(id: string, type: string) {
 
 export default function DuitTrackerPage() {
   const { user } = useAuth();
+  const { hasFeature } = useFeatureAccess();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { showUndoToast } = useCelebration();
@@ -385,7 +387,7 @@ export default function DuitTrackerPage() {
   }, {} as Record<string, Transaction[]>);
 
   return (
-    <AuthGuard>
+    <AuthGuard requiredFeature="duit_tracker">
       <div className="app-shell">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <div className="app-main">
@@ -400,10 +402,14 @@ export default function DuitTrackerPage() {
                   <p style={{ fontSize: 13, color: 'var(--dt-text-secondary)', marginTop: 2 }}>Lacak keuanganmu dengan cerdas</p>
                 </div>
                 <div className="duit-tracker-header-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button onClick={() => setShowBawelSettings(true)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-default)', cursor: 'pointer', padding: '8px 10px', borderRadius: 10, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'inherit' }} className="hover-lift" title="Pengaturan Si Bawel">
-                    <Settings size={14} /> 🗣️
-                  </button>
-                  <Button onClick={() => setShowAiInput(true)} variant="secondary" size="sm"><Sparkles size={14} /> AI Input</Button>
+                  {hasFeature('si_bawel') && (
+                    <button onClick={() => setShowBawelSettings(true)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-default)', cursor: 'pointer', padding: '8px 10px', borderRadius: 10, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'inherit' }} className="hover-lift" title="Pengaturan Si Bawel">
+                      <Settings size={14} /> 🗣️
+                    </button>
+                  )}
+                  {hasFeature('duit_tracker_quick_input') && (
+                    <Button onClick={() => setShowAiInput(true)} variant="secondary" size="sm"><Sparkles size={14} /> AI Input</Button>
+                  )}
                   <Button onClick={() => { setEditingTx(null); setForm({ amount: '', type: 'expense', category: 'lainnya', label: '', note: '', date: '' }); setShowAddModal(true); }} size="sm"><Plus size={14} /> Tambah</Button>
                 </div>
               </div>
@@ -419,10 +425,10 @@ export default function DuitTrackerPage() {
               <div className="duit-tabs" style={{ display: 'flex', gap: 4, marginBottom: 24, padding: 4, borderRadius: 14, background: 'var(--input-bg)', width: 'fit-content' }}>
                 {[
                   { key: 'transactions', label: '📝 Transaksi' },
-                  { key: 'summary', label: '📊 Ringkasan' },
-                  { key: 'budget', label: '🎯 Budget' },
-                  { key: 'trees', label: '🌳 Tabungan' },
-                ].map(t => (
+                  { key: 'summary', label: '📊 Ringkasan', feature: 'duit_tracker_summary' },
+                  { key: 'budget', label: '🎯 Budget', feature: 'duit_tracker_budget' },
+                  { key: 'trees', label: '🌳 Tabungan', feature: 'duit_tracker_saving_tree' },
+                ].filter(t => !t.feature || hasFeature(t.feature)).map(t => (
                   <button key={t.key} onClick={() => setTab(t.key as any)} style={{
                     padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
                     fontWeight: tab === t.key ? 600 : 400, fontSize: 13,
@@ -437,12 +443,12 @@ export default function DuitTrackerPage() {
               {/* Date filters */}
               {tab !== 'trees' && (
                 <div className="duit-date-filters" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <select value={month} onChange={e => setMonth(parseInt(e.target.value))} style={{ width: 140, borderRadius: 10, fontSize: 13, padding: '9px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-default)', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
-                    {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{new Date(2000, i).toLocaleDateString('id-ID', { month: 'long' })}</option>)}
-                  </select>
-                  <select value={year} onChange={e => setYear(parseInt(e.target.value))} style={{ width: 100, borderRadius: 10, fontSize: 13, padding: '9px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-default)', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
-                    {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
+                  <div style={{ width: 160 }}>
+                    <SelectOption value={String(month)} onChange={v => setMonth(parseInt(v))} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2000, i).toLocaleDateString('id-ID', { month: 'long' }) }))} />
+                  </div>
+                  <div style={{ width: 110 }}>
+                    <SelectOption value={String(year)} onChange={v => setYear(parseInt(v))} options={[2024, 2025, 2026, 2027].map(y => ({ value: String(y), label: String(y) }))} />
+                  </div>
                   {tab === 'transactions' && (
                     <div className="duit-type-filters" style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
                       {[{ v: '', l: 'Semua' }, { v: 'income', l: '↑ Masuk' }, { v: 'expense', l: '↓ Keluar' }].map(f => (
@@ -458,7 +464,7 @@ export default function DuitTrackerPage() {
               )}
 
               {/* QuickInputBar — Sticky natural language input */}
-              {tab === 'transactions' && (
+              {tab === 'transactions' && hasFeature('duit_tracker_quick_input') && (
                 <>
                   <QuickInputBar
                     value={quickInputText}
@@ -552,7 +558,7 @@ export default function DuitTrackerPage() {
               {tab === 'summary' && summary && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {/* Weekly Roast */}
-                  {weeklyRoast && (
+                  {weeklyRoast && hasFeature('si_bawel') && (
                     <div style={{
                       padding: '20px 22px', borderRadius: 16,
                       background: 'linear-gradient(135deg, rgba(255, 100, 0, 0.04) 0%, rgba(255, 50, 0, 0.02) 100%)',
@@ -765,7 +771,7 @@ export default function DuitTrackerPage() {
                   }}>&ldquo;{ex}&rdquo;</button>
                 ))}
               </div>
-              <textarea className="input" placeholder="Ketik di sini..." value={aiText} onChange={e => setAiText(e.target.value)} rows={3} style={{ borderRadius: 10, padding: '12px 14px', resize: 'none' }} />
+              <TextArea placeholder="Ketik di sini..." value={aiText} onChange={setAiText} rows={3} resize="none" />
               <div style={{ marginTop: 14 }}>
                 <Button onClick={handleAiParse} disabled={submitting || !aiText.trim()} style={{ width: '100%', borderRadius: 12, padding: '12px 0' }}>
                   {submitting ? <Loader2 className="spin" size={16} /> : <><Sparkles size={16} /> Parse & Tambahkan</>}
@@ -791,7 +797,7 @@ export default function DuitTrackerPage() {
                 </div>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: 'block', opacity: 0.6 }}>Nama tujuan</label>
-                  <input className="input" placeholder="Laptop Baru, Liburan Bali..." value={treeForm.name} onChange={e => setTreeForm({ ...treeForm, name: e.target.value })} required style={{ borderRadius: 10, padding: '10px 14px' }} />
+                  <TextInput placeholder="Laptop Baru, Liburan Bali..." value={treeForm.name} onChange={v => setTreeForm({ ...treeForm, name: v })} required />
                 </div>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: 'block', opacity: 0.6 }}>Target tabungan</label>

@@ -8,9 +8,11 @@ export type TodoViewMode = 'time' | 'category' | 'calendar' | 'timeline';
 interface ViewSegmentedControlProps {
   value: TodoViewMode;
   onChange: (mode: TodoViewMode) => void;
+  /** If provided, only these view modes are shown */
+  allowedModes?: TodoViewMode[];
 }
 
-const VIEWS: { key: TodoViewMode; icon: LucideIcon; label: string }[] = [
+const ALL_VIEWS: { key: TodoViewMode; icon: LucideIcon; label: string }[] = [
   { key: 'time', icon: Clock, label: 'Waktu' },
   { key: 'category', icon: LayoutList, label: 'Kategori' },
   { key: 'calendar', icon: CalendarDays, label: 'Kalender' },
@@ -22,7 +24,8 @@ const VIEWS: { key: TodoViewMode; icon: LucideIcon; label: string }[] = [
  * between the To-Do page view modes. The active segment slides via an
  * animated highlight (disabled under prefers-reduced-motion).
  */
-export function ViewSegmentedControl({ value, onChange }: ViewSegmentedControlProps) {
+export function ViewSegmentedControl({ value, onChange, allowedModes }: ViewSegmentedControlProps) {
+  const VIEWS = allowedModes ? ALL_VIEWS.filter(v => allowedModes.includes(v.key)) : ALL_VIEWS;
   const activeIndex = VIEWS.findIndex(v => v.key === value);
 
   return (

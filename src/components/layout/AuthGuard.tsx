@@ -3,15 +3,22 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { completeOnboarding, skipOnboarding } from '@/lib/onboarding-service';
 import { Loader2 } from 'lucide-react';
 import { QuickActionFAB } from './QuickActionFAB';
 import { BottomNav } from './BottomNav';
 import { MobileNavSheet } from './MobileNavSheet';
 import { CommandPalette } from './CommandPalette';
 import { OnboardingFlow } from './OnboardingFlow';
-import type { OnboardingData } from './OnboardingFlow';
-import { TutorialOverlay } from './TutorialOverlay';
+import { useFeatureAccess } from '@/lib/feature-access';
+import { TourGuide, type TourStep } from './TourGuide';
+
+const TOUR_STEPS: TourStep[] = [
+  { targetSelector: '[data-tour="dashboard"]', title: 'Dashboard', description: 'Pusat kendali kuliahmu. Lihat kelas, jadwal, dan ringkasan AI di satu tempat.', position: 'bottom' },
+  { targetSelector: '[data-tour="duit-tracker"]', title: 'Duit Tracker', description: 'Catat pengeluaran, atur budget, dan tanam pohon tabungan virtual.', position: 'right' },
+  { targetSelector: '[data-tour="todos"]', title: 'To-Do List', description: 'Kelola tugas dengan drag & drop, kategori, dan kalender.', position: 'right' },
+  { targetSelector: '[data-tour="qna"]', title: 'Q&A Forum', description: 'Tanya, jawab, dan bangun reputasi bersama mahasiswa lain.', position: 'right' },
+  { targetSelector: '[data-tour="search"]', title: 'Pencarian Cepat', description: 'Tekan Ctrl+K untuk mencari tugas, todo, transaksi, dan lainnya.', position: 'bottom', allowInteraction: true },
+];
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -21,122 +28,78 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuardProps) {
   const { user, session, loading, refetchProfile } = useAuth();
+  const { hasFeature } = useFeatureAccess();
   const router = useRouter();
   const pathname = usePathname();
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
+  const [showTour, setShowTour] = useState(false);
   const [navSheetOpen, setNavSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && user) {
       const onboardingKey = `synapse_onboarding_${user.id}`;
       const tourKey = `synapse_tour_${user.id}`;
-      // Check both localStorage and backend flag
       const isOnboarded = localStorage.getItem(onboardingKey) || user.onboardingCompleted;
       if (!isOnboarded) {
         setShowOnboarding(true);
       } else if (!localStorage.getItem(tourKey)) {
-        setShowTutorial(true);
+        setShowTour(true);
       }
     }
   }, [loading, user]);
 
-  /**
-   * Marks onboarding as completed on the backend and updates local state.
-   * After completion or skip, triggers the Tour Guide.
-   */
-  const triggerTourGuide = useCallback(() => {
+  const finishOnboarding = useCallback(() => {
     if (!user) return;
+    localStorage.setItem(`synapse_onboarding_${user.id}`, 'done');
     setShowOnboarding(false);
+    refetchProfile();
     if (!localStorage.getItem(`synapse_tour_${user.id}`)) {
-      setShowTutorial(true);
+      // Small delay to let dashboard render before tour starts
+      setTimeout(() => setShowTour(true), 600);
     }
+  }, [user, refetchProfile]);
+
+  const finishTour = useCallback(() => {
+    if (!user) return;
+    localStorage.setItem(`synapse_tour_${user.id}`, 'done');
+    setShowTour(false);
   }, [user]);
-
-  /**
-   * Handle onboarding completion: save profile data to backend,
-   * mark onboardingCompleted = true, then trigger Tour Guide.
-   */
-  const handleOnboardingComplete = useCallback(async (data: OnboardingData) => {
-    if (!user) return;
-    await completeOnboarding(user.id, data);
-    await refetchProfile();
-    triggerTourGuide();
-  }, [user, refetchProfile, triggerTourGuide]);
-
-  /**
-   * Handle onboarding skip: mark onboardingCompleted = true WITHOUT saving
-   * profile data, then trigger Tour Guide.
-   */
-  const handleOnboardingSkip = useCallback(async () => {
-    if (!user) return;
-    await skipOnboarding(user.id);
-    await refetchProfile();
-    triggerTourGuide();
-  }, [user, refetchProfile, triggerTourGuide]);
 
   useEffect(() => {
     if (!loading) {
       if (!session || !user) {
-        // Simpan path yang ingin dikunjungi ke query params jika diperlukan
         router.push(`/auth?redirect=${encodeURIComponent(pathname)}`);
       } else if (user.role === 'SUPERADMIN' && !pathname.startsWith('/superadmin') && !pathname.startsWith('/settings')) {
-        // Superadmin dialihkan langsung ke halaman superadmin
         router.push('/superadmin');
       } else if (requiredRole && user.role !== requiredRole) {
-        // Jika butuh role superadmin tapi user biasa
         router.push('/dashboard');
       } else if (requiredFeature && user.pricingPlan && !user.pricingPlan.features.includes(requiredFeature)) {
-        // Jika user tidak memiliki fitur ini pada paketnya, alihkan ke billing
         router.push('/billing');
       }
     }
   }, [loading, session, user, requiredRole, requiredFeature, router, pathname]);
 
-  if (loading || !session || !user || 
+  if (loading || !session || !user ||
       (user.role === 'SUPERADMIN' && !pathname.startsWith('/superadmin') && !pathname.startsWith('/settings')) ||
       (requiredRole && user.role !== requiredRole) ||
       (requiredFeature && user.pricingPlan && !user.pricingPlan.features.includes(requiredFeature))) {
     return (
-      <div
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'rgb(6, 11, 24)',
-          color: 'rgba(0, 212, 255, 0.8)',
-          gap: '1rem',
-        }}
-      >
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgb(6, 11, 24)', color: 'rgba(0, 212, 255, 0.8)', gap: '1rem' }}>
         <Loader2 className="animate-spin" size={48} />
-        <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'rgba(160, 160, 200, 0.8)' }}>
-          Memuat sesi belajar...
-        </span>
+        <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'rgba(160, 160, 200, 0.8)' }}>Memuat sesi belajar...</span>
       </div>
     );
   }
 
   return (
     <>
-      {showOnboarding && user && (
-        <OnboardingFlow
-          onComplete={handleOnboardingComplete}
-          onSkip={handleOnboardingSkip}
-        />
-      )}
-      {showTutorial && user && (
-        <TutorialOverlay onClose={() => {
-          localStorage.setItem(`synapse_tour_${user.id}`, 'done');
-          setShowTutorial(false);
-        }} />
-      )}
+      {showOnboarding && <OnboardingFlow onComplete={finishOnboarding} />}
+      {showTour && <TourGuide steps={TOUR_STEPS} onComplete={finishTour} onSkip={finishTour} />}
       {children}
       <BottomNav onMoreTap={() => setNavSheetOpen(true)} />
       <MobileNavSheet open={navSheetOpen} onClose={() => setNavSheetOpen(false)} />
-      <QuickActionFAB />
-      <CommandPalette />
+      {hasFeature('quick_action') && <QuickActionFAB />}
+      {hasFeature('command_palette') && <CommandPalette />}
     </>
   );
 }

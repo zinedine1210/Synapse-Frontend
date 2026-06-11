@@ -45,13 +45,13 @@ export const primaryNavItems: NavItem[] = [
     label: 'To-Do List',
     path: '/todos',
     icon: CheckSquare,
-    requiredFeature: 'todo',
+    requiredFeature: 'todo_list',
   },
   {
     label: 'Q&A',
     path: '/qna',
     icon: HelpCircle,
-    requiredFeature: 'qna',
+    requiredFeature: 'qna_public',
   },
   {
     label: 'Billing',
@@ -81,7 +81,7 @@ export const secondaryNavItems: NavItem[] = [
     label: 'Insight',
     path: '/insight',
     icon: Lightbulb,
-    requiredFeature: 'insight',
+    requiredFeature: 'ai_insight',
   },
 ];
 

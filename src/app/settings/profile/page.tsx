@@ -5,7 +5,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, useToast } from '@/components/ui';
+import { Card, Button, useToast, TextArea } from '@/components/ui';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { apiFetch, apiUpload } from '@/lib/api';
 import {
   Camera, Trash2, Upload, Loader2, User, ArrowLeft, ImagePlus, Save, Brain,
@@ -36,6 +37,7 @@ interface ProfileData {
 export default function UserProfilePage() {
   const { user, refetchProfile } = useAuth();
   const { showToast } = useToast();
+  const { hasFeature } = useFeatureAccess();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Avatar state
@@ -246,7 +248,7 @@ export default function UserProfilePage() {
             </div>
 
             {/* Avatar Upload Card */}
-            <Card style={{ padding: '1.5rem' }}>
+            {hasFeature('profile_avatar') && <Card style={{ padding: '1.5rem' }}>
               <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600, marginBottom: '1.25rem' }}>
                 Foto Profil
               </h3>
@@ -382,10 +384,10 @@ export default function UserProfilePage() {
                 style={{ display: 'none' }}
                 onChange={handleFileSelect}
               />
-            </Card>
+            </Card>}
 
             {/* AI Context Fields Card */}
-            <Card style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
+            {hasFeature('profile_ai_context') && <Card style={{ padding: '1.5rem', marginTop: '1.5rem' }}>
               <div style={{ marginBottom: '1.25rem' }}>
                 <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <Brain size={18} style={{ color: 'rgb(var(--color-primary))' }} />
@@ -399,166 +401,54 @@ export default function UserProfilePage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {/* Daily Habits */}
                 <div>
-                  <label
-                    htmlFor="dailyHabits"
-                    style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: 500, marginBottom: '0.4rem', color: 'rgb(var(--text-primary))' }}
-                  >
-                    Kebiasaan Harian
-                  </label>
-                  <textarea
-                    id="dailyHabits"
+                  <TextArea
+                    label="Kebiasaan Harian"
                     value={dailyHabits}
-                    onChange={(e) => setDailyHabits(e.target.value.slice(0, AI_CONTEXT_LIMITS.dailyHabits))}
+                    onChange={v => setDailyHabits(v)}
                     maxLength={AI_CONTEXT_LIMITS.dailyHabits}
                     placeholder="Contoh: Bangun jam 6 pagi, olahraga 30 menit, belajar malam jam 8-10..."
                     rows={3}
-                    style={{
-                      width: '100%',
-                      padding: '0.625rem 0.75rem',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--border-default)',
-                      background: 'rgb(var(--bg-input, var(--bg-secondary)))',
-                      color: 'rgb(var(--text-primary))',
-                      fontSize: 'var(--font-sm)',
-                      resize: 'vertical',
-                      transition: 'border-color 0.15s, box-shadow 0.15s',
-                      outline: 'none',
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = 'rgb(var(--color-primary))';
-                      e.target.style.boxShadow = '0 0 0 2px rgba(var(--color-primary) / 0.15)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'var(--border-default)';
-                      e.target.style.boxShadow = 'none';
-                    }}
+                    showCount
                   />
-                  <span style={{ display: 'block', textAlign: 'right', fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginTop: '0.2rem' }}>
-                    {dailyHabits.length}/{AI_CONTEXT_LIMITS.dailyHabits}
-                  </span>
                 </div>
 
                 {/* Life Goals */}
                 <div>
-                  <label
-                    htmlFor="lifeGoals"
-                    style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: 500, marginBottom: '0.4rem', color: 'rgb(var(--text-primary))' }}
-                  >
-                    Tujuan Hidup
-                  </label>
-                  <textarea
-                    id="lifeGoals"
+                  <TextArea
+                    label="Tujuan Hidup"
                     value={lifeGoals}
-                    onChange={(e) => setLifeGoals(e.target.value.slice(0, AI_CONTEXT_LIMITS.lifeGoals))}
+                    onChange={v => setLifeGoals(v)}
                     maxLength={AI_CONTEXT_LIMITS.lifeGoals}
                     placeholder="Contoh: Lulus cum laude, membangun startup edtech, menjadi software engineer..."
                     rows={3}
-                    style={{
-                      width: '100%',
-                      padding: '0.625rem 0.75rem',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--border-default)',
-                      background: 'rgb(var(--bg-input, var(--bg-secondary)))',
-                      color: 'rgb(var(--text-primary))',
-                      fontSize: 'var(--font-sm)',
-                      resize: 'vertical',
-                      transition: 'border-color 0.15s, box-shadow 0.15s',
-                      outline: 'none',
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = 'rgb(var(--color-primary))';
-                      e.target.style.boxShadow = '0 0 0 2px rgba(var(--color-primary) / 0.15)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'var(--border-default)';
-                      e.target.style.boxShadow = 'none';
-                    }}
+                    showCount
                   />
-                  <span style={{ display: 'block', textAlign: 'right', fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginTop: '0.2rem' }}>
-                    {lifeGoals.length}/{AI_CONTEXT_LIMITS.lifeGoals}
-                  </span>
                 </div>
 
                 {/* Study Schedule */}
                 <div>
-                  <label
-                    htmlFor="studySchedule"
-                    style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: 500, marginBottom: '0.4rem', color: 'rgb(var(--text-primary))' }}
-                  >
-                    Jadwal Belajar
-                  </label>
-                  <textarea
-                    id="studySchedule"
+                  <TextArea
+                    label="Jadwal Belajar"
                     value={studySchedule}
-                    onChange={(e) => setStudySchedule(e.target.value.slice(0, AI_CONTEXT_LIMITS.studySchedule))}
+                    onChange={v => setStudySchedule(v)}
                     maxLength={AI_CONTEXT_LIMITS.studySchedule}
                     placeholder="Contoh: Senin-Jumat kuliah 8-15, belajar mandiri malam, Sabtu libur..."
                     rows={2}
-                    style={{
-                      width: '100%',
-                      padding: '0.625rem 0.75rem',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--border-default)',
-                      background: 'rgb(var(--bg-input, var(--bg-secondary)))',
-                      color: 'rgb(var(--text-primary))',
-                      fontSize: 'var(--font-sm)',
-                      resize: 'vertical',
-                      transition: 'border-color 0.15s, box-shadow 0.15s',
-                      outline: 'none',
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = 'rgb(var(--color-primary))';
-                      e.target.style.boxShadow = '0 0 0 2px rgba(var(--color-primary) / 0.15)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'var(--border-default)';
-                      e.target.style.boxShadow = 'none';
-                    }}
+                    showCount
                   />
-                  <span style={{ display: 'block', textAlign: 'right', fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginTop: '0.2rem' }}>
-                    {studySchedule.length}/{AI_CONTEXT_LIMITS.studySchedule}
-                  </span>
                 </div>
 
                 {/* Personal Notes */}
                 <div>
-                  <label
-                    htmlFor="personalNotes"
-                    style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: 500, marginBottom: '0.4rem', color: 'rgb(var(--text-primary))' }}
-                  >
-                    Catatan Personal
-                  </label>
-                  <textarea
-                    id="personalNotes"
+                  <TextArea
+                    label="Catatan Personal"
                     value={personalNotes}
-                    onChange={(e) => setPersonalNotes(e.target.value.slice(0, AI_CONTEXT_LIMITS.personalNotes))}
+                    onChange={v => setPersonalNotes(v)}
                     maxLength={AI_CONTEXT_LIMITS.personalNotes}
                     placeholder="Contoh: Saya introvert, suka belajar visual, perlu reminder sering..."
                     rows={2}
-                    style={{
-                      width: '100%',
-                      padding: '0.625rem 0.75rem',
-                      borderRadius: 'var(--radius-md)',
-                      border: '1px solid var(--border-default)',
-                      background: 'rgb(var(--bg-input, var(--bg-secondary)))',
-                      color: 'rgb(var(--text-primary))',
-                      fontSize: 'var(--font-sm)',
-                      resize: 'vertical',
-                      transition: 'border-color 0.15s, box-shadow 0.15s',
-                      outline: 'none',
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = 'rgb(var(--color-primary))';
-                      e.target.style.boxShadow = '0 0 0 2px rgba(var(--color-primary) / 0.15)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = 'var(--border-default)';
-                      e.target.style.boxShadow = 'none';
-                    }}
+                    showCount
                   />
-                  <span style={{ display: 'block', textAlign: 'right', fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginTop: '0.2rem' }}>
-                    {personalNotes.length}/{AI_CONTEXT_LIMITS.personalNotes}
-                  </span>
                 </div>
               </div>
 
@@ -573,7 +463,7 @@ export default function UserProfilePage() {
                   {savingContext ? 'Menyimpan...' : 'Simpan Konteks AI'}
                 </Button>
               </div>
-            </Card>
+            </Card>}
           </div>
         </div>
       </div>

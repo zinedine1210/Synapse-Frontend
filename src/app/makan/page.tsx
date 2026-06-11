@@ -216,7 +216,7 @@ export default function MakanApaPage() {
   const overBudget = spentFraction > 0.85;
 
   return (
-    <AuthGuard>
+    <AuthGuard requiredFeature="food_recommend">
       <div className="app-shell">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <div className="app-main">

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Plus, X } from 'lucide-react';
+import { TextInput } from '@/components/ui';
 
 export interface CustomCategory {
   id: string;
@@ -53,15 +54,7 @@ export function CustomCategoryCreator({ onCreated, onCancel }: CustomCategoryCre
 
       {/* Name input */}
       <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 11, fontWeight: 600, opacity: 0.5, marginBottom: 4, display: 'block' }}>Nama</label>
-        <input
-          className="input"
-          placeholder="Nama kategori..."
-          value={name}
-          onChange={e => setName(e.target.value)}
-          autoFocus
-          style={{ fontSize: 13, padding: '8px 12px', borderRadius: 8, width: '100%' }}
-        />
+        <TextInput label="Nama" placeholder="Nama kategori..." value={name} onChange={setName} autoFocus />
       </div>
 
       {/* Emoji picker */}

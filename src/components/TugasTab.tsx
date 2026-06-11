@@ -5,7 +5,8 @@ import { taskService, Task, TaskSubmission } from '@/services/taskService';
 import { classService } from '@/services/classService';
 import { groupService, TaskGroupFull } from '@/services/groupService';
 import { aiService } from '@/services/aiService';
-import { Card, Button, Modal, useToast, useConfirm, MarkdownRenderer, stripMarkdown } from '@/components/ui';
+import { Card, Button, Modal, useToast, useConfirm, MarkdownRenderer, stripMarkdown, TextInput, SelectOption, DateTimePicker, TextArea } from '@/components/ui';
+import { useFeatureAccess } from '@/lib/feature-access';
 import {
   ClipboardList, Calendar, ChevronRight, Loader2, Send, Plus, Trash2, Camera, FileText, Sparkles, User, Users, Copy, Download, Pencil, Eye, EyeOff, ChevronLeft, Save, ChevronDown
 } from 'lucide-react';
@@ -23,6 +24,7 @@ interface TugasTabProps {
 export function TugasTab({ classId, memberRole, permissions, filterSessionId, urlTaskId, onTaskSelect }: TugasTabProps) {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { hasFeature } = useFeatureAccess();
   const hasPerm = (perm: string) => memberRole === 'OWNER' || (permissions || []).includes(perm);
   const canCreate = hasPerm('TASK_CREATE');
   const canEdit = hasPerm('TASK_EDIT');
@@ -468,9 +470,9 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
               <Button variant="ghost" size="sm" onClick={handleCopyEditor} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--font-xs)' }}>
                 <Copy size={12} /> Salin
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--font-xs)' }}>
+              {hasFeature('pdf_export') && <Button variant="ghost" size="sm" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--font-xs)' }}>
                 <Download size={12} /> PDF
-              </Button>
+              </Button>}
             </div>
           </div>
 
@@ -532,7 +534,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: '0.35rem' }}>
-                  <textarea value={taskInput} onChange={(e) => setTaskInput(e.target.value)} placeholder="Tulis soal atau pertanyaan untuk AI..." rows={2} className="themed-textarea" style={{ flex: 1, fontSize: 'var(--font-xs)', resize: 'none' }} />
+                  <TextArea value={taskInput} onChange={setTaskInput} placeholder="Tulis soal atau pertanyaan untuk AI..." rows={2} resize="none" />
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -634,33 +636,27 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
           <form onSubmit={handleEditTask} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Judul Tugas</label>
-              <input className="themed-input" style={{ width: '100%' }} type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
+              <TextInput value={editTitle} onChange={v => setEditTitle(v)} required />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Deskripsi Soal / Petunjuk</label>
-              <textarea className="themed-textarea" style={{ width: '100%', height: '70px' }} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Tulis instruksi pengerjaan tugas..." />
+              <TextArea value={editDesc} onChange={setEditDesc} placeholder="Tulis instruksi pengerjaan tugas..." rows={3} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Batas Waktu (Deadline)</label>
-                <input className="themed-input" style={{ width: '100%' }} type="datetime-local" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} />
+                <DateTimePicker mode="datetime-local" value={editDeadline} onChange={setEditDeadline} placeholder="Pilih deadline" />
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Tipe Penugasan</label>
-                <select value={editAssignType} onChange={(e) => setEditAssignType(e.target.value as any)} className="themed-input" style={{ width: '100%' }}>
-                  <option value="ALL">Seluruh Anggota Kelas</option>
-                  <option value="INDIVIDUAL">Anggota Tertentu (Perorangan)</option>
-                  <option value="GROUP">Kelompok Tugas</option>
-                </select>
-              </div>
+              <SelectOption label="Tipe Penugasan" value={editAssignType} onChange={v => setEditAssignType(v as any)} options={[
+                { value: 'ALL', label: 'Seluruh Anggota Kelas' },
+                { value: 'INDIVIDUAL', label: 'Anggota Tertentu (Perorangan)' },
+                { value: 'GROUP', label: 'Kelompok Tugas' },
+              ]} />
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pertemuan (Sesi) (Opsional)</label>
-              <select value={editSessionId} onChange={(e) => setEditSessionId(e.target.value)} className="themed-input" style={{ width: '100%' }}>
-                <option value="">-- Tanpa Pertemuan --</option>
-                {sessions.map((s: any) => (<option key={s.id} value={s.id}>{s.title}</option>))}
-              </select>
-            </div>
+            <SelectOption label="Pertemuan (Sesi) (Opsional)" value={editSessionId} onChange={v => setEditSessionId(v)} options={[
+              { value: '', label: '-- Tanpa Pertemuan --' },
+              ...sessions.map((s: any) => ({ value: s.id, label: s.title })),
+            ]} />
             {editAssignType === 'INDIVIDUAL' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                 <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pilih Mahasiswa</label>
@@ -676,11 +672,10 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
             )}
             {editAssignType === 'GROUP' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pilih Kelompok Tugas</label>
-                <select value={editTaskGroupId} onChange={(e) => setEditTaskGroupId(e.target.value)} className="themed-input" style={{ width: '100%' }} required>
-                  <option value="">-- Pilih Kelompok --</option>
-                  {groups.map((g: any) => (<option key={g.id} value={g.id}>{g.name} ({g.members.length} anggota)</option>))}
-                </select>
+                <SelectOption label="Pilih Kelompok Tugas" value={editTaskGroupId} onChange={v => setEditTaskGroupId(v)} options={[
+                  { value: '', label: '-- Pilih Kelompok --' },
+                  ...groups.map((g: any) => ({ value: g.id, label: `${g.name} (${g.members.length} anggota)` })),
+                ]} />
               </div>
             )}
             <div style={{ display: 'flex', justifyContent: 'end', gap: '0.5rem', borderTop: '1px solid var(--border-default)', paddingTop: '1rem', marginTop: '0.5rem' }}>
@@ -763,17 +758,14 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
       {/* NEW TASK MODAL */}
       <Modal isOpen={showNewTask} onClose={() => setShowNewTask(false)} title="Buat Tugas Baru" size="md">
         <form onSubmit={handleCreateTask} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Judul Tugas</label>
-            <input className="themed-input" style={{ width: '100%' }} type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="e.g. Tugas Mandiri Pertemuan 3" required />
-          </div>
+            <TextInput label="Judul Tugas" value={newTitle} onChange={v => setNewTitle(v)} placeholder="e.g. Tugas Mandiri Pertemuan 3" required />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Deskripsi Soal / Petunjuk</label>
             <div style={{ display: 'flex', gap: '0.3rem', marginBottom: '0.3rem' }}>
               {([
                 { key: 'manual' as const, label: '✏️ Ketik Manual' },
-                { key: 'ai-ocr' as const, label: '🤖 Upload + AI Baca' },
+                ...(hasFeature('task_image_ocr') ? [{ key: 'ai-ocr' as const, label: '🤖 Upload + AI Baca' }] : []),
                 { key: 'image-only' as const, label: '🖼️ Upload Gambar Saja' },
               ]).map((m) => (
                 <button key={m.key} type="button" onClick={() => { setDescMode(m.key); setTaskImage(null); setTaskImagePreview(null); setNewDesc(''); if (taskImageRef.current) taskImageRef.current.value = ''; }}
@@ -791,7 +783,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
 
             {/* Mode: Manual */}
             {descMode === 'manual' && (
-              <textarea className="themed-textarea" style={{ width: '100%', height: '80px' }} value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder="Tulis instruksi pengerjaan tugas..." />
+              <TextArea value={newDesc} onChange={setNewDesc} placeholder="Tulis instruksi pengerjaan tugas..." rows={3} />
             )}
 
             {/* Mode: AI OCR */}
@@ -819,7 +811,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
                     <button type="button" onClick={() => { setTaskImage(null); setTaskImagePreview(null); if (taskImageRef.current) taskImageRef.current.value = ''; }} style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', fontSize: '12px' }}>✕</button>
                   </div>
                 )}
-                <textarea className="themed-textarea" style={{ width: '100%', height: '80px' }} value={newDesc} onChange={(e) => setNewDesc(e.target.value)} placeholder={isReadingImage ? 'AI sedang membaca gambar...' : 'Hasil AI akan muncul di sini, atau ketik manual...'} />
+                <TextArea value={newDesc} onChange={setNewDesc} placeholder={isReadingImage ? 'AI sedang membaca gambar...' : 'Hasil AI akan muncul di sini, atau ketik manual...'} rows={3} />
               </div>
             )}
 
@@ -853,28 +845,20 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Batas Waktu (Deadline)</label>
-              <input className="themed-input" style={{ width: '100%' }} type="datetime-local" value={newDeadline} onChange={(e) => setNewDeadline(e.target.value)} />
+              <DateTimePicker mode="datetime-local" value={newDeadline} onChange={setNewDeadline} placeholder="Pilih deadline" />
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Tipe Penugasan</label>
-              <select value={assignType} onChange={(e) => setAssignType(e.target.value as any)} className="themed-input" style={{ width: '100%' }}>
-                <option value="ALL">Seluruh Anggota Kelas</option>
-                <option value="INDIVIDUAL">Anggota Tertentu (Perorangan)</option>
-                <option value="GROUP">Kelompok Tugas</option>
-              </select>
-            </div>
+            <SelectOption label="Tipe Penugasan" value={assignType} onChange={v => setAssignType(v as any)} options={[
+              { value: 'ALL', label: 'Seluruh Anggota Kelas' },
+              { value: 'INDIVIDUAL', label: 'Anggota Tertentu (Perorangan)' },
+              { value: 'GROUP', label: 'Kelompok Tugas' },
+            ]} />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pertemuan (Sesi) (Opsional)</label>
-            <select value={sessionId} onChange={(e) => setSessionId(e.target.value)} className="themed-input" style={{ width: '100%' }}>
-              <option value="">-- Tanpa Pertemuan --</option>
-              {sessions.map((s) => (
-                <option key={s.id} value={s.id}>{s.title}</option>
-              ))}
-            </select>
-          </div>
+          <SelectOption label="Pertemuan (Sesi) (Opsional)" value={sessionId} onChange={v => setSessionId(v)} options={[
+            { value: '', label: '-- Tanpa Pertemuan --' },
+            ...sessions.map((s) => ({ value: s.id, label: s.title })),
+          ]} />
 
           {/* INDIVIDUAL SELECTION */}
           {assignType === 'INDIVIDUAL' && (
@@ -894,13 +878,10 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
           {/* GROUP SELECTION */}
           {assignType === 'GROUP' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pilih Kelompok Tugas</label>
-              <select value={taskGroupId} onChange={(e) => setTaskGroupId(e.target.value)} className="themed-input" style={{ width: '100%' }} required>
-                <option value="">-- Pilih Kelompok --</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name} ({g.members.length} anggota)</option>
-                ))}
-              </select>
+              <SelectOption label="Pilih Kelompok Tugas" value={taskGroupId} onChange={v => setTaskGroupId(v)} options={[
+                { value: '', label: '-- Pilih Kelompok --' },
+                ...groups.map((g) => ({ value: g.id, label: `${g.name} (${g.members.length} anggota)` })),
+              ]} />
             </div>
           )}
 
@@ -914,41 +895,30 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
       {/* EDIT TASK MODAL */}
       <Modal isOpen={showEditTask} onClose={() => setShowEditTask(false)} title="Edit Tugas" size="md">
         <form onSubmit={handleEditTask} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Judul Tugas</label>
-            <input className="themed-input" style={{ width: '100%' }} type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} required />
-          </div>
+          <TextInput label="Judul Tugas" value={editTitle} onChange={v => setEditTitle(v)} required />
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Deskripsi Soal / Petunjuk</label>
-            <textarea className="themed-textarea" style={{ width: '100%', height: '70px' }} value={editDesc} onChange={(e) => setEditDesc(e.target.value)} placeholder="Tulis instruksi pengerjaan tugas..." />
+            <TextArea value={editDesc} onChange={setEditDesc} placeholder="Tulis instruksi pengerjaan tugas..." rows={3} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Batas Waktu (Deadline)</label>
-              <input className="themed-input" style={{ width: '100%' }} type="datetime-local" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} />
+              <DateTimePicker mode="datetime-local" value={editDeadline} onChange={setEditDeadline} placeholder="Pilih deadline" />
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Tipe Penugasan</label>
-              <select value={editAssignType} onChange={(e) => setEditAssignType(e.target.value as any)} className="themed-input" style={{ width: '100%' }}>
-                <option value="ALL">Seluruh Anggota Kelas</option>
-                <option value="INDIVIDUAL">Anggota Tertentu (Perorangan)</option>
-                <option value="GROUP">Kelompok Tugas</option>
-              </select>
-            </div>
+            <SelectOption label="Tipe Penugasan" value={editAssignType} onChange={v => setEditAssignType(v as any)} options={[
+              { value: 'ALL', label: 'Seluruh Anggota Kelas' },
+              { value: 'INDIVIDUAL', label: 'Anggota Tertentu (Perorangan)' },
+              { value: 'GROUP', label: 'Kelompok Tugas' },
+            ]} />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pertemuan (Sesi) (Opsional)</label>
-            <select value={editSessionId} onChange={(e) => setEditSessionId(e.target.value)} className="themed-input" style={{ width: '100%' }}>
-              <option value="">-- Tanpa Pertemuan --</option>
-              {sessions.map((s) => (
-                <option key={s.id} value={s.id}>{s.title}</option>
-              ))}
-            </select>
-          </div>
+          <SelectOption label="Pertemuan (Sesi) (Opsional)" value={editSessionId} onChange={v => setEditSessionId(v)} options={[
+            { value: '', label: '-- Tanpa Pertemuan --' },
+            ...sessions.map((s) => ({ value: s.id, label: s.title })),
+          ]} />
 
           {editAssignType === 'INDIVIDUAL' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -966,13 +936,10 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
 
           {editAssignType === 'GROUP' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pilih Kelompok Tugas</label>
-              <select value={editTaskGroupId} onChange={(e) => setEditTaskGroupId(e.target.value)} className="themed-input" style={{ width: '100%' }} required>
-                <option value="">-- Pilih Kelompok --</option>
-                {groups.map((g) => (
-                  <option key={g.id} value={g.id}>{g.name} ({g.members.length} anggota)</option>
-                ))}
-              </select>
+              <SelectOption label="Pilih Kelompok Tugas" value={editTaskGroupId} onChange={v => setEditTaskGroupId(v)} options={[
+                { value: '', label: '-- Pilih Kelompok --' },
+                ...groups.map((g) => ({ value: g.id, label: `${g.name} (${g.members.length} anggota)` })),
+              ]} />
             </div>
           )}
 

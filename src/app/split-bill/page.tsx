@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Button, useToast, useConfirm, CurrencyInput, parseCurrency } from '@/components/ui';
+import { Button, useToast, useConfirm, CurrencyInput, TextInput, NumberInput, parseCurrency } from '@/components/ui';
 import {
   splitBillService,
   SplitBill,
@@ -344,7 +344,7 @@ export default function SplitBillPage() {
   const stats = selectedBill ? billStats(selectedBill) : null;
 
   return (
-    <AuthGuard>
+    <AuthGuard requiredFeature="split_bill">
       <div className="app-shell">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <div className="app-main">
@@ -536,8 +536,8 @@ export default function SplitBillPage() {
                   {/* Event name */}
                   <label className="sb-field">
                     <span className="sb-field__label">Nama acara</span>
-                    <input className="sb-input" placeholder="cth. Makan malam Sabtu, Nobar, Kosan…"
-                      value={eventName} onChange={e => setEventName(e.target.value)} />
+                    <TextInput placeholder="cth. Makan malam Sabtu, Nobar, Kosan…"
+                      value={eventName} onChange={v => setEventName(v)} />
                   </label>
 
                   {/* Split method toggle */}
@@ -570,12 +570,12 @@ export default function SplitBillPage() {
                     <div className="sb-items">
                       {items.map((item, i) => (
                         <div key={i} className="sb-item-row">
-                          <input className="sb-input sb-item-row__name" placeholder="Nama item" value={item.name}
-                            onChange={e => { const n = [...items]; n[i].name = e.target.value; setItems(n); }} />
+                          <TextInput className="sb-item-row__name" placeholder="Nama item" value={item.name}
+                            onChange={v => { const n = [...items]; n[i].name = v; setItems(n); }} />
                           <CurrencyInput placeholder="Harga" value={item.price}
                             onChange={v => { const n = [...items]; n[i].price = v; setItems(n); }} />
-                          <input className="sb-input sb-item-row__qty" placeholder="Qty" type="number" min="1" value={item.quantity}
-                            onChange={e => { const n = [...items]; n[i].quantity = e.target.value; setItems(n); }} />
+                          <NumberInput className="sb-item-row__qty" placeholder="Qty" min={1} value={item.quantity}
+                            onChange={v => { const n = [...items]; n[i].quantity = v; setItems(n); }} />
                           <button className="sb-remove" aria-label="Hapus item" disabled={items.length === 1}
                             onClick={() => setItems(items.filter((_, j) => j !== i))}><X size={16} /></button>
                         </div>
@@ -596,12 +596,12 @@ export default function SplitBillPage() {
                       {participants.map((p, i) => (
                         <div key={i} className="sb-party-row">
                           <Avatar name={p || '?'} size={32} />
-                          <input className="sb-input sb-party-row__name" placeholder="Nama peserta" value={p}
-                            onChange={e => { const n = [...participants]; n[i] = e.target.value; setParticipants(n); }} />
+                          <TextInput className="sb-party-row__name" placeholder="Nama peserta" value={p}
+                            onChange={v => { const n = [...participants]; n[i] = v; setParticipants(n); }} />
                           {splitMethod === 'percentage' && (
                             <div className="sb-pct-input">
-                              <input className="sb-input" type="number" min="0" max="100" placeholder="0" value={percentages[i] || ''}
-                                onChange={e => setPercentages({ ...percentages, [i]: e.target.value })} />
+                              <NumberInput placeholder="0" min={0} max={100} value={percentages[i] || ''}
+                                onChange={v => setPercentages({ ...percentages, [i]: v })} />
                               <span>%</span>
                             </div>
                           )}

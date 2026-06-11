@@ -12,6 +12,7 @@ import {
   CheckCircle2, ArrowRight, Shield, Loader2,
 } from 'lucide-react';
 import { useTheme } from '@/lib/ThemeContext';
+import { TextInput, PasswordInput } from '@/components/ui';
 
 const SIDE_FEATURES = [
   { icon: Brain, label: 'AI Summarizer', sub: 'Rangkum materi otomatis dengan AI', color: '#00D4FF' },
@@ -359,46 +360,12 @@ export default function AuthPage() {
             {/* Form */}
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {!isLogin && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, color: c.textSub }}>Nama Lengkap</label>
-                  <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)}
-                    placeholder="John Doe" required
-                    style={inputStyle}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = c.inputFocusBorder; e.currentTarget.style.boxShadow = `0 0 0 3px ${isDark ? 'rgba(0,212,255,0.08)' : 'rgba(0,150,200,0.08)'}`; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = c.inputBorder; e.currentTarget.style.boxShadow = 'none'; }}
-                  />
-                </div>
+                <TextInput label="Nama Lengkap" value={fullName} onChange={setFullName} placeholder="John Doe" required />
               )}
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: c.textSub }}>Email</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nama@email.com" required
-                  style={inputStyle}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = c.inputFocusBorder; e.currentTarget.style.boxShadow = `0 0 0 3px ${isDark ? 'rgba(0,212,255,0.08)' : 'rgba(0,150,200,0.08)'}`; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = c.inputBorder; e.currentTarget.style.boxShadow = 'none'; }}
-                />
-              </div>
+              <TextInput label="Email" type="email" value={email} onChange={setEmail} placeholder="nama@email.com" required />
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: c.textSub }}>Password</label>
-                <div style={{ position: 'relative' }}>
-                  <input type={showPassword ? 'text' : 'password'} value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••" required
-                    style={{ ...inputStyle, paddingRight: '2.5rem' }}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = c.inputFocusBorder; e.currentTarget.style.boxShadow = `0 0 0 3px ${isDark ? 'rgba(0,212,255,0.08)' : 'rgba(0,150,200,0.08)'}`; }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = c.inputBorder; e.currentTarget.style.boxShadow = 'none'; }}
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} style={{
-                    position: 'absolute', right: '0.65rem', top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', color: c.textMuted,
-                    padding: '0.25rem', display: 'flex', alignItems: 'center',
-                  }}>
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
+              <PasswordInput label="Password" value={password} onChange={setPassword} placeholder="••••••••" required />
 
               {/* Submit button */}
               <button type="submit" disabled={loading} style={{

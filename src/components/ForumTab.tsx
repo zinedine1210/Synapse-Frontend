@@ -6,7 +6,8 @@ import { io, Socket } from 'socket.io-client';
 import { forumService, ForumPost, ForumReply, ForumAttachment, ForumDiscussion } from '@/services/forumService';
 import { classService, CustomTab, CustomTabFile } from '@/services/classService';
 import { groupService } from '@/services/groupService';
-import { Button, Modal, useToast, useConfirm } from '@/components/ui';
+import { Button, Modal, useToast, useConfirm, TextInput, SelectOption, DatePicker, TimePicker, TextArea } from '@/components/ui';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
 import {
   Send, Pin, Trash2, Loader2, HelpCircle, Megaphone, MessagesSquare,
@@ -132,16 +133,17 @@ const parseContent = (
 export function ForumTab({ classId, userId, memberRole, permissions, sessions, tasks, onNavigate }: ForumTabProps) {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { hasFeature } = useFeatureAccess();
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
 
   const hasPerm = (perm: string) => memberRole === 'OWNER' || (permissions || []).includes(perm);
-  const canDiscussion = hasPerm('FORUM_DISCUSSION');
-  const canCanvas = hasPerm('CANVAS_MANAGE');
-  const canAnnouncement = hasPerm('FORUM_ANNOUNCEMENT');
-  const canReminder = hasPerm('FORUM_REMINDER');
-  const canPoll = hasPerm('FORUM_POLL');
+  const canDiscussion = hasPerm('FORUM_DISCUSSION') && hasFeature('forum_discussion');
+  const canCanvas = hasPerm('CANVAS_MANAGE') && hasFeature('canvas');
+  const canAnnouncement = hasPerm('FORUM_ANNOUNCEMENT') && hasFeature('forum_announcement');
+  const canReminder = hasPerm('FORUM_REMINDER') && hasFeature('forum_reminder');
+  const canPoll = hasPerm('FORUM_POLL') && hasFeature('forum_poll');
   const canPin = hasPerm('FORUM_PIN');
   const canDelete = hasPerm('FORUM_DELETE');
 
@@ -351,10 +353,10 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
     fetchDiscussions();
     classService.getClassMembers(classId).then(setClassMembers).catch(() => {});
     groupService.getClassGroups(classId).then(setDiscGroups).catch(() => {});
-    forumService.getUnreadCounts(classId).then(setUnreadCounts).catch(() => {});
+    if (hasFeature('unread_tracking')) forumService.getUnreadCounts(classId).then(setUnreadCounts).catch(() => {});
   }, [classId, fetchDiscussions]);
   useEffect(() => {
-    classService.getCustomTabs(classId, activeDiscussionId ?? null).then(setCustomTabs).catch(() => {});
+    if (hasFeature('class_custom_tabs')) classService.getCustomTabs(classId, activeDiscussionId ?? null).then(setCustomTabs).catch(() => {});
   }, [classId, activeDiscussionId]);
   useEffect(() => { if (!loading && posts.length > 0) scrollToBottom(false); }, [loading]);
   useEffect(() => { setDiscussionTab('chat'); }, [activeDiscussionId]);
@@ -822,11 +824,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
           </div>
           {/* Search discussions */}
           <div style={{ padding: '0.35rem 0.5rem', borderBottom: '1px solid var(--border-default)' }}>
-            <div style={{ position: 'relative' }}>
-              <Search size={12} style={{ position: 'absolute', left: '0.4rem', top: '50%', transform: 'translateY(-50%)', color: 'rgb(var(--text-muted))' }} />
-              <input className="themed-input" type="text" value={discSearch} onChange={(e) => setDiscSearch(e.target.value)} placeholder="Cari pembahasan..."
-                style={{ width: '100%', padding: '0.3rem 0.4rem 0.3rem 1.5rem', fontSize: '0.65rem', borderRadius: 'var(--radius-sm)' }} />
-            </div>
+            <TextInput value={discSearch} onChange={v => setDiscSearch(v)} placeholder="Cari pembahasan..." leftIcon={<Search size={12} />} />
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {/* Umum */}
@@ -839,7 +837,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
               fontWeight: (activeDiscussionId === null || unreadCounts['__umum__']) ? 600 : 400, fontSize: 'var(--font-sm)', transition: 'all 0.1s',
             }}>
               <Hash size={14} /> Umum
-              {unreadCounts['__umum__'] > 0 && (
+              {hasFeature('unread_tracking') && unreadCounts['__umum__'] > 0 && (
                 <span style={{ marginLeft: 'auto', background: 'rgb(var(--color-primary))', color: '#fff', borderRadius: '999px', padding: '0 0.35rem', fontSize: '0.55rem', fontWeight: 700, minWidth: 16, textAlign: 'center', lineHeight: '16px' }}>
                   {unreadCounts['__umum__']}
                 </span>
@@ -860,7 +858,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                     <Hash size={13} style={{ flexShrink: 0 }} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{disc.title}</span>
-                    {unread > 0 && (
+                    {hasFeature('unread_tracking') && unread > 0 && (
                       <span style={{ background: 'rgb(var(--color-primary))', color: '#fff', borderRadius: '999px', padding: '0 0.35rem', fontSize: '0.55rem', fontWeight: 700, minWidth: 16, textAlign: 'center', lineHeight: '16px', flexShrink: 0 }}>
                         {unread}
                       </span>
@@ -961,7 +959,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
         {showChatSearch && (
           <div style={{ padding: '0.35rem 0.75rem', borderBottom: '1px solid var(--border-default)', background: 'rgba(var(--color-primary) / 0.02)', display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
             <Search size={13} style={{ color: 'rgb(var(--text-muted))', flexShrink: 0 }} />
-            <input className="themed-input" type="text" value={chatSearch} onChange={(e) => setChatSearch(e.target.value)} placeholder="Cari pesan..." autoFocus style={{ flex: 1, padding: '0.25rem 0.5rem', fontSize: 'var(--font-sm)', borderRadius: 'var(--radius-sm)' }} />
+            <TextInput value={chatSearch} onChange={v => setChatSearch(v)} placeholder="Cari pesan..." autoFocus />
             {chatSearch && <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>{filteredPosts.length} hasil</span>}
             <button onClick={() => { setShowChatSearch(false); setChatSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.15rem' }}><X size={14} /></button>
           </div>
@@ -1483,9 +1481,9 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                     <Plus size={16} />
                   </button>
                   {/* File upload trigger */}
-                  <button onClick={() => fileInputRef.current?.click()} title="Lampiran (gambar/PDF)" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.3rem', display: 'flex' }}>
+                  {hasFeature('forum_file_upload') && <button onClick={() => fileInputRef.current?.click()} title="Lampiran (gambar/PDF)" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.3rem', display: 'flex' }}>
                     <Paperclip size={16} />
-                  </button>
+                  </button>}
                   <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,application/pdf" onChange={handleFileUpload} style={{ display: 'none' }} />
                   {/* Type dropdown menu (opens upward) */}
                   {showTypeMenu && (
@@ -1520,11 +1518,10 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                   </div>
                 )}
                 <form onSubmit={handleSendMessage} style={{ display: 'flex', flex: 1, gap: '0.35rem', alignItems: 'flex-end' }}>
-                  <textarea ref={inputRef} className="themed-textarea" value={messageText} onChange={(e) => handleInputChange(e.target.value)} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  <TextArea inputRef={inputRef} value={messageText} onChange={handleInputChange} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (messageText.trim() || pendingFile) handleSendMessage(e as any); } }}
                     placeholder={pendingFile ? 'Tambah pesan (opsional)...' : 'Tulis pesan... (ketik @ untuk tag)'} rows={1}
-                    style={{ flex: 1, borderRadius: '12px', padding: '0.55rem 0.85rem', fontSize: 'var(--font-sm)', resize: 'none', minHeight: '38px', maxHeight: '120px', overflow: 'auto', lineHeight: 1.5, fontFamily: 'inherit' }}
-                  />
+                    autoResize minHeight={38} maxHeight={120} resize="none" />
                   <button type="submit" disabled={(!messageText.trim() && !pendingFile) || isSending} style={{
                     width: 36, height: 36, borderRadius: '50%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                     background: (messageText.trim() || pendingFile) ? 'rgb(var(--color-primary))' : 'rgba(var(--color-primary) / 0.2)',
@@ -1614,14 +1611,14 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
         : specialCategory === 'POLL' ? 'Buat Voting' : 'Buat Pengingat'
       }>
         <form onSubmit={handleCreateSpecial} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-          <input className="themed-input" type="text" value={specialTitle} onChange={(e) => setSpecialTitle(e.target.value)} placeholder="Judul (opsional)" maxLength={200} />
-          <textarea className="themed-textarea" value={specialContent} onChange={(e) => setSpecialContent(e.target.value)} placeholder="Konten..." required maxLength={5000} rows={3} />
+          <TextInput value={specialTitle} onChange={v => setSpecialTitle(v)} placeholder="Judul (opsional)" />
+          <TextArea value={specialContent} onChange={setSpecialContent} placeholder="Konten..." required maxLength={5000} rows={3} />
           {specialCategory === 'POLL' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               <label style={{ fontSize: 'var(--font-xs)', fontWeight: 500 }}>Opsi Voting</label>
               {pollOptions.map((opt, i) => (
                 <div key={i} style={{ display: 'flex', gap: '0.3rem' }}>
-                  <input className="themed-input" type="text" value={opt} onChange={(e) => { const n = [...pollOptions]; n[i] = e.target.value; setPollOptions(n); }} placeholder={`Opsi ${i + 1}`} style={{ flex: 1 }} />
+                  <TextInput value={opt} onChange={v => { const n = [...pollOptions]; n[i] = v; setPollOptions(n); }} placeholder={`Opsi ${i + 1}`} />
                   {pollOptions.length > 2 && <button type="button" onClick={() => setPollOptions(pollOptions.filter((_, j) => j !== i))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--color-error))', padding: '0.2rem' }}><X size={12} /></button>}
                 </div>
               ))}
@@ -1638,38 +1635,43 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: 'var(--font-xs)', fontWeight: 500 }}>Tanggal</label>
-                  <input className="themed-input" type="date" value={remindAt.split('T')[0] || ''} onChange={(e) => { const time = remindAt.split('T')[1] || '08:00'; setRemindAt(`${e.target.value}T${time}`); }} required style={{ marginTop: '0.2rem', width: '100%' }} />
+                  <DatePicker
+                    label="Tanggal"
+                    value={remindAt.split('T')[0] || ''}
+                    onChange={(v) => { const time = remindAt.split('T')[1] || '08:00'; setRemindAt(`${v}T${time}`); }}
+                    required
+                  />
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ fontSize: 'var(--font-xs)', fontWeight: 500 }}>Waktu</label>
-                  <input className="themed-input" type="time" value={remindAt.split('T')[1] || ''} onChange={(e) => { const date = remindAt.split('T')[0] || new Date().toISOString().split('T')[0]; setRemindAt(`${date}T${e.target.value}`); }} required style={{ marginTop: '0.2rem', width: '100%' }} />
+                  <TimePicker
+                    label="Waktu"
+                    value={remindAt.split('T')[1] || ''}
+                    onChange={(v) => { const date = remindAt.split('T')[0] || new Date().toISOString().split('T')[0]; setRemindAt(`${date}T${v}`); }}
+                    required
+                  />
                 </div>
               </div>
               <div>
-                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 500 }}>Konteks</label>
-                <select className="themed-input" value={reminderContext} onChange={(e) => { setReminderContext(e.target.value as any); setReminderContextId(''); }} style={{ marginTop: '0.2rem', width: '100%' }}>
-                  <option value="general">Umum</option>
-                  <option value="task">Tugas</option>
-                  <option value="session">Pertemuan</option>
-                </select>
+                <SelectOption label="Konteks" value={reminderContext} onChange={v => { setReminderContext(v as any); setReminderContextId(''); }} options={[
+                  { value: 'general', label: 'Umum' },
+                  { value: 'task', label: 'Tugas' },
+                  { value: 'session', label: 'Pertemuan' },
+                ]} />
               </div>
               {reminderContext === 'task' && tasks && tasks.length > 0 && (
                 <div>
-                  <label style={{ fontSize: 'var(--font-xs)', fontWeight: 500 }}>Pilih Tugas</label>
-                  <select className="themed-input" value={reminderContextId} onChange={(e) => setReminderContextId(e.target.value)} style={{ marginTop: '0.2rem', width: '100%' }}>
-                    <option value="">-- Pilih Tugas --</option>
-                    {tasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-                  </select>
+                  <SelectOption label="Pilih Tugas" value={reminderContextId} onChange={v => setReminderContextId(v)} options={[
+                    { value: '', label: '-- Pilih Tugas --' },
+                    ...tasks.map(t => ({ value: t.id, label: t.title })),
+                  ]} />
                 </div>
               )}
               {reminderContext === 'session' && sessions && sessions.length > 0 && (
                 <div>
-                  <label style={{ fontSize: 'var(--font-xs)', fontWeight: 500 }}>Pilih Pertemuan</label>
-                  <select className="themed-input" value={reminderContextId} onChange={(e) => setReminderContextId(e.target.value)} style={{ marginTop: '0.2rem', width: '100%' }}>
-                    <option value="">-- Pilih Pertemuan --</option>
-                    {sessions.map(s => <option key={s.id} value={s.id}>Pertemuan {s.sequence}: {s.title}</option>)}
-                  </select>
+                  <SelectOption label="Pilih Pertemuan" value={reminderContextId} onChange={v => setReminderContextId(v)} options={[
+                    { value: '', label: '-- Pilih Pertemuan --' },
+                    ...sessions.map(s => ({ value: s.id, label: `Pertemuan ${s.sequence}: ${s.title}` })),
+                  ]} />
                 </div>
               )}
             </div>
@@ -1684,49 +1686,35 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
       {/* Create Discussion Modal */}
       <Modal isOpen={showCreateDiscussion} onClose={() => setShowCreateDiscussion(false)} title="Buat Pembahasan Baru" size="md">
         <form onSubmit={handleCreateDiscussion} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Judul Pembahasan</label>
-            <input className="themed-input" type="text" value={newDiscTitle} onChange={(e) => setNewDiscTitle(e.target.value)} placeholder="Misal: Tugas Bab 3, Persiapan UTS" required maxLength={100} autoFocus />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Deskripsi (Opsional)</label>
-            <textarea className="themed-textarea" value={newDiscDesc} onChange={(e) => setNewDiscDesc(e.target.value)} placeholder="Konteks atau penjelasan..." maxLength={2000} rows={2} />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Konteks Pembahasan</label>
-            <select className="themed-input" value={newDiscContext} onChange={(e) => { setNewDiscContext(e.target.value as any); setNewDiscTaskId(''); setNewDiscSessionId(''); }}>
-              <option value="general">Umum</option>
-              <option value="task">Tugas</option>
-              <option value="session">Pertemuan</option>
-            </select>
-          </div>
+          <TextInput label="Judul Pembahasan" value={newDiscTitle} onChange={v => setNewDiscTitle(v)} placeholder="Misal: Tugas Bab 3, Persiapan UTS" required autoFocus />
+            <TextArea label="Deskripsi (Opsional)" value={newDiscDesc} onChange={setNewDiscDesc} placeholder="Konteks atau penjelasan..." maxLength={2000} rows={2} />
+          <SelectOption label="Konteks Pembahasan" value={newDiscContext} onChange={v => { setNewDiscContext(v as any); setNewDiscTaskId(''); setNewDiscSessionId(''); }} options={[
+            { value: 'general', label: 'Umum' },
+            { value: 'task', label: 'Tugas' },
+            { value: 'session', label: 'Pertemuan' },
+          ]} />
           {newDiscContext === 'task' && tasks && tasks.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Pilih Tugas (Opsional)</label>
-              <select className="themed-input" value={newDiscTaskId} onChange={(e) => setNewDiscTaskId(e.target.value)}>
-                <option value="">-- Tidak perlu memilih tugas spesifik --</option>
-                {tasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-              </select>
+              <SelectOption label="Pilih Tugas (Opsional)" value={newDiscTaskId} onChange={v => setNewDiscTaskId(v)} options={[
+                { value: '', label: '-- Tidak perlu memilih tugas spesifik --' },
+                ...tasks.map(t => ({ value: t.id, label: t.title })),
+              ]} />
             </div>
           )}
           {newDiscContext === 'session' && sessions && sessions.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Pilih Pertemuan (Opsional)</label>
-              <select className="themed-input" value={newDiscSessionId} onChange={(e) => setNewDiscSessionId(e.target.value)}>
-                <option value="">-- Tidak perlu memilih pertemuan spesifik --</option>
-                {sessions.map(s => <option key={s.id} value={s.id}>Pertemuan {s.sequence}: {s.title}</option>)}
-              </select>
+              <SelectOption label="Pilih Pertemuan (Opsional)" value={newDiscSessionId} onChange={v => setNewDiscSessionId(v)} options={[
+                { value: '', label: '-- Tidak perlu memilih pertemuan spesifik --' },
+                ...sessions.map(s => ({ value: s.id, label: `Pertemuan ${s.sequence}: ${s.title}` })),
+              ]} />
             </div>
           )}
           {/* Member Assignment */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Akses Pembahasan</label>
-            <select className="themed-input" value={discAssignType} onChange={(e) => { setDiscAssignType(e.target.value as any); setDiscAssignedUserIds([]); setDiscAssignedGroupId(''); }}>
-              <option value="ALL">Semua Anggota</option>
-              <option value="INDIVIDUAL">Pilih Anggota Manual</option>
-              <option value="GROUP">Kelompok</option>
-            </select>
-          </div>
+          <SelectOption label="Akses Pembahasan" value={discAssignType} onChange={v => { setDiscAssignType(v as any); setDiscAssignedUserIds([]); setDiscAssignedGroupId(''); }} options={[
+            { value: 'ALL', label: 'Semua Anggota' },
+            { value: 'INDIVIDUAL', label: 'Pilih Anggota Manual' },
+            { value: 'GROUP', label: 'Kelompok' },
+          ]} />
           {discAssignType === 'INDIVIDUAL' && classMembers.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Pilih Anggota ({discAssignedUserIds.length} dipilih)</label>
@@ -1742,11 +1730,10 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
           )}
           {discAssignType === 'GROUP' && discGroups.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Pilih Kelompok</label>
-              <select className="themed-input" value={discAssignedGroupId} onChange={(e) => setDiscAssignedGroupId(e.target.value)}>
-                <option value="">-- Pilih Kelompok --</option>
-                {discGroups.map((g: any) => <option key={g.id} value={g.id}>{g.name} ({g.members?.length || 0} anggota)</option>)}
-              </select>
+              <SelectOption label="Pilih Kelompok" value={discAssignedGroupId} onChange={v => setDiscAssignedGroupId(v)} options={[
+                { value: '', label: '-- Pilih Kelompok --' },
+                ...discGroups.map((g: any) => ({ value: g.id, label: `${g.name} (${g.members?.length || 0} anggota)` })),
+              ]} />
             </div>
           )}
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -1759,23 +1746,14 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
       {/* Edit Discussion Modal */}
       <Modal isOpen={!!editingDiscussion} onClose={() => setEditingDiscussion(null)} title="Edit Pembahasan" size="md">
         <form onSubmit={handleEditDiscussion} style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Judul Pembahasan</label>
-            <input className="themed-input" type="text" value={editDiscTitle} onChange={(e) => setEditDiscTitle(e.target.value)} required maxLength={100} autoFocus />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Deskripsi</label>
-            <textarea className="themed-textarea" value={editDiscDesc} onChange={(e) => setEditDiscDesc(e.target.value)} placeholder="Tambahkan deskripsi..." maxLength={2000} rows={3} />
-          </div>
+          <TextInput label="Judul Pembahasan" value={editDiscTitle} onChange={v => setEditDiscTitle(v)} required autoFocus />
+            <TextArea label="Deskripsi" value={editDiscDesc} onChange={setEditDiscDesc} placeholder="Tambahkan deskripsi..." maxLength={2000} rows={3} />
           {/* Member Assignment */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Akses Pembahasan</label>
-            <select className="themed-input" value={editDiscAssignType} onChange={(e) => { setEditDiscAssignType(e.target.value as any); setEditDiscAssignedUserIds([]); setEditDiscAssignedGroupId(''); }}>
-              <option value="ALL">Semua Anggota</option>
-              <option value="INDIVIDUAL">Pilih Anggota Manual</option>
-              <option value="GROUP">Kelompok</option>
-            </select>
-          </div>
+          <SelectOption label="Akses Pembahasan" value={editDiscAssignType} onChange={v => { setEditDiscAssignType(v as any); setEditDiscAssignedUserIds([]); setEditDiscAssignedGroupId(''); }} options={[
+            { value: 'ALL', label: 'Semua Anggota' },
+            { value: 'INDIVIDUAL', label: 'Pilih Anggota Manual' },
+            { value: 'GROUP', label: 'Kelompok' },
+          ]} />
           {editDiscAssignType === 'INDIVIDUAL' && classMembers.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Pilih Anggota ({editDiscAssignedUserIds.length} dipilih)</label>
@@ -1791,11 +1769,10 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
           )}
           {editDiscAssignType === 'GROUP' && discGroups.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>Pilih Kelompok</label>
-              <select className="themed-input" value={editDiscAssignedGroupId} onChange={(e) => setEditDiscAssignedGroupId(e.target.value)}>
-                <option value="">-- Pilih Kelompok --</option>
-                {discGroups.map((g: any) => <option key={g.id} value={g.id}>{g.name} ({g.members?.length || 0} anggota)</option>)}
-              </select>
+              <SelectOption label="Pilih Kelompok" value={editDiscAssignedGroupId} onChange={v => setEditDiscAssignedGroupId(v)} options={[
+                { value: '', label: '-- Pilih Kelompok --' },
+                ...discGroups.map((g: any) => ({ value: g.id, label: `${g.name} (${g.members?.length || 0} anggota)` })),
+              ]} />
             </div>
           )}
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -1844,10 +1821,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
       {/* Create tab modal */}
       <Modal isOpen={showCreateTabModal} onClose={() => setShowCreateTabModal(false)} title="Buat Canvas Baru">
         <form onSubmit={(e) => { e.preventDefault(); handleCreateTab(); }} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div>
-            <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))', marginBottom: '0.3rem', display: 'block' }}>Nama</label>
-            <input className="themed-input" type="text" value={newTabName} onChange={(e) => setNewTabName(e.target.value)} placeholder="Contoh: Environment, Resources, Catatan..." autoFocus style={{ width: '100%' }} />
-          </div>
+          <TextInput label="Nama" value={newTabName} onChange={setNewTabName} placeholder="Contoh: Environment, Resources, Catatan..." autoFocus />
           <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>Canvas berisi editor teks dan lampiran file. Semua anggota kelas bisa melihat dan mengedit.</p>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <Button variant="ghost" onClick={() => setShowCreateTabModal(false)}>Batal</Button>
@@ -1859,10 +1833,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
       {/* Rename tab modal */}
       <Modal isOpen={!!renamingTabId} onClose={() => setRenamingTabId(null)} title="Rename Canvas">
         <form onSubmit={(e) => { e.preventDefault(); if (renamingTabId) handleRenameTab(renamingTabId); }} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <div>
-            <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))', marginBottom: '0.3rem', display: 'block' }}>Nama Baru</label>
-            <input className="themed-input" type="text" value={renameValue} onChange={(e) => setRenameValue(e.target.value)} autoFocus style={{ width: '100%' }} />
-          </div>
+          <TextInput label="Nama Baru" value={renameValue} onChange={setRenameValue} autoFocus />
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <Button variant="ghost" onClick={() => setRenamingTabId(null)}>Batal</Button>
             <Button type="submit" disabled={!renameValue.trim()}>Simpan</Button>

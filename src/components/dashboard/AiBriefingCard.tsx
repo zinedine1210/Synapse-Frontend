@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { RefreshCw, Lightbulb, Bell, Loader2, ChevronRight } from 'lucide-react';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { SiBawelAvatar } from '@/components/shared/SiBawelAvatar';
 import type { AiBriefingResponse, AiBriefingSection } from '@/services/dashboardService';
 import {
@@ -77,6 +78,7 @@ function detectSectionType(section: AiBriefingSection): BriefingSectionType | nu
  */
 export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefingCardProps) {
   const router = useRouter();
+  const { hasFeature } = useFeatureAccess();
   const { greeting, headline, sections, suggestions, reminders, motivation, data } = briefing;
 
   const hasSuggestions = suggestions && suggestions.length > 0;
@@ -203,7 +205,7 @@ export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefing
         )}
 
         {/* Suggestions + Reminders */}
-        {(hasSuggestions || hasReminders) && (
+        {(hasSuggestions || hasReminders) && hasFeature('ai_briefing_tips') && (
           <div className="ai-briefing-blocks">
             {hasSuggestions && (
               <div className="ai-briefing-block ai-briefing-block--suggestions">

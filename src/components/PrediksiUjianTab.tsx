@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Button, Modal, useToast, AIPhotoInput, useConfirm } from './ui';
+import { Card, Button, Modal, useToast, AIPhotoInput, useConfirm, TextInput, SelectOption, NumberInput, TextArea } from './ui';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { ExamPrediction, ExamPredictionQuestion, examPredictionService } from '@/services/examPredictionService';
 import { classService } from '@/services/classService';
 import { Session } from '@/models/Class';
@@ -16,6 +17,7 @@ interface PrediksiUjianTabProps {
 export function PrediksiUjianTab({ classId, memberRole = 'MEMBER', permissions }: PrediksiUjianTabProps) {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { hasFeature } = useFeatureAccess();
   const isOwner = memberRole === 'OWNER' || (permissions || []).includes('PREDICTION_MANAGE');
 
   const [predictions, setPredictions] = useState<ExamPrediction[]>([]);
@@ -354,20 +356,14 @@ export function PrediksiUjianTab({ classId, memberRole = 'MEMBER', permissions }
       <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Buat Prediksi Ujian Baru" size="lg">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', padding: '0.25rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-default)' }}>
-            <button onClick={() => setSourceType('AI')} style={{ flex: 1, padding: '0.5rem', fontSize: 'var(--font-sm)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'var(--transition-fast)', background: sourceType === 'AI' ? 'rgba(99, 102, 241, 0.15)' : 'transparent', color: sourceType === 'AI' ? '#818cf8' : 'rgb(var(--text-muted))', fontWeight: 600 }}>🤖 AI Generate</button>
-            <button onClick={() => setSourceType('KISI_KISI')} style={{ flex: 1, padding: '0.5rem', fontSize: 'var(--font-sm)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'var(--transition-fast)', background: sourceType === 'KISI_KISI' ? 'rgba(99, 102, 241, 0.15)' : 'transparent', color: sourceType === 'KISI_KISI' ? '#818cf8' : 'rgb(var(--text-muted))', fontWeight: 600 }}>📷 Upload Foto</button>
-            <button onClick={() => setSourceType('MANUAL')} style={{ flex: 1, padding: '0.5rem', fontSize: 'var(--font-sm)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'var(--transition-fast)', background: sourceType === 'MANUAL' ? 'rgba(99, 102, 241, 0.15)' : 'transparent', color: sourceType === 'MANUAL' ? '#818cf8' : 'rgb(var(--text-muted))', fontWeight: 600 }}>✏️ Manual</button>
+            {hasFeature('exam_prediction') && <button onClick={() => setSourceType('AI')} style={{ flex: 1, padding: '0.5rem', fontSize: 'var(--font-sm)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'var(--transition-fast)', background: sourceType === 'AI' ? 'rgba(99, 102, 241, 0.15)' : 'transparent', color: sourceType === 'AI' ? '#818cf8' : 'rgb(var(--text-muted))', fontWeight: 600 }}>🤖 AI Generate</button>}
+            {hasFeature('exam_kisi_kisi') && <button onClick={() => setSourceType('KISI_KISI')} style={{ flex: 1, padding: '0.5rem', fontSize: 'var(--font-sm)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'var(--transition-fast)', background: sourceType === 'KISI_KISI' ? 'rgba(99, 102, 241, 0.15)' : 'transparent', color: sourceType === 'KISI_KISI' ? '#818cf8' : 'rgb(var(--text-muted))', fontWeight: 600 }}>📷 Upload Foto</button>}
+            {hasFeature('exam_manual') && <button onClick={() => setSourceType('MANUAL')} style={{ flex: 1, padding: '0.5rem', fontSize: 'var(--font-sm)', border: 'none', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'var(--transition-fast)', background: sourceType === 'MANUAL' ? 'rgba(99, 102, 241, 0.15)' : 'transparent', color: sourceType === 'MANUAL' ? '#818cf8' : 'rgb(var(--text-muted))', fontWeight: 600 }}>✏️ Manual</button>}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Judul Prediksi</label>
-            <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. UTS Kalkulus 1, Kisi-kisi Dosen UAS" className="themed-input" style={{ width: '100%' }} />
-          </div>
+            <TextInput label="Judul Prediksi" value={title} onChange={v => setTitle(v)} placeholder="e.g. UTS Kalkulus 1, Kisi-kisi Dosen UAS" />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Deskripsi / Catatan Tambahan</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g. Mencakup bab pertidaksamaan hingga turunan fungsi" className="themed-textarea" style={{ width: '100%', height: '70px' }} />
-          </div>
+            <TextArea label="Deskripsi / Catatan Tambahan" value={description} onChange={setDescription} placeholder="e.g. Mencakup bab pertidaksamaan hingga turunan fungsi" rows={3} />
 
           {sourceType === 'AI' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -391,25 +387,16 @@ export function PrediksiUjianTab({ classId, memberRole = 'MEMBER', permissions }
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                  <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Format Soal</label>
-                  <select value={examType} onChange={e => setExamType(e.target.value as any)} className="themed-input" style={{ width: '100%' }}>
-                    <option value="MIXED">Campuran</option>
-                    <option value="MULTIPLE_CHOICE">Pilihan Ganda</option>
-                    <option value="ESSAY">Essay</option>
-                  </select>
-                </div>
+                  <SelectOption label="Format Soal" value={examType} onChange={v => setExamType(v as any)} options={[
+                    { value: 'MIXED', label: 'Campuran' },
+                    { value: 'MULTIPLE_CHOICE', label: 'Pilihan Ganda' },
+                    { value: 'ESSAY', label: 'Essay' },
+                  ]} />
                 {examType !== 'ESSAY' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Jumlah PG</label>
-                    <input type="number" min={1} value={countPG} onChange={e => setCountPG(parseInt(e.target.value))} className="themed-input" style={{ width: '100%' }} />
-                  </div>
+                    <NumberInput label="Jumlah PG" value={String(countPG)} onChange={v => setCountPG(parseInt(v) || 1)} min={1} />
                 )}
                 {examType !== 'MULTIPLE_CHOICE' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Jumlah Essay</label>
-                    <input type="number" min={1} value={countEssay} onChange={e => setCountEssay(parseInt(e.target.value))} className="themed-input" style={{ width: '100%' }} />
-                  </div>
+                    <NumberInput label="Jumlah Essay" value={String(countEssay)} onChange={v => setCountEssay(parseInt(v) || 1)} min={1} />
                 )}
               </div>
             </div>
@@ -432,12 +419,12 @@ export function PrediksiUjianTab({ classId, memberRole = 'MEMBER', permissions }
                 <div key={idx} style={{ padding: '0.75rem', background: 'rgba(0,0,0,0.15)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-lg)', display: 'flex', flexDirection: 'column', gap: '0.5rem', position: 'relative' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--color-primary))' }}>Soal #{idx + 1}</span>
-                    <select value={q.type} onChange={e => handleManualQuestionChange(idx, 'type', e.target.value)} className="themed-input" style={{ padding: '0.25rem 0.5rem', borderRadius: '6px', fontSize: '0.7rem' }}>
-                      <option value="MULTIPLE_CHOICE">Pilihan Ganda</option>
-                      <option value="ESSAY">Essay</option>
-                    </select>
+                    <SelectOption value={q.type} onChange={v => handleManualQuestionChange(idx, 'type', v)} options={[
+                      { value: 'MULTIPLE_CHOICE', label: 'Pilihan Ganda' },
+                      { value: 'ESSAY', label: 'Essay' },
+                    ]} />
                   </div>
-                  <input type="text" value={q.question} onChange={e => handleManualQuestionChange(idx, 'question', e.target.value)} placeholder="Tulis pertanyaan soal..." className="themed-input" style={{ fontSize: 'var(--font-xs)', width: '100%' }} />
+                  <TextInput value={q.question} onChange={v => handleManualQuestionChange(idx, 'question', v)} placeholder="Tulis pertanyaan soal..." />
                   
                   {q.type === 'MULTIPLE_CHOICE' && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
@@ -453,8 +440,8 @@ export function PrediksiUjianTab({ classId, memberRole = 'MEMBER', permissions }
                     </div>
                   )}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
-                    <input type="text" value={q.answerKey || ''} onChange={e => handleManualQuestionChange(idx, 'answerKey', e.target.value)} placeholder="Kunci/Acuan Jawaban..." className="themed-input" style={{ fontSize: '0.7rem', width: '100%' }} />
-                    <input type="text" value={q.explanation || ''} onChange={e => handleManualQuestionChange(idx, 'explanation', e.target.value)} placeholder="Pembahasan / Alasan..." className="themed-input" style={{ fontSize: '0.7rem', width: '100%' }} />
+                    <TextInput value={q.answerKey || ''} onChange={v => handleManualQuestionChange(idx, 'answerKey', v)} placeholder="Kunci/Acuan Jawaban..." />
+                    <TextInput value={q.explanation || ''} onChange={v => handleManualQuestionChange(idx, 'explanation', v)} placeholder="Pembahasan / Alasan..." />
                   </div>
                 </div>
               ))}
@@ -541,7 +528,7 @@ export function PrediksiUjianTab({ classId, memberRole = 'MEMBER', permissions }
 
                 {q.type === 'ESSAY' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <textarea value={userAnswers[q.id] || ''} onChange={e => !showAnswers && setUserAnswers(prev => ({ ...prev, [q.id]: e.target.value }))} disabled={showAnswers} placeholder="Tulis jawaban latihan Anda di sini..." className="themed-textarea" style={{ width: '100%', height: '80px', fontSize: 'var(--font-xs)' }} />
+                    <TextArea value={userAnswers[q.id] || ''} onChange={v => !showAnswers && setUserAnswers(prev => ({ ...prev, [q.id]: v }))} disabled={showAnswers} placeholder="Tulis jawaban latihan Anda di sini..." rows={3} />
                   </div>
                 )}
 

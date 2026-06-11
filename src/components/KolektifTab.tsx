@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { kolektifService, Kolektif, KolektifTransaction } from '@/services/kolektifService';
 import { classService } from '@/services/classService';
-import { Card, Button, Modal, useToast, useConfirm } from '@/components/ui';
+import { Card, Button, Modal, useToast, useConfirm, TextInput, SelectOption, CurrencyInput, TextArea } from '@/components/ui';
 import {
   Wallet, Plus, ArrowDownLeft, ArrowUpRight, Trash2, Loader2, Target, Users, Search, ListFilter, ChevronRight
 } from 'lucide-react';
@@ -521,27 +521,16 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
               </button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Nominal Uang</label>
-              <input className="themed-input" style={{ width: '100%', fontWeight: 700 }} type="text" value={txAmount} onChange={(e) => setTxAmount(formatCurrencyInput(e.target.value))} placeholder="Rp 50.000" required />
-            </div>
+              <CurrencyInput label="Nominal Uang" value={txAmount.replace(/\D/g, '')} onChange={v => setTxAmount(v)} required />
 
             {canTransaction && txType === 'IN' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Atas Nama Anggota (Opsional)</label>
-                <select value={txTargetUserId} onChange={(e) => setTxTargetUserId(e.target.value)} className="themed-input" style={{ width: '100%' }}>
-                  <option value="">Diri Sendiri</option>
-                  {members.map((m) => (
-                    <option key={m.userId} value={m.userId}>{m.user.fullName}</option>
-                  ))}
-                </select>
-              </div>
+              <SelectOption label="Atas Nama Anggota (Opsional)" value={txTargetUserId} onChange={v => setTxTargetUserId(v)} options={[
+                { value: '', label: 'Diri Sendiri' },
+                ...members.map((m) => ({ value: m.userId, label: m.user.fullName })),
+              ]} />
             )}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Keterangan Transaksi</label>
-              <input className="themed-input" style={{ width: '100%' }} type="text" value={txDesc} onChange={(e) => setTxDesc(e.target.value)} placeholder="e.g. Bayar Kas Minggu 1, Beli Spidol" />
-            </div>
+            <TextInput label="Keterangan Transaksi" value={txDesc} onChange={v => setTxDesc(v)} placeholder="e.g. Bayar Kas Minggu 1, Beli Spidol" />
 
             <div style={{ display: 'flex', justifyContent: 'end', gap: '0.5rem', borderTop: '1px solid var(--border-default)', paddingTop: '1rem', marginTop: '0.5rem' }}>
               <Button type="button" variant="outline" style={{ borderRadius: 'var(--radius-md)' }} onClick={() => setShowAddTx(false)}>Batal</Button>
@@ -553,10 +542,7 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
         {/* UPDATE TARGET PERSON MODAL */}
         <Modal isOpen={showUpdateTarget} onClose={() => setShowUpdateTarget(false)} title="Atur Target Iuran Per Anggota" size="sm">
           <form onSubmit={handleUpdateTargetAmount} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Target Nominal</label>
-              <input className="themed-input" style={{ width: '100%', fontWeight: 700 }} type="text" value={updateTargetAmount} onChange={(e) => setUpdateTargetAmount(formatCurrencyInput(e.target.value))} placeholder="Rp 150.000" required />
-            </div>
+              <CurrencyInput label="Target Nominal" value={updateTargetAmount.replace(/\D/g, '')} onChange={v => setUpdateTargetAmount(v)} required />
 
             <div style={{ display: 'flex', justifyContent: 'end', gap: '0.5rem', borderTop: '1px solid var(--border-default)', paddingTop: '1rem', marginTop: '0.5rem' }}>
               <Button type="button" variant="outline" style={{ borderRadius: 'var(--radius-md)' }} onClick={() => setShowUpdateTarget(false)}>Batal</Button>
@@ -617,25 +603,17 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
       {/* CREATE FUND MODAL */}
       <Modal isOpen={showCreateFund} onClose={() => setShowCreateFund(false)} title="Buat Kas Kelas Baru" size="md">
         <form onSubmit={handleCreateFund} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Nama Kas / Iuran</label>
-            <input className="themed-input" style={{ width: '100%' }} type="text" value={newFundName} onChange={(e) => setNewFundName(e.target.value)} placeholder="e.g. Uang Kas Semester 5, Patungan Modul" required />
-          </div>
+            <TextInput label="Nama Kas / Iuran" value={newFundName} onChange={v => setNewFundName(v)} placeholder="e.g. Uang Kas Semester 5, Patungan Modul" required />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Keterangan / Tujuan</label>
-            <textarea className="themed-textarea" style={{ width: '100%', height: '70px' }} value={newFundDesc} onChange={(e) => setNewFundDesc(e.target.value)} placeholder="Tulis rincian penggunaan kas..." />
-          </div>
+            <TextArea label="Keterangan / Tujuan" value={newFundDesc} onChange={setNewFundDesc} placeholder="Tulis rincian penggunaan kas..." rows={3} />
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Target Kas (Opsional)</label>
-              <input className="themed-input" style={{ width: '100%', fontWeight: 600 }} type="text" value={newFundTarget} onChange={(e) => setNewFundTarget(formatCurrencyInput(e.target.value))} placeholder="Rp 5.000.000" />
+              <CurrencyInput label="Target Kas (Opsional)" value={newFundTarget.replace(/\D/g, '')} onChange={v => setNewFundTarget(v)} placeholder="5000000" />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Target Iuran Per Orang (Opsional)</label>
-              <input className="themed-input" style={{ width: '100%', fontWeight: 600 }} type="text" value={newFundTargetPerPerson} onChange={(e) => setNewFundTargetPerPerson(formatCurrencyInput(e.target.value))} placeholder="Rp 150.000" />
+              <CurrencyInput label="Target Iuran Per Orang (Opsional)" value={newFundTargetPerPerson.replace(/\D/g, '')} onChange={v => setNewFundTargetPerPerson(v)} placeholder="150000" />
             </div>
           </div>
 
@@ -686,27 +664,16 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Nominal Uang</label>
-            <input className="themed-input" style={{ width: '100%', fontWeight: 700 }} type="text" value={txAmount} onChange={(e) => setTxAmount(formatCurrencyInput(e.target.value))} placeholder="Rp 50.000" required />
-          </div>
+          <CurrencyInput label="Nominal Uang" value={txAmount.replace(/\D/g, '')} onChange={v => setTxAmount(v)} required />
 
           {canTransaction && txType === 'IN' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Atas Nama Anggota (Opsional)</label>
-              <select value={txTargetUserId} onChange={(e) => setTxTargetUserId(e.target.value)} className="themed-input" style={{ width: '100%' }}>
-                <option value="">Diri Sendiri</option>
-                {members.map((m) => (
-                  <option key={m.userId} value={m.userId}>{m.user.fullName}</option>
-                ))}
-              </select>
-            </div>
+            <SelectOption label="Atas Nama Anggota (Opsional)" value={txTargetUserId} onChange={v => setTxTargetUserId(v)} options={[
+              { value: '', label: 'Diri Sendiri' },
+              ...members.map((m) => ({ value: m.userId, label: m.user.fullName })),
+            ]} />
           )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Keterangan Transaksi</label>
-            <input className="themed-input" style={{ width: '100%' }} type="text" value={txDesc} onChange={(e) => setTxDesc(e.target.value)} placeholder="e.g. Bayar Kas Minggu 1, Beli Spidol" />
-          </div>
+          <TextInput label="Keterangan Transaksi" value={txDesc} onChange={v => setTxDesc(v)} placeholder="e.g. Bayar Kas Minggu 1, Beli Spidol" />
 
           <div style={{ display: 'flex', justifyContent: 'end', gap: '0.5rem', borderTop: '1px solid var(--border-default)', paddingTop: '1rem', marginTop: '0.5rem' }}>
             <Button type="button" variant="outline" style={{ borderRadius: 'var(--radius-md)' }} onClick={() => setShowAddTx(false)}>Batal</Button>
@@ -718,10 +685,7 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
       {/* UPDATE TARGET PERSON MODAL */}
       <Modal isOpen={showUpdateTarget} onClose={() => setShowUpdateTarget(false)} title="Atur Target Iuran Per Anggota" size="sm">
         <form onSubmit={handleUpdateTargetAmount} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-            <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Target Nominal</label>
-            <input className="themed-input" style={{ width: '100%', fontWeight: 700 }} type="text" value={updateTargetAmount} onChange={(e) => setUpdateTargetAmount(formatCurrencyInput(e.target.value))} placeholder="Rp 150.000" required />
-          </div>
+          <CurrencyInput label="Target Nominal" value={updateTargetAmount.replace(/\D/g, '')} onChange={v => setUpdateTargetAmount(v)} required />
 
           <div style={{ display: 'flex', justifyContent: 'end', gap: '0.5rem', borderTop: '1px solid var(--border-default)', paddingTop: '1rem', marginTop: '0.5rem' }}>
             <Button type="button" variant="outline" style={{ borderRadius: 'var(--radius-md)' }} onClick={() => setShowUpdateTarget(false)}>Batal</Button>

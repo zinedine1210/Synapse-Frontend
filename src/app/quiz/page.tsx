@@ -8,7 +8,7 @@ import { aiService } from '@/services/aiService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, Alert, useToast } from '@/components/ui';
+import { Card, Button, Alert, useToast, SelectOption } from '@/components/ui';
 import {
   GraduationCap,
   Sparkles,
@@ -278,54 +278,12 @@ export default function QuizPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     {/* Select Class */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(240, 240, 255, 0.8)' }}>
-                        Pilih Kelas Kuliah
-                      </label>
-                      <select
-                        value={selectedClassId}
-                        onChange={(e) => setSelectedClassId(e.target.value)}
-                        style={{
-                          padding: '0.75rem 1rem',
-                          borderRadius: '10px',
-                          background: 'rgba(255, 255, 255, 0.04)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
-                          color: 'white',
-                          fontSize: '0.9rem',
-                          outline: 'none',
-                        }}
-                      >
-                        {classes.map((cls) => (
-                          <option key={cls.id} value={cls.id} style={{ background: '#0a0f1e', color: 'white' }}>
-                            {cls.name}
-                          </option>
-                        ))}
-                      </select>
+                      <SelectOption label="Pilih Kelas Kuliah" value={selectedClassId} onChange={v => setSelectedClassId(v)} options={classes.map((cls) => ({ value: cls.id, label: cls.name }))} />
                     </div>
 
                     {/* Question Count */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(240, 240, 255, 0.8)' }}>
-                        Jumlah Soal
-                      </label>
-                      <select
-                        value={questionCount}
-                        onChange={(e) => setQuestionCount(Number(e.target.value))}
-                        style={{
-                          padding: '0.75rem 1rem',
-                          borderRadius: '10px',
-                          background: 'rgba(255, 255, 255, 0.04)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
-                          color: 'white',
-                          fontSize: '0.9rem',
-                          outline: 'none',
-                        }}
-                      >
-                        {[5, 10, 15, 20].map((n) => (
-                          <option key={n} value={n} style={{ background: '#0a0f1e', color: 'white' }}>
-                            {n} Soal Pilihan Ganda
-                          </option>
-                        ))}
-                      </select>
+                      <SelectOption label="Jumlah Soal" value={String(questionCount)} onChange={v => setQuestionCount(Number(v))} options={[5, 10, 15, 20].map((n) => ({ value: String(n), label: `${n} Soal Pilihan Ganda` }))} />
                     </div>
 
                     {/* Sessions Checklist */}

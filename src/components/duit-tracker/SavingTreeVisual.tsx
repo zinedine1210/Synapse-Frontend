@@ -186,6 +186,11 @@ function BloomingIllustration() {
       <circle cx="76" cy="42" r="3.5" fill="#f472b6" className="tree-anim-bloom tree-anim-bloom--7" />
       {/* Glow effect */}
       <circle cx="60" cy="55" r="42" fill="none" stroke="#fbbf24" strokeWidth="1.5" opacity="0.3" className="tree-anim-glow" />
+      {/* Sparkle particles */}
+      <circle cx="30" cy="35" r="2" fill="#fbbf24" opacity="0" className="tree-anim-sparkle" style={{ animationDelay: '0s', animationDuration: '2.5s' }} />
+      <circle cx="90" cy="40" r="1.5" fill="#f472b6" opacity="0" className="tree-anim-sparkle" style={{ animationDelay: '0.8s', animationDuration: '3s' }} />
+      <circle cx="48" cy="22" r="1.5" fill="#a78bfa" opacity="0" className="tree-anim-sparkle" style={{ animationDelay: '1.5s', animationDuration: '2.8s' }} />
+      <circle cx="75" cy="28" r="2" fill="#fbbf24" opacity="0" className="tree-anim-sparkle" style={{ animationDelay: '2s', animationDuration: '2.5s' }} />
     </svg>
   );
 }
@@ -381,6 +386,23 @@ export function SavingTreeVisual({ trees }: SavingTreeVisualProps) {
           }
         }
 
+        @keyframes treeSway {
+          0%, 100% { transform: rotate(0deg); }
+          25% { transform: rotate(1.5deg); }
+          75% { transform: rotate(-1.5deg); }
+        }
+
+        @keyframes treeLeafFall {
+          0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+          50% { transform: translateY(20px) rotate(45deg); opacity: 0.6; }
+          100% { transform: translateY(40px) rotate(90deg); opacity: 0; }
+        }
+
+        @keyframes treeSparkle {
+          0%, 100% { opacity: 0; transform: scale(0); }
+          50% { opacity: 1; transform: scale(1); }
+        }
+
         @keyframes progressFillGrow {
           from {
             width: 0;
@@ -392,6 +414,8 @@ export function SavingTreeVisual({ trees }: SavingTreeVisualProps) {
         .tree-svg {
           width: 100%;
           height: 100%;
+          transform-origin: center bottom;
+          animation: treeSway 4s ease-in-out infinite;
         }
 
         .tree-anim-seed {
@@ -432,6 +456,10 @@ export function SavingTreeVisual({ trees }: SavingTreeVisualProps) {
           animation: treeGlow 3s ease-in-out infinite;
         }
 
+        .tree-anim-sparkle {
+          animation: treeSparkle 2.5s ease-in-out infinite;
+        }
+
         /* ─── Reduced motion ─────────────────────────────────────── */
 
         @media (prefers-reduced-motion: reduce) {
@@ -439,7 +467,9 @@ export function SavingTreeVisual({ trees }: SavingTreeVisualProps) {
           .tree-anim-branch,
           .tree-anim-leaf,
           .tree-anim-bloom,
-          .tree-anim-glow {
+          .tree-anim-glow,
+          .tree-anim-sparkle,
+          .tree-svg {
             animation: none !important;
             transform: none;
             opacity: 1;

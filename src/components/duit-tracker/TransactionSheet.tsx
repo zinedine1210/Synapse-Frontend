@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { BottomSheet, Button, CurrencyInput, DateTimePicker, useToast } from '@/components/ui';
+import { BottomSheet, Button, CurrencyInput, TextInput, DateTimePicker, useToast } from '@/components/ui';
 import { duitTrackerService, Transaction } from '@/services/duitTrackerService';
 import { Loader2, Sparkles, Camera, Send } from 'lucide-react';
 
@@ -206,17 +206,13 @@ export function TransactionSheet({
         </div>
 
         {/* Label */}
-        <div>
-          <label className="tx-sheet__label">Keterangan</label>
-          <input
-            className="input"
-            placeholder="Kopi, makan siang, gajian..."
-            value={form.label}
-            onChange={(e) => setForm({ ...form, label: e.target.value })}
-            required
-            style={{ borderRadius: 10, padding: '11px 14px' }}
-          />
-        </div>
+        <TextInput
+          label="Keterangan"
+          placeholder="Kopi, makan siang, gajian..."
+          value={form.label}
+          onChange={(v) => setForm({ ...form, label: v })}
+          required
+        />
 
         {/* Category chips */}
         <div>
@@ -248,13 +244,11 @@ export function TransactionSheet({
         {/* Note + date row */}
         <div className="tx-sheet__row">
           <div style={{ flex: 1, minWidth: 0 }}>
-            <label className="tx-sheet__label">Catatan (opsional)</label>
-            <input
-              className="input"
+            <TextInput
+              label="Catatan (opsional)"
               placeholder="Detail tambahan..."
               value={form.note}
-              onChange={(e) => setForm({ ...form, note: e.target.value })}
-              style={{ borderRadius: 10, padding: '11px 14px' }}
+              onChange={(v) => setForm({ ...form, note: v })}
             />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>

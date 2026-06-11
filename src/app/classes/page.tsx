@@ -9,7 +9,7 @@ import { classService } from '@/services/classService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, Alert, Modal, useConfirm, useToast, PasswordInput } from '@/components/ui';
+import { Card, Button, Alert, Modal, useConfirm, useToast, PasswordInput, TextInput, TextArea } from '@/components/ui';
 import { Plus, BookOpen, Trash2, Search, Users, ChevronRight, LogIn, Calendar, MapPin, GraduationCap } from 'lucide-react';
 
 export default function ClassesPage() {
@@ -78,7 +78,7 @@ export default function ClassesPage() {
   );
 
   return (
-    <AuthGuard>
+    <AuthGuard requiredFeature="class">
       <div className="app-shell">
         <Sidebar userRole={user?.role} collapsed={sidebarCollapsed} onToggle={setSidebarCollapsed} />
 
@@ -107,16 +107,8 @@ export default function ClassesPage() {
             {error && <div style={{ marginBottom: '1rem' }}><Alert type="error" message={error} /></div>}
 
             {/* Search */}
-            <div style={{ position: 'relative', marginBottom: '1.25rem' }}>
-              <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'rgb(var(--text-muted))' }} />
-              <input
-                type="text"
-                className="themed-input classes-search"
-                placeholder="Cari kelas..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: '100%', paddingLeft: '2.25rem', maxWidth: 360 }}
-              />
+            <div style={{ marginBottom: '1.25rem', maxWidth: 360 }}>
+              <TextInput placeholder="Cari kelas..." value={searchQuery} onChange={setSearchQuery} leftIcon={<Search size={15} />} />
             </div>
 
             {/* Grid */}
@@ -298,15 +290,9 @@ export default function ClassesPage() {
           <form onSubmit={handleCreateClass} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {createError && <Alert type="error" message={createError} />}
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Nama Kelas</label>
-              <input className="themed-input" type="text" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="Matematika Ekonomi" required />
-            </div>
+            <TextInput label="Nama Kelas" value={newClassName} onChange={setNewClassName} placeholder="Matematika Ekonomi" required />
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Deskripsi (Opsional)</label>
-              <textarea className="themed-textarea" rows={3} value={newClassDesc} onChange={(e) => setNewClassDesc(e.target.value)} placeholder="Deskripsi singkat kelas ini" />
-            </div>
+            <TextArea label="Deskripsi (Opsional)" rows={3} value={newClassDesc} onChange={setNewClassDesc} placeholder="Deskripsi singkat kelas ini" />
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
               <Button type="button" variant="ghost" size="sm" onClick={() => setShowCreateModal(false)}>Batal</Button>
@@ -322,15 +308,13 @@ export default function ClassesPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Kode Kelas</label>
-              <input
-                className="themed-input"
-                type="text"
+              <TextInput
+                label="Kode Kelas"
                 value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                onChange={(v) => setJoinCode(v.toUpperCase())}
                 placeholder="Masukkan kode kelas (8 karakter)"
                 required
                 maxLength={8}
-                style={{ fontFamily: 'monospace', fontSize: 'var(--font-lg)', letterSpacing: '0.1em', textAlign: 'center' }}
               />
               <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: 0 }}>
                 Minta kode kelas dari pemilik kelas.

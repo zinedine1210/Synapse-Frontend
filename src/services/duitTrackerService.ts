@@ -11,6 +11,7 @@ export interface Transaction {
   note?: string;
   inputMethod: string;
   receiptImageUrl?: string;
+  receiptBatchId?: string;
   bawelComment?: string;
   bawelLevel?: string;
   linkedTreeId?: string;
@@ -105,4 +106,8 @@ export const duitTrackerService = {
   // AI Parse
   parseNaturalInput: (text: string) =>
     apiFetch<any>('/duit-tracker/parse', { method: 'POST', body: JSON.stringify({ text }) }),
+
+  // Receipt Scan
+  scanReceipt: (base64: string, mimeType: string) =>
+    apiFetch<any>('/duit-tracker/scan-receipt', { method: 'POST', body: JSON.stringify({ base64, mimeType }) }),
 };

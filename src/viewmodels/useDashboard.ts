@@ -70,3 +70,42 @@ export function useDashboard() {
     refetch: fetchClasses,
   };
 }
+
+/**
+ * Contextual Intelligence — Time-aware suggestions
+ * Frontend-only, rule-based based on current time and day
+ */
+export function useContextualSuggestion() {
+  const now = new Date();
+  const hour = now.getHours();
+  const dayOfWeek = now.getDay(); // 0=Sun, 6=Sat
+  const dayOfMonth = now.getDate();
+  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const isEndOfMonth = dayOfMonth >= 25;
+
+  let suggestion: string | null = null;
+  let suggestAction: { label: string; href: string } | null = null;
+
+  if (isEndOfMonth) {
+    suggestion = 'Akhir bulan — review budget sebelum bulan baru!';
+    suggestAction = { label: 'Buka Duit Tracker', href: '/duit-tracker' };
+  } else if (isWeekend) {
+    suggestion = 'Weekend santai — jangan lupa sisihkan tabungan!';
+    suggestAction = { label: 'Lihat Tabungan', href: '/duit-tracker' };
+  } else if (hour >= 6 && hour < 11) {
+    suggestion = 'Mau review todo hari ini?';
+    suggestAction = { label: 'Buka Todo', href: '/todos' };
+  } else if (hour >= 11 && hour < 15) {
+    suggestion = 'Sudah makan siang? Catat pengeluarannya!';
+    suggestAction = { label: 'Catat', href: '/duit-tracker' };
+  } else if (hour >= 15 && hour < 18) {
+    suggestion = 'Ada deadline besok? Cek todo-mu';
+    suggestAction = { label: 'Cek Todo', href: '/todos' };
+  } else if (hour >= 18) {
+    suggestion = 'Waktunya wrap-up — cek spending hari ini';
+    suggestAction = { label: 'Lihat Ringkasan', href: '/duit-tracker' };
+  }
+
+  return { suggestion, suggestAction };
+}

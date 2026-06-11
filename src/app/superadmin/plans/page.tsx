@@ -6,7 +6,7 @@ import { superadminService } from '@/services/superadminService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Button, Alert, Modal, useToast, useConfirm, DataTable, Card } from '@/components/ui';
+import { Button, Alert, Modal, useToast, useConfirm, DataTable, Card, CurrencyInput } from '@/components/ui';
 import type { Column } from '@/components/ui';
 import { Layers, Loader2, Clock } from 'lucide-react';
 
@@ -22,26 +22,63 @@ interface PricingPlan {
   durationDays: number;
 }
 
-const ALL_FEATURES = [
-  { id: 'class', label: 'Akses Kelas' },
-  { id: 'forum', label: 'Forum & Chat' },
-  { id: 'quiz', label: 'Pembuatan Kuis' },
-  { id: 'task', label: 'Tugas & AI Solver' },
-  { id: 'kolektif', label: 'Kas Kelas' },
-  { id: 'group', label: 'Kelompok' },
-  { id: 'exam_prediction', label: 'Prediksi Ujian' },
-  { id: 'ai_digitalization', label: 'AI Digitalisasi' },
-  { id: 'pdf_export', label: 'Smart B5 Printer' },
-  { id: 'schedule_parser', label: 'AI Schedule Parser' },
-  { id: 'canvas', label: 'Canvas Editor' },
-  { id: 'notification', label: 'Notifikasi' },
-  { id: 'unread_tracking', label: 'Pelacakan Belum Dibaca' },
-  { id: 'duit_tracker', label: 'Duit Tracker' },
-  { id: 'si_bawel', label: 'Si Bawel' },
-  { id: 'todo_list', label: 'To-Do List' },
-  { id: 'qna_public', label: 'Q&A Publik' },
-  { id: 'daily_briefing', label: 'Briefing Harian' },
+interface FeatureItem { id: string; label: string; }
+interface FeatureSection { section: string; items: FeatureItem[]; }
+
+const FEATURE_SECTIONS: FeatureSection[] = [
+  {
+    section: '📚 Akademik & Kelas',
+    items: [
+      { id: 'class', label: 'Akses Kelas' },
+      { id: 'forum', label: 'Forum & Chat' },
+      { id: 'quiz', label: 'Pembuatan Kuis' },
+      { id: 'task', label: 'Tugas & AI Solver' },
+      { id: 'kolektif', label: 'Kas Kelas' },
+      { id: 'group', label: 'Kelompok' },
+      { id: 'exam_prediction', label: 'Prediksi Ujian' },
+      { id: 'canvas', label: 'Canvas Editor' },
+      { id: 'unread_tracking', label: 'Pelacakan Belum Dibaca' },
+    ],
+  },
+  {
+    section: '🤖 AI & Dokumen',
+    items: [
+      { id: 'ai_digitalization', label: 'AI Digitalisasi Materi' },
+      { id: 'schedule_parser', label: 'AI Schedule Parser' },
+      { id: 'pdf_export', label: 'Smart B5 Printer' },
+      { id: 'ai_insight', label: 'AI Insight Mingguan' },
+      { id: 'daily_briefing', label: 'Briefing Harian AI' },
+    ],
+  },
+  {
+    section: '💰 Keuangan',
+    items: [
+      { id: 'duit_tracker', label: 'Duit Tracker' },
+      { id: 'si_bawel', label: 'Si Bawel (AI Keuangan)' },
+      { id: 'split_bill', label: 'Split Bill' },
+      { id: 'receipt_scanner', label: 'Scan Struk' },
+    ],
+  },
+  {
+    section: '📋 Produktivitas',
+    items: [
+      { id: 'todo_list', label: 'To-Do List' },
+      { id: 'qna_public', label: 'Q&A Publik' },
+      { id: 'food_recommend', label: 'Rekomendasi Makan' },
+    ],
+  },
+  {
+    section: '🎮 Gamifikasi & UX',
+    items: [
+      { id: 'gamification', label: 'Gamifikasi & XP' },
+      { id: 'notification', label: 'Notifikasi' },
+      { id: 'command_palette', label: 'Command Palette' },
+      { id: 'quick_action', label: 'Quick Action FAB' },
+    ],
+  },
 ];
+
+const ALL_FEATURES = FEATURE_SECTIONS.flatMap(s => s.items);
 
 const DURATION_PRESETS = [
   { label: 'Tak Terbatas', days: 0 },
@@ -325,16 +362,23 @@ export default function SuperadminPlansPage() {
                     <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgb(var(--text-muted))', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
                       Fitur Aktif – {plan.name}
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
-                      {ALL_FEATURES.map((feat) => {
-                        const isChecked = plan.features.includes(feat.id);
-                        return (
-                          <label key={feat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.6rem', borderRadius: '6px', background: isChecked ? 'rgba(var(--color-primary) / 0.06)' : 'rgba(var(--bg-elevated) / 0.5)', border: isChecked ? '1px solid rgba(var(--color-primary) / 0.15)' : '1px solid var(--border-subtle)', fontSize: '0.78rem', color: isChecked ? 'rgb(var(--text-primary))' : 'rgb(var(--text-muted))', cursor: 'pointer', transition: 'all 0.15s' }}>
-                            <input type="checkbox" checked={isChecked} onChange={(e) => handleFeatureToggle(plan, feat.id, e.target.checked)} style={{ accentColor: 'rgb(var(--color-primary))', cursor: 'pointer' }} />
-                            <span>{feat.label}</span>
-                          </label>
-                        );
-                      })}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      {FEATURE_SECTIONS.map((section) => (
+                        <div key={section.section}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgb(var(--text-muted))', marginBottom: '0.4rem' }}>{section.section}</div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+                            {section.items.map((feat) => {
+                              const isChecked = plan.features.includes(feat.id);
+                              return (
+                                <label key={feat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.375rem 0.6rem', borderRadius: '6px', background: isChecked ? 'rgba(var(--color-primary) / 0.06)' : 'rgba(var(--bg-elevated) / 0.5)', border: isChecked ? '1px solid rgba(var(--color-primary) / 0.15)' : '1px solid var(--border-subtle)', fontSize: '0.78rem', color: isChecked ? 'rgb(var(--text-primary))' : 'rgb(var(--text-muted))', cursor: 'pointer', transition: 'all 0.15s' }}>
+                                  <input type="checkbox" checked={isChecked} onChange={(e) => handleFeatureToggle(plan, feat.id, e.target.checked)} style={{ accentColor: 'rgb(var(--color-primary))', cursor: 'pointer' }} />
+                                  <span>{feat.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </Card>
                 );
@@ -360,7 +404,7 @@ export default function SuperadminPlansPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Harga</label>
-                <input type="text" value={planPrice} onChange={(e) => setPlanPrice(formatCurrencyInput(e.target.value))} required className="themed-input" style={{ width: '100%', fontWeight: 700 }} />
+                <CurrencyInput value={planPrice.replace(/^Rp\s?/, '')} onChange={(v) => setPlanPrice('Rp ' + v)} required style={{ width: '100%' }} />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>
@@ -409,19 +453,24 @@ export default function SuperadminPlansPage() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Akses Fitur</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                {ALL_FEATURES.map((feat) => {
-                  const isChecked = planFeatures.includes(feat.id);
-                  return (
-                    <label key={feat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', background: 'rgba(var(--bg-elevated) / 0.5)', border: '1px solid var(--border-subtle)', fontSize: 'var(--font-xs)', color: 'rgb(var(--text-primary))', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={isChecked} onChange={() => setPlanFeatures((prev) => isChecked ? prev.filter((x) => x !== feat.id) : [...prev, feat.id])} style={{ accentColor: 'rgb(var(--color-primary))' }} />
-                      <span>{feat.label}</span>
-                    </label>
-                  );
-                })}
-              </div>
+              {FEATURE_SECTIONS.map((section) => (
+                <div key={section.section}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgb(var(--text-muted))', marginBottom: '0.35rem' }}>{section.section}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    {section.items.map((feat) => {
+                      const isChecked = planFeatures.includes(feat.id);
+                      return (
+                        <label key={feat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', background: 'rgba(var(--bg-elevated) / 0.5)', border: '1px solid var(--border-subtle)', fontSize: 'var(--font-xs)', color: 'rgb(var(--text-primary))', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={isChecked} onChange={() => setPlanFeatures((prev) => isChecked ? prev.filter((x) => x !== feat.id) : [...prev, feat.id])} style={{ accentColor: 'rgb(var(--color-primary))' }} />
+                          <span>{feat.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               <Button type="button" variant="ghost" onClick={() => setShowPlanModal(false)}>Batal</Button>

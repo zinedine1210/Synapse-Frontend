@@ -50,7 +50,7 @@ export default function SuperadminUsersPage() {
         superadminService.getUsers(),
         superadminService.getPlanConfigs(),
       ]);
-      setUsersList((usersData as any).data ?? usersData);
+      setUsersList(usersData.data ?? []);
       setConfigs(configsData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal memuat data pengguna.');

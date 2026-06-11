@@ -214,6 +214,11 @@ a:hover { opacity: 0.8; }
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes slideInLeft {
   from { opacity: 0; transform: translateX(-12px); }
   to { opacity: 1; transform: translateX(0); }
@@ -310,6 +315,68 @@ a:hover { opacity: 0.8; }
     padding-top: calc(var(--appbar-height) + 48px);
   }
   .page-content { padding: 1rem; }
+}
+
+/* ─── Q&A 3-column grid responsive ───────────────────────────────────── */
+@media (max-width: 1100px) {
+  .qna-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .qna-sidebar-left {
+    position: static !important;
+  }
+  .qna-sidebar-left > div:first-child > div:last-child {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 4px !important;
+  }
+  .qna-sidebar-right {
+    position: static !important;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}
+@media (max-width: 640px) {
+  .qna-sidebar-right {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Q&A Detail 3-column grid responsive ────────────────────────────── */
+@media (max-width: 1100px) {
+  .qna-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .qna-detail-sidebar-left {
+    position: static !important;
+  }
+  .qna-detail-sidebar-right {
+    position: static !important;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+}
+@media (max-width: 640px) {
+  .qna-detail-sidebar-right {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── Todo 2-column layout responsive ────────────────────────────────── */
+@media (max-width: 900px) {
+  .todo-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .todo-sidebar {
+    position: static !important;
+  }
+  .todo-sidebar-categories {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 4px !important;
+  }
 }
 
 /* ─── Themed Input ───────────────────────────────────────────────────── */
@@ -526,4 +593,44 @@ a:hover { opacity: 0.8; }
 /* ─── Smooth Sidebar Transition ──────────────────────────────────────── */
 .sidebar-transition {
   transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+}
+
+/* ─── Page Enter Animation ───────────────────────────────────────────── */
+.page-content {
+  animation: page-enter 0.3s ease-out;
+}
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Hover Lift (micro-interaction) ─────────────────────────────────── */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* ─── Todo Hover Row ─────────────────────────────────────────────────── */
+.todo-hover-row:hover {
+  background: var(--input-bg);
+}
+
+/* ─── Quick Action Chip Hover ────────────────────────────────────────── */
+.quick-action-chip:hover {
+  border-color: rgba(var(--color-primary), 0.3) !important;
+  background: rgba(var(--color-primary), 0.04) !important;
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .skeleton { animation: none; background: rgb(var(--bg-surface)); }
+  .page-content { animation: none; }
 }

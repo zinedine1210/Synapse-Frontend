@@ -137,6 +137,25 @@ const T = {
     ctaNote: 'Gratis selamanya • Setup dalam 30 detik • Tanpa kartu kredit',
     ctaFeatures: ['AI Summarizer & Kuis', 'Forum Diskusi Real-time', 'Prediksi Soal Ujian', 'Manajemen Tugas & Kelompok'],
 
+    // Pricing
+    pricingBadge: 'Harga',
+    pricingTitle1: 'Pilih Paket',
+    pricingTitle2: 'yang Cocok Buatmu',
+    pricingSub: 'Mulai gratis, upgrade kapan saja sesuai kebutuhanmu.',
+    pricingFree: 'Gratis',
+    pricingFreePrice: 'Rp 0',
+    pricingFreePeriod: 'selamanya',
+    pricingFreeDesc: 'Semua fitur dasar untuk belajar efektif.',
+    pricingFreeFeatures: ['AI Summarizer (5x/hari)', 'Kuis Adaptif (3 kuis/hari)', 'Forum Diskusi', 'Manajemen Kelas', 'Kelompok Belajar', 'Notifikasi'],
+    pricingFreeCta: 'Mulai Gratis',
+    pricingPro: 'Pro',
+    pricingProPrice: 'Rp 29.900',
+    pricingProPeriod: '/bulan',
+    pricingProDesc: 'Fitur lengkap tanpa batas untuk mahasiswa serius.',
+    pricingProFeatures: ['AI Summarizer Unlimited', 'Kuis Adaptif Unlimited', 'Prediksi Soal Ujian', 'Export PDF B5', 'Duit Tracker + Si Bawel', 'To-Do List + AI Parsing', 'Q&A Forum + Reputasi', 'Gamifikasi & XP', 'Priority Support'],
+    pricingProCta: 'Upgrade ke Pro',
+    pricingProBadge: 'Populer',
+
     // Footer
     footerProduct: 'Produk',
     footerProductLinks: ['Fitur', 'Cara Kerja', 'Harga'],
@@ -259,6 +278,25 @@ const T = {
     ctaBtn: 'Start Free Now',
     ctaNote: 'Free forever • 30s setup • No credit card',
     ctaFeatures: ['AI Summarizer & Quiz', 'Real-time Forum', 'Exam Prediction', 'Task & Group Management'],
+
+    // Pricing
+    pricingBadge: 'Pricing',
+    pricingTitle1: 'Choose the Plan',
+    pricingTitle2: 'That Fits You',
+    pricingSub: 'Start free, upgrade anytime as you need.',
+    pricingFree: 'Free',
+    pricingFreePrice: 'Rp 0',
+    pricingFreePeriod: 'forever',
+    pricingFreeDesc: 'All essential features for effective learning.',
+    pricingFreeFeatures: ['AI Summarizer (5x/day)', 'Adaptive Quiz (3 quizzes/day)', 'Discussion Forum', 'Class Management', 'Study Groups', 'Notifications'],
+    pricingFreeCta: 'Start Free',
+    pricingPro: 'Pro',
+    pricingProPrice: 'Rp 29,900',
+    pricingProPeriod: '/month',
+    pricingProDesc: 'Unlimited features for serious students.',
+    pricingProFeatures: ['Unlimited AI Summarizer', 'Unlimited Adaptive Quiz', 'Exam Prediction', 'Export PDF B5', 'Duit Tracker + Si Bawel', 'To-Do List + AI Parsing', 'Q&A Forum + Reputation', 'Gamification & XP', 'Priority Support'],
+    pricingProCta: 'Upgrade to Pro',
+    pricingProBadge: 'Popular',
 
     footerProduct: 'Product',
     footerProductLinks: ['Features', 'How It Works', 'Pricing'],
@@ -482,6 +520,48 @@ export default function LandingPage() {
   return (
     <div style={{ minHeight: '100vh', background: c.bg, color: c.text, overflow: 'hidden', transition: 'background 0.4s ease, color 0.4s ease' }}>
 
+      {/* Landing page animations */}
+      <style>{`
+        @keyframes ctaGlow {
+          0%, 100% { box-shadow: 0 4px 24px rgba(0,212,255,0.3), 0 0 60px rgba(0,212,255,0.1); }
+          50% { box-shadow: 0 4px 32px rgba(0,212,255,0.5), 0 0 80px rgba(0,212,255,0.2); }
+        }
+        @keyframes floatOrb {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          33% { transform: translate(30px, -20px) scale(1.05); }
+          66% { transform: translate(-20px, 15px) scale(0.95); }
+        }
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        .landing-cta-primary:hover {
+          transform: translateY(-2px) !important;
+          filter: brightness(1.1);
+        }
+        .landing-cta-secondary:hover {
+          background: ${isDark ? 'rgba(0,212,255,0.12)' : 'rgba(0,180,220,0.12)'} !important;
+          transform: translateY(-1px);
+        }
+        .landing-card:hover {
+          transform: translateY(-4px);
+          border-color: ${isDark ? 'rgba(0,212,255,0.2)' : 'rgba(0,180,220,0.25)'} !important;
+          box-shadow: ${isDark ? '0 12px 40px rgba(0,0,0,0.3)' : '0 12px 40px rgba(0,0,0,0.08)'};
+        }
+        .landing-nav-link:hover { color: ${isDark ? '#00D4FF' : '#0095b3'} !important; }
+        @media (max-width: 768px) {
+          .landing-nav-center { display: none !important; }
+          .landing-hero-title { font-size: 2.2rem !important; }
+          .landing-hero-btns { flex-direction: column !important; align-items: stretch !important; }
+          .landing-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .landing-footer-grid { grid-template-columns: 1fr !important; text-align: center !important; }
+        }
+        @media (max-width: 480px) {
+          .landing-stats-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+
       {/* ═══ NAVBAR ═══ */}
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
@@ -498,13 +578,13 @@ export default function LandingPage() {
         </div>
 
         {/* Nav center links */}
-        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+        <div className="landing-nav-center" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
           {[
             { label: t.navFeatures, href: '#features' },
             { label: t.navHowItWorks, href: '#how-it-works' },
             { label: t.navTestimonials, href: '#testimonials' },
           ].map(link => (
-            <a key={link.href} href={link.href} style={{ fontSize: '0.8rem', fontWeight: 500, color: c.textMuted, textDecoration: 'none', transition: 'color 0.2s' }}>{link.label}</a>
+            <a key={link.href} href={link.href} className="landing-nav-link" style={{ fontSize: '0.8rem', fontWeight: 500, color: c.textMuted, textDecoration: 'none', transition: 'color 0.2s' }}>{link.label}</a>
           ))}
         </div>
 
@@ -532,8 +612,8 @@ export default function LandingPage() {
       {/* ═══ HERO ═══ */}
       <section ref={heroAnim.ref} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '7rem 1.5rem 4rem', position: 'relative' }}>
         {/* Glow orbs */}
-        <div style={{ position: 'absolute', top: '-30%', left: '30%', width: 900, height: 900, borderRadius: '50%', background: c.glowOrb1, pointerEvents: 'none', filter: 'blur(40px)' }} />
-        <div style={{ position: 'absolute', bottom: '0%', right: '-15%', width: 600, height: 600, borderRadius: '50%', background: c.glowOrb2, pointerEvents: 'none', filter: 'blur(40px)' }} />
+        <div style={{ position: 'absolute', top: '-30%', left: '30%', width: 900, height: 900, borderRadius: '50%', background: c.glowOrb1, pointerEvents: 'none', filter: 'blur(40px)', animation: 'floatOrb 20s ease-in-out infinite' }} />
+        <div style={{ position: 'absolute', bottom: '0%', right: '-15%', width: 600, height: 600, borderRadius: '50%', background: c.glowOrb2, pointerEvents: 'none', filter: 'blur(40px)', animation: 'floatOrb 15s ease-in-out infinite reverse' }} />
         <div style={{ position: 'absolute', top: '20%', left: '-10%', width: 400, height: 400, borderRadius: '50%', background: isDark ? 'radial-gradient(circle, rgba(161,140,209,0.04) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(140,120,190,0.04) 0%, transparent 70%)', pointerEvents: 'none', filter: 'blur(20px)' }} />
 
         {/* Badge */}
@@ -592,10 +672,11 @@ export default function LandingPage() {
             color: '#060B18', background: 'linear-gradient(135deg, #00D4FF, #00F5A0)',
             textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem',
             boxShadow: c.heroBtnShadow, transition: 'all 0.25s ease',
+            animation: 'ctaGlow 3s ease-in-out infinite',
           }}>
             {t.ctaPrimary} <ArrowRight size={16} />
           </Link>
-          <a href="#features" style={{
+          <a href="#features" className="landing-cta-secondary" style={{
             padding: '0.9rem 2.2rem', borderRadius: 14, fontSize: '1rem', fontWeight: 600,
             color: c.ctaSecColor, background: c.ctaSecBg, border: `1px solid ${c.ctaSecBorder}`,
             textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.25s ease',
@@ -631,7 +712,7 @@ export default function LandingPage() {
 
       {/* ═══ STATS ═══ */}
       <section style={{ padding: '3.5rem 2rem', position: 'relative' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+        <div className="landing-stats-grid" style={{ maxWidth: 1000, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
           {[
             { counter: stats1, suffix: '', label: t.statSessions, sub: t.statSessionsSub, gradient: 'linear-gradient(135deg, #00D4FF, #0096FF)' },
             { counter: stats2, suffix: '+', label: t.statFeatures, sub: t.statFeaturesSub, gradient: 'linear-gradient(135deg, #00F5A0, #00D68F)' },
@@ -677,12 +758,12 @@ export default function LandingPage() {
             <p style={{ fontSize: '1rem', color: c.textMuted, maxWidth: 600, margin: '0 auto', lineHeight: 1.65 }}>{t.highlightSub}</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
             {t.highlights.map((h, i) => {
               const Icon = HIGHLIGHT_ICONS[i];
               const colors = ['#00D4FF', '#00F5A0', '#a18cd1'];
               return (
-                <div key={i} style={{
+                <div key={i} className="landing-card" style={{
                   padding: '2rem 1.75rem', borderRadius: 20,
                   background: c.highlightCardBg, border: `1px solid ${c.highlightCardBorder}`,
                   transition: 'all 0.3s ease', cursor: 'default',
@@ -827,7 +908,7 @@ export default function LandingPage() {
             <p style={{ fontSize: '1rem', color: c.textMuted, maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>{t.howSub}</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem', position: 'relative' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', position: 'relative' }}>
             {/* Connector line */}
             <div style={{ position: 'absolute', top: '3rem', left: '12.5%', right: '12.5%', height: 2, background: `linear-gradient(90deg, transparent, ${c.stepConnector}, ${c.stepConnector}, transparent)`, zIndex: 0 }} />
 
@@ -925,7 +1006,7 @@ export default function LandingPage() {
               padding: '2.5rem 2rem',
               background: isDark ? 'linear-gradient(135deg, rgba(10,16,32,0.95), rgba(16,22,40,0.95))' : 'linear-gradient(135deg, rgba(248,250,252,0.95), rgba(240,244,248,0.95))',
             }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
                 {t.showcaseItems.map((item, i) => {
                   const showcaseColors = ['#00D4FF', '#a18cd1', '#4facfe', '#00F5A0'];
                   const showcaseIcons = [Layers, BookOpen, MessageSquare, Brain];
@@ -981,7 +1062,7 @@ export default function LandingPage() {
             <p style={{ fontSize: '1rem', color: c.textMuted, maxWidth: 500, margin: '0 auto', lineHeight: 1.6 }}>{t.testiSub}</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
             {t.testimonials.map((testi, i) => {
               const avatarColors = [
                 ['#667eea', '#764ba2'], ['#4facfe', '#00f2fe'], ['#fa709a', '#fee140'],
@@ -1010,6 +1091,102 @@ export default function LandingPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ PRICING ═══ */}
+      <section id="pricing" style={{ padding: '5rem 1.5rem' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+              padding: '0.3rem 0.85rem', borderRadius: 999, fontSize: '0.75rem',
+              background: isDark ? 'rgba(0,212,255,0.06)' : 'rgba(0,180,220,0.08)',
+              border: isDark ? '1px solid rgba(0,212,255,0.12)' : '1px solid rgba(0,180,220,0.18)',
+              color: isDark ? '#00D4FF' : '#0095b3', fontWeight: 600,
+            }}>
+              <Layers size={12} /> {t.pricingBadge}
+            </span>
+            <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.6rem)', fontWeight: 800, letterSpacing: '-0.03em', marginTop: '0.85rem', marginBottom: '0.75rem' }}>
+              {t.pricingTitle1}<br />
+              <span style={{ background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t.pricingTitle2}</span>
+            </h2>
+            <p style={{ fontSize: '1rem', color: c.textMuted, maxWidth: 500, margin: '0 auto' }}>{t.pricingSub}</p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', maxWidth: 760, margin: '0 auto' }}>
+            {/* FREE plan */}
+            <div style={{
+              padding: '2rem', borderRadius: 22,
+              background: c.cardBg, border: `1px solid ${c.cardBorder}`,
+              display: 'flex', flexDirection: 'column',
+              transition: 'all 0.3s ease',
+            }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>{t.pricingFree}</h3>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
+                  <span style={{ fontSize: '2.2rem', fontWeight: 800, background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t.pricingFreePrice}</span>
+                  <span style={{ fontSize: '0.85rem', color: c.textMuted }}>/{t.pricingFreePeriod}</span>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: c.textMuted, marginTop: '0.5rem' }}>{t.pricingFreeDesc}</p>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.5rem' }}>
+                {t.pricingFreeFeatures.map((feat, i) => (
+                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: c.textSub }}>
+                    <CheckCircle2 size={14} style={{ color: '#00C98D', flexShrink: 0 }} /> {feat}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/auth" style={{
+                padding: '0.75rem', borderRadius: 12, textAlign: 'center', fontWeight: 600,
+                fontSize: '0.9rem', textDecoration: 'none', transition: 'all 0.2s',
+                color: c.ctaSecColor, background: c.ctaSecBg, border: `1px solid ${c.ctaSecBorder}`,
+              }}>
+                {t.pricingFreeCta}
+              </Link>
+            </div>
+
+            {/* PRO plan */}
+            <div style={{
+              padding: '2rem', borderRadius: 22, position: 'relative',
+              background: isDark ? 'rgba(0,212,255,0.03)' : 'rgba(0,180,220,0.03)',
+              border: isDark ? '1.5px solid rgba(0,212,255,0.2)' : '1.5px solid rgba(0,180,220,0.25)',
+              display: 'flex', flexDirection: 'column',
+              boxShadow: isDark ? '0 0 40px rgba(0,212,255,0.06)' : '0 0 30px rgba(0,180,220,0.06)',
+              transition: 'all 0.3s ease',
+            }}>
+              <span style={{
+                position: 'absolute', top: '-0.6rem', right: '1.5rem',
+                padding: '0.25rem 0.75rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700,
+                background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', color: '#060B18',
+              }}>
+                {t.pricingProBadge}
+              </span>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>{t.pricingPro}</h3>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
+                  <span style={{ fontSize: '2.2rem', fontWeight: 800, background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t.pricingProPrice}</span>
+                  <span style={{ fontSize: '0.85rem', color: c.textMuted }}>{t.pricingProPeriod}</span>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: c.textMuted, marginTop: '0.5rem' }}>{t.pricingProDesc}</p>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.5rem' }}>
+                {t.pricingProFeatures.map((feat, i) => (
+                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: c.textSub }}>
+                    <CheckCircle2 size={14} style={{ color: '#00D4FF', flexShrink: 0 }} /> {feat}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/billing" style={{
+                padding: '0.75rem', borderRadius: 12, textAlign: 'center', fontWeight: 700,
+                fontSize: '0.9rem', textDecoration: 'none', transition: 'all 0.2s',
+                color: '#060B18', background: 'linear-gradient(135deg, #00D4FF, #00F5A0)',
+                boxShadow: c.heroBtnShadow,
+              }}>
+                {t.pricingProCta}
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -1100,7 +1277,7 @@ export default function LandingPage() {
       <footer style={{ padding: '3rem 2rem 2rem', borderTop: c.footerBorder, background: c.footerBg }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           {/* Top */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
+          <div className="landing-footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
             {/* Brand column */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>

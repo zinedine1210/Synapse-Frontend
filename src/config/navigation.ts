@@ -1,4 +1,4 @@
-import { BookOpen, LayoutDashboard, GraduationCap, CreditCard, Settings, TrendingUp, Users, Layers, MessageSquare, School, Wallet, MessageCircleHeart, CheckSquare, HelpCircle, Sunrise } from 'lucide-react';
+import { BookOpen, LayoutDashboard, GraduationCap, CreditCard, Settings, TrendingUp, Users, Layers, MessageSquare, School, Wallet, CheckSquare, HelpCircle, UtensilsCrossed, Receipt, Lightbulb, Gamepad2, Database } from 'lucide-react';
 
 /**
  * 🗺️ Centralized Navigation Registry
@@ -30,20 +30,9 @@ export const navItems: NavItem[] = [
     icon: BookOpen,
   },
   {
-    label: 'Billing',
-    path: '/billing',
-    icon: CreditCard,
-  },
-  {
     label: 'Duit Tracker',
     path: '/duit-tracker',
     icon: Wallet,
-    badge: 'NEW',
-  },
-  {
-    label: 'Si Bawel',
-    path: '/si-bawel',
-    icon: MessageCircleHeart,
     badge: 'NEW',
   },
   {
@@ -59,10 +48,27 @@ export const navItems: NavItem[] = [
     badge: 'NEW',
   },
   {
-    label: 'Briefing',
-    path: '/briefing',
-    icon: Sunrise,
+    label: 'Makan Apa',
+    path: '/makan',
+    icon: UtensilsCrossed,
     badge: 'NEW',
+  },
+  {
+    label: 'Split Bill',
+    path: '/split-bill',
+    icon: Receipt,
+    badge: 'NEW',
+  },
+  {
+    label: 'Insight',
+    path: '/insight',
+    icon: Lightbulb,
+    badge: 'NEW',
+  },
+  {
+    label: 'Billing',
+    path: '/billing',
+    icon: CreditCard,
   },
 ];
 
@@ -101,6 +107,36 @@ export const superadminNavItems: NavItem[] = [
     label: 'Paket',
     path: '/superadmin/plans',
     icon: Layers,
+    requiredRole: 'SUPERADMIN',
+  },
+  {
+    label: 'Akademik',
+    path: '/superadmin/academic',
+    icon: GraduationCap,
+    requiredRole: 'SUPERADMIN',
+  },
+  {
+    label: 'Duit Tracker',
+    path: '/superadmin/duit-tracker',
+    icon: Wallet,
+    requiredRole: 'SUPERADMIN',
+  },
+  {
+    label: 'Gamifikasi',
+    path: '/superadmin/gamification',
+    icon: Gamepad2,
+    requiredRole: 'SUPERADMIN',
+  },
+  {
+    label: 'Q&A',
+    path: '/superadmin/qna',
+    icon: HelpCircle,
+    requiredRole: 'SUPERADMIN',
+  },
+  {
+    label: 'Sistem',
+    path: '/superadmin/system',
+    icon: Database,
     requiredRole: 'SUPERADMIN',
   },
 ];

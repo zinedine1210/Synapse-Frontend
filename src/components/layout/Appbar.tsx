@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { Bell, User, Check, CheckCheck, X } from 'lucide-react';
 import { notificationService, Notification } from '@/services/notificationService';
+import { useAuth } from '@/lib/AuthContext';
 
 interface AppbarProps {
   title?: string;
@@ -15,11 +16,14 @@ interface AppbarProps {
 
 export function Appbar({
   title = 'Dashboard',
-  userName = 'Mahasiswa',
+  userName,
   userId,
   unreadCount: initialUnread = 0,
   sidebarCollapsed = false,
 }: AppbarProps) {
+  const { user: authUser } = useAuth();
+  const resolvedUserName = userName || authUser?.fullName || 'Mahasiswa';
+  const resolvedUserId = userId || authUser?.id;
   const [showPanel, setShowPanel] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(initialUnread);
@@ -29,14 +33,14 @@ export function Appbar({
 
   // Connect to notification socket
   useEffect(() => {
-    if (!userId) return;
+    if (!resolvedUserId) return;
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
     const wsBase = apiUrl.replace(/\/api\/v\d+\/?$/, '');
     const socket = io(`${wsBase}/notifications`, { transports: ['polling'], withCredentials: true });
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      socket.emit('joinUser', { userId });
+      socket.emit('joinUser', { userId: resolvedUserId });
     });
 
     socket.on('newNotification', (notif: Notification) => {
@@ -49,10 +53,10 @@ export function Appbar({
     });
 
     return () => {
-      socket.emit('leaveUser', { userId });
+      socket.emit('leaveUser', { userId: resolvedUserId });
       socket.disconnect();
     };
-  }, [userId]);
+  }, [resolvedUserId]);
 
   // Fetch notifications when panel opens
   const fetchNotifications = useCallback(async () => {
@@ -71,11 +75,11 @@ export function Appbar({
 
   // Fetch initial unread count
   useEffect(() => {
-    if (!userId) return;
+    if (!resolvedUserId) return;
     notificationService.getNotifications().then((data) => {
       setUnreadCount(data.unreadCount);
     }).catch(() => {});
-  }, [userId]);
+  }, [resolvedUserId]);
 
   // Close panel on outside click
   useEffect(() => {
@@ -277,7 +281,7 @@ export function Appbar({
             <User size={13} color="white" />
           </div>
           <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>
-            {userName}
+            {resolvedUserName}
           </span>
         </div>
       </div>

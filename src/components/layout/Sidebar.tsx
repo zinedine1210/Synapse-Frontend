@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
 import { navItems, superadminNavItems, settingsNavItem } from '@/config/navigation';
 import { brand } from '@/config/brand';
 import { useTheme } from '@/lib/ThemeContext';
+import { XpBar } from './XpBar';
 
 interface SidebarProps {
   userRole?: 'USER' | 'SUPERADMIN';
@@ -149,6 +150,11 @@ export function Sidebar({ userRole = 'USER', collapsed: controlledCollapsed, onT
 
       {/* Bottom section */}
       <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '0.5rem' }}>
+        {/* XP Bar */}
+        <div style={{ marginBottom: '0.5rem' }}>
+          <XpBar collapsed={collapsed} />
+        </div>
+
         {/* Theme toggle */}
         <button
           onClick={toggleTheme}

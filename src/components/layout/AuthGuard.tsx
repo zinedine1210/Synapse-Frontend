@@ -1,9 +1,13 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { Loader2 } from 'lucide-react';
+import { QuickActionFAB } from './QuickActionFAB';
+import { CommandPalette } from './CommandPalette';
+import { OnboardingFlow } from './OnboardingFlow';
+import { TutorialOverlay } from './TutorialOverlay';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -15,6 +19,22 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
   const { user, session, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user) {
+      const onboardingKey = `synapse_onboarding_${user.id}`;
+      const tourKey = `synapse_tour_${user.id}`;
+      // Check both localStorage and backend flag
+      const isOnboarded = localStorage.getItem(onboardingKey) || (user as any).onboardingCompleted;
+      if (!isOnboarded) {
+        setShowOnboarding(true);
+      } else if (!localStorage.getItem(tourKey)) {
+        setShowTutorial(true);
+      }
+    }
+  }, [loading, user]);
 
   useEffect(() => {
     if (!loading) {
@@ -59,5 +79,27 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {showOnboarding && user && (
+        <OnboardingFlow onComplete={() => {
+          localStorage.setItem(`synapse_onboarding_${user.id}`, 'done');
+          setShowOnboarding(false);
+          // Trigger tour after onboarding
+          if (!localStorage.getItem(`synapse_tour_${user.id}`)) {
+            setShowTutorial(true);
+          }
+        }} />
+      )}
+      {showTutorial && user && (
+        <TutorialOverlay onClose={() => {
+          localStorage.setItem(`synapse_tour_${user.id}`, 'done');
+          setShowTutorial(false);
+        }} />
+      )}
+      {children}
+      <QuickActionFAB />
+      <CommandPalette />
+    </>
+  );
 }

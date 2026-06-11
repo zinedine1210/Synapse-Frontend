@@ -33,8 +33,8 @@ export default function SuperadminClassesPage() {
     try {
       setLoading(true);
       setError(null);
-      const data = await superadminService.getAllClasses();
-      setClasses(data || []);
+      const result = await superadminService.getAllClasses();
+      setClasses(result.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Gagal memuat data kelas.');
     } finally {

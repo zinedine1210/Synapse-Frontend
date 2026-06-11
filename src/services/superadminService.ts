@@ -72,7 +72,10 @@ export const superadminService = {
     }),
 
   /** GET /api/v1/superadmin/classes – Semua kelas di sistem */
-  getAllClasses: () => apiFetch<any[]>('/superadmin/classes'),
+  getAllClasses: (page = 1, limit = 50) =>
+    apiFetch<{ data: any[]; total: number; page: number; limit: number; totalPages: number }>(
+      `/superadmin/classes?page=${page}&limit=${limit}`
+    ),
 
   /** DELETE /api/v1/superadmin/classes/:id – Hapus kelas */
   deleteClass: (id: string) =>
@@ -80,4 +83,19 @@ export const superadminService = {
 
   /** GET /api/v1/superadmin/forum-stats – Statistik forum */
   getForumStats: () => apiFetch<any>('/superadmin/forum-stats'),
+
+  /** GET /api/v1/superadmin/academic-stats – Statistik akademik */
+  getAcademicStats: () => apiFetch<any>('/superadmin/academic-stats'),
+
+  /** GET /api/v1/superadmin/duit-tracker-stats – Statistik duit tracker */
+  getDuitTrackerStats: () => apiFetch<any>('/superadmin/duit-tracker-stats'),
+
+  /** GET /api/v1/superadmin/gamification-stats – Statistik gamifikasi */
+  getGamificationStats: () => apiFetch<any>('/superadmin/gamification-stats'),
+
+  /** GET /api/v1/superadmin/qna-stats – Statistik Q&A */
+  getQnaStats: () => apiFetch<any>('/superadmin/qna-stats'),
+
+  /** GET /api/v1/superadmin/system-stats – Statistik sistem */
+  getSystemStats: () => apiFetch<any>('/superadmin/system-stats'),
 };

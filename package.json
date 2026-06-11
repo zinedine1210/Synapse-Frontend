@@ -16,6 +16,7 @@
     "@tiptap/extension-underline": "^3.26.0",
     "@tiptap/react": "^3.26.0",
     "@tiptap/starter-kit": "^3.26.0",
+    "canvas-confetti": "^1.9.4",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
     "katex": "^0.17.0",
@@ -35,6 +36,7 @@
     "swr": "^2.2.5"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/katex": "^0.16.8",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.0",

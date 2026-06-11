@@ -7,7 +7,7 @@ import { useClassDetail } from '@/viewmodels/useClassDetail';
 import { classService } from '@/services/classService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Button, Modal, useToast, useConfirm } from '@/components/ui';
+import { Button, Modal, useToast, useConfirm, PasswordInput } from '@/components/ui';
 import { ForumTab } from '@/components/ForumTab';
 import { PertemuanTab } from '@/components/PertemuanTab';
 import { KolektifTab } from '@/components/KolektifTab';
@@ -29,8 +29,6 @@ import {
   Target,
   X,
   Trash2,
-  Eye,
-  EyeOff,
   Shield,
   Plus,
   Check,
@@ -160,7 +158,6 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
   const [editTime, setEditTime] = useState('');
   const [editRoom, setEditRoom] = useState('');
   const [editPassword, setEditPassword] = useState('');
-  const [showEditPassword, setShowEditPassword] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [isSavingClassInfo, setIsSavingClassInfo] = useState(false);
@@ -783,12 +780,11 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Password Kelas (Opsional)</label>
-            <div style={{ position: 'relative' }}>
-              <input className="themed-input" type={showEditPassword ? 'text' : 'password'} value={editPassword} onChange={(e) => setEditPassword(e.target.value)} placeholder="Kosongkan jika ingin kelas bersifat publik" style={{ paddingRight: '2.5rem' }} />
-              <button type="button" onClick={() => setShowEditPassword(!showEditPassword)} style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.25rem', display: 'flex', alignItems: 'center' }}>
-                {showEditPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
+            <PasswordInput
+              value={editPassword}
+              onChange={setEditPassword}
+              placeholder="Kosongkan jika ingin kelas bersifat publik"
+            />
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
             <Button type="button" variant="ghost" size="sm" onClick={() => setShowEditClassModal(false)}>Batal</Button>

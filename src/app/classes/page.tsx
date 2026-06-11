@@ -9,8 +9,8 @@ import { classService } from '@/services/classService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, Alert, Modal, useConfirm, useToast } from '@/components/ui';
-import { Plus, BookOpen, Trash2, Search, Users, ChevronRight, LogIn, Eye, EyeOff, Calendar, MapPin, GraduationCap } from 'lucide-react';
+import { Card, Button, Alert, Modal, useConfirm, useToast, PasswordInput } from '@/components/ui';
+import { Plus, BookOpen, Trash2, Search, Users, ChevronRight, LogIn, Calendar, MapPin, GraduationCap } from 'lucide-react';
 
 export default function ClassesPage() {
   const { user } = useAuth();
@@ -25,7 +25,6 @@ export default function ClassesPage() {
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinCode, setJoinCode] = useState('');
   const [joinPassword, setJoinPassword] = useState('');
-  const [showJoinPassword, setShowJoinPassword] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [newClassName, setNewClassName] = useState('');
@@ -340,19 +339,11 @@ export default function ClassesPage() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               <label style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>Password (Jika Diperlukan)</label>
-              <div style={{ position: 'relative' }}>
-                <input
-                  className="themed-input"
-                  type={showJoinPassword ? 'text' : 'password'}
-                  value={joinPassword}
-                  onChange={(e) => setJoinPassword(e.target.value)}
-                  placeholder="Kosongkan jika kelas publik"
-                  style={{ paddingRight: '2.5rem' }}
-                />
-                <button type="button" onClick={() => setShowJoinPassword(!showJoinPassword)} style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.25rem', display: 'flex', alignItems: 'center' }}>
-                  {showJoinPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
+              <PasswordInput
+                value={joinPassword}
+                onChange={setJoinPassword}
+                placeholder="Kosongkan jika kelas publik"
+              />
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>

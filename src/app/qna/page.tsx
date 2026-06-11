@@ -343,6 +343,20 @@ export default function QnaPage() {
                   ))}
                 </div>
 
+                {/* Mobile category filter — visible only on mobile where sidebar is hidden */}
+                <div className="qna-mobile-cat-filter" style={{ display: 'none', marginBottom: 14 }}>
+                  <select
+                    className="themed-input"
+                    value={selectedCategory}
+                    onChange={e => { setSelectedCategory(e.target.value); setPage(1); }}
+                    style={{ width: '100%', fontSize: 13, padding: '9px 12px', borderRadius: 10, fontWeight: 600 }}
+                  >
+                    {QNA_CATEGORIES.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.emoji} {cat.label}</option>
+                    ))}
+                  </select>
+                </div>
+
                 {/* Question Feed with Infinite Scroll */}
                 {loading ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

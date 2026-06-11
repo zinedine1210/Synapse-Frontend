@@ -175,6 +175,13 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
     return () => mq.removeEventListener('change', handler);
   }, []);
 
+  // Hide bottom nav when in chat mode on mobile (prevents input overlap)
+  useEffect(() => {
+    const inChat = isMobile && !sidebarOpen;
+    document.body.classList.toggle('hide-bottom-nav', inChat);
+    return () => { document.body.classList.remove('hide-bottom-nav'); };
+  }, [isMobile, sidebarOpen]);
+
   // On mobile, selecting a discussion closes sidebar to show chat
   const handleSelectDiscussion = useCallback((discId: string | null) => {
     setActiveDiscussionId(discId);

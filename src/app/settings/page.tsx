@@ -6,13 +6,14 @@ import { useTheme } from '@/lib/ThemeContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, useToast, useConfirm } from '@/components/ui';
+import { Card, Button, useToast, useConfirm, TextInput, TagInput } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 import {
   Settings, User, Bell, Palette, Database, Shield,
   Camera, Save, Loader2, Moon, Sun, Monitor, Globe,
-  Clock, ExternalLink, Mail, Link2, Check, Trash2, AlertTriangle
+  Clock, ExternalLink, Mail, Link2, Check, Trash2, AlertTriangle,
+  GraduationCap
 } from 'lucide-react';
 
 // Types
@@ -73,6 +74,14 @@ export default function SettingsPage() {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Onboarding profile state
+  const [onboardingUniversity, setOnboardingUniversity] = useState('');
+  const [onboardingHobbies, setOnboardingHobbies] = useState<string[]>([]);
+  const [onboardingJob, setOnboardingJob] = useState('');
+  const [onboardingReason, setOnboardingReason] = useState('');
+  const [onboardingSaving, setOnboardingSaving] = useState(false);
+  const [onboardingLoading, setOnboardingLoading] = useState(true);
+
   // Preferences state
   const [notifToggles, setNotifToggles] = useState<Record<string, boolean>>({});
   const [quietStart, setQuietStart] = useState('');
@@ -109,13 +118,35 @@ export default function SettingsPage() {
     }
   }, []);
 
+  // Load onboarding profile data
+  const loadOnboardingProfile = useCallback(async () => {
+    try {
+      setOnboardingLoading(true);
+      const profile = await apiFetch<{
+        university: string | null;
+        hobbies: string[];
+        job: string | null;
+        reason: string | null;
+      }>('/user/profile');
+      setOnboardingUniversity(profile.university || '');
+      setOnboardingHobbies(profile.hobbies || []);
+      setOnboardingJob(profile.job || '');
+      setOnboardingReason(profile.reason || '');
+    } catch (err) {
+      console.error('Failed to load onboarding profile:', err);
+    } finally {
+      setOnboardingLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (user) {
       setFullName(user.fullName || '');
       setAvatarUrl(user.avatarUrl);
       loadPreferences();
+      loadOnboardingProfile();
     }
-  }, [user, loadPreferences]);
+  }, [user, loadPreferences, loadOnboardingProfile]);
 
   // Profile handlers
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,6 +213,27 @@ export default function SettingsPage() {
       showToast(err.message || 'Gagal menyimpan profil.', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Save onboarding profile handler
+  const handleSaveOnboardingProfile = async () => {
+    setOnboardingSaving(true);
+    try {
+      await apiFetch('/user/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          university: onboardingUniversity.trim(),
+          hobbies: onboardingHobbies,
+          job: onboardingJob.trim(),
+          reason: onboardingReason.trim(),
+        }),
+      });
+      showToast('Profil onboarding berhasil disimpan.', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menyimpan profil onboarding.', 'error');
+    } finally {
+      setOnboardingSaving(false);
     }
   };
 
@@ -342,6 +394,17 @@ export default function SettingsPage() {
                     handleAvatarUpload={handleAvatarUpload}
                     handleSaveProfile={handleSaveProfile}
                     saving={saving}
+                    onboardingUniversity={onboardingUniversity}
+                    setOnboardingUniversity={setOnboardingUniversity}
+                    onboardingHobbies={onboardingHobbies}
+                    setOnboardingHobbies={setOnboardingHobbies}
+                    onboardingJob={onboardingJob}
+                    setOnboardingJob={setOnboardingJob}
+                    onboardingReason={onboardingReason}
+                    setOnboardingReason={setOnboardingReason}
+                    onboardingSaving={onboardingSaving}
+                    onboardingLoading={onboardingLoading}
+                    handleSaveOnboardingProfile={handleSaveOnboardingProfile}
                   />
                 )}
 
@@ -401,6 +464,17 @@ function ProfileTab({
   handleAvatarUpload,
   handleSaveProfile,
   saving,
+  onboardingUniversity,
+  setOnboardingUniversity,
+  onboardingHobbies,
+  setOnboardingHobbies,
+  onboardingJob,
+  setOnboardingJob,
+  onboardingReason,
+  setOnboardingReason,
+  onboardingSaving,
+  onboardingLoading,
+  handleSaveOnboardingProfile,
 }: {
   user: any;
   fullName: string;
@@ -411,6 +485,17 @@ function ProfileTab({
   handleAvatarUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSaveProfile: () => void;
   saving: boolean;
+  onboardingUniversity: string;
+  setOnboardingUniversity: (v: string) => void;
+  onboardingHobbies: string[];
+  setOnboardingHobbies: (v: string[]) => void;
+  onboardingJob: string;
+  setOnboardingJob: (v: string) => void;
+  onboardingReason: string;
+  setOnboardingReason: (v: string) => void;
+  onboardingSaving: boolean;
+  onboardingLoading: boolean;
+  handleSaveOnboardingProfile: () => void;
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -530,6 +615,77 @@ function ProfileTab({
         >
           Simpan Profil
         </Button>
+      </Card>
+
+      {/* Profil Onboarding Section */}
+      <Card style={{ padding: '1.5rem' }}>
+        <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <GraduationCap size={16} style={{ color: 'rgb(var(--color-primary))' }} />
+          Profil Onboarding
+        </h3>
+        <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1.25rem' }}>
+          Lengkapi data profil kamu agar Synapse bisa lebih mengenal kamu.
+        </p>
+
+        {onboardingLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem' }}>
+            <Loader2 size={20} style={{ animation: 'spin 1s linear infinite', color: 'rgb(var(--color-primary))' }} />
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* University */}
+            <TextInput
+              label="Universitas"
+              value={onboardingUniversity}
+              onChange={setOnboardingUniversity}
+              placeholder="Contoh: Universitas Indonesia"
+            />
+
+            {/* Hobbies */}
+            <div>
+              <label style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: 500, marginBottom: '0.4rem' }}>
+                Hobi
+              </label>
+              <TagInput
+                value={onboardingHobbies}
+                onChange={setOnboardingHobbies}
+                placeholder="Tambah hobi (Enter/koma untuk menambah)"
+                maxTags={10}
+              />
+              <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginTop: '0.25rem' }}>
+                Tekan Enter atau koma untuk menambahkan hobi.
+              </p>
+            </div>
+
+            {/* Job */}
+            <TextInput
+              label="Pekerjaan / Aktivitas"
+              value={onboardingJob}
+              onChange={setOnboardingJob}
+              placeholder="Contoh: Mahasiswa, Freelancer, Asisten Lab"
+            />
+
+            {/* Reason */}
+            <TextInput
+              label="Alasan Menggunakan Synapse"
+              value={onboardingReason}
+              onChange={setOnboardingReason}
+              placeholder="Contoh: Ingin lebih produktif di kampus"
+            />
+
+            <div style={{ marginTop: '0.25rem' }}>
+              <Button
+                variant="primary"
+                size="md"
+                isLoading={onboardingSaving}
+                leftIcon={<Save size={14} />}
+                onClick={handleSaveOnboardingProfile}
+              >
+                Simpan Profil Onboarding
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   );

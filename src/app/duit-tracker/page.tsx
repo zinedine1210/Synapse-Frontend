@@ -342,6 +342,25 @@ export default function DuitTrackerPage() {
     catch (e: any) { showToast(e.message, 'error'); }
   };
 
+  const handleDeleteBudget = async (budget: CategoryBudget) => {
+    const catInfo = EXPENSE_CATEGORIES.find(c => c.id === budget.category);
+    const catLabel = catInfo?.label || budget.category;
+    if (!await confirm({ message: `Hapus budget ${catLabel} bulan ini?`, variant: 'danger' })) return;
+
+    // Optimistic removal
+    const prevBudgets = budgets;
+    setBudgets(prev => prev.filter(b => b.id !== budget.id));
+
+    try {
+      await duitTrackerService.deleteBudget(budget.id);
+      showToast('Budget berhasil dihapus.', 'success');
+    } catch (e: any) {
+      // Revert optimistic update on error
+      setBudgets(prevBudgets);
+      showToast(e.message || 'Gagal menghapus budget.', 'error');
+    }
+  };
+
   const handleSetBudget = async (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseCurrency(budgetForm.amount);
@@ -373,12 +392,12 @@ export default function DuitTrackerPage() {
           <Appbar sidebarCollapsed={sidebarCollapsed} />
           <div className="page-content" style={{ animation: 'fadeSlideIn 0.4s ease-out' }}>
             <PullToRefresh onRefresh={fetchData}>
-            <div className="duit-tracker-container" style={{ maxWidth: 1000, margin: '0 auto', paddingBottom: 'calc(var(--bottom-nav-height, 60px) + 16px)' }}>
+            <div className="duit-tracker-container duit-tracker" style={{ maxWidth: 1000, margin: '0 auto', paddingBottom: 'calc(var(--bottom-nav-height, 60px) + 16px)' }}>
 
               <div className="duit-tracker-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
                   <h1 style={{ fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>💰 Duit Tracker</h1>
-                  <p style={{ fontSize: 13, opacity: 0.5, marginTop: 2 }}>Lacak keuanganmu dengan cerdas</p>
+                  <p style={{ fontSize: 13, color: 'var(--dt-text-secondary)', marginTop: 2 }}>Lacak keuanganmu dengan cerdas</p>
                 </div>
                 <div className="duit-tracker-header-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <button onClick={() => setShowBawelSettings(true)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-default)', cursor: 'pointer', padding: '8px 10px', borderRadius: 10, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'inherit' }} className="hover-lift" title="Pengaturan Si Bawel">
@@ -468,7 +487,7 @@ export default function DuitTrackerPage() {
                     </div>
                   ) : Object.entries(txByDate).map(([dateLabel, txs]) => (
                     <div key={dateLabel}>
-                      <h3 style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.4, marginBottom: 8 }}>{dateLabel}</h3>
+                      <h3 style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--dt-text-secondary)', marginBottom: 8 }}>{dateLabel}</h3>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {txs.map(tx => (
                           <SwipeableRow
@@ -479,27 +498,27 @@ export default function DuitTrackerPage() {
                           >
                             <div style={{
                               padding: '14px 16px', borderRadius: 14, background: 'var(--card-bg)',
-                              border: '1px solid var(--border-default)', transition: 'all 0.2s',
+                              border: '1px solid var(--dt-card-border)', transition: 'all 0.2s',
                               borderLeft: `4px solid ${CATEGORY_COLORS[tx.category] || CATEGORY_COLORS.lainnya}`,
                             }} className="hover-lift">
                               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 {/* Category emoji bubble */}
                                 <div style={{
                                   width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-                                  background: tx.type === 'income' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.06)',
+                                  background: tx.type === 'income' ? 'rgba(22, 163, 74, 0.1)' : 'rgba(220, 38, 38, 0.06)',
                                   flexShrink: 0,
                                 }}>
                                   {getCatEmoji(tx.category, tx.type)}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <span style={{ fontWeight: 600, fontSize: 14 }}>{tx.label}</span>
-                                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'var(--input-bg)', textTransform: 'capitalize', opacity: 0.7 }}>{tx.category}</span>
+                                    <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--dt-text-primary)' }}>{tx.label}</span>
+                                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'var(--dt-badge-bg)', color: 'var(--dt-text-secondary)', textTransform: 'capitalize' }}>{tx.category}</span>
                                   </div>
-                                  {tx.note && <div style={{ fontSize: 12, opacity: 0.45, marginTop: 2 }}>{tx.note}</div>}
+                                  {tx.note && <div style={{ fontSize: 12, color: 'var(--dt-text-secondary)', marginTop: 2 }}>{tx.note}</div>}
                                 </div>
                                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                  <div style={{ fontWeight: 700, fontSize: 15, color: tx.type === 'income' ? 'var(--color-success)' : 'var(--color-error)' }}>
+                                  <div style={{ fontWeight: 700, fontSize: 15, color: tx.type === 'income' ? 'var(--dt-income)' : 'var(--dt-expense)' }}>
                                     {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
                                   </div>
                                 </div>
@@ -589,7 +608,7 @@ export default function DuitTrackerPage() {
                                 }} />
                               </div>
                               {cr.percentage != null && cr.percentage >= 80 && (
-                                <div style={{ fontSize: 11, color: cr.percentage > 100 ? 'var(--color-error)' : 'var(--color-warning)', marginTop: 3 }}>
+                                <div style={{ fontSize: 11, color: cr.percentage > 100 ? 'var(--dt-expense)' : 'var(--color-warning)', marginTop: 3 }}>
                                   ⚠️ {cr.percentage > 100 ? `Over budget ${cr.percentage - 100}%` : `${cr.percentage}% budget terpakai`}
                                 </div>
                               )}
@@ -628,19 +647,30 @@ export default function DuitTrackerPage() {
                         const pct = Math.round((spent / b.amount) * 100);
                         const catInfo = EXPENSE_CATEGORIES.find(c => c.id === b.category);
                         return (
-                          <div key={b.id} style={{ padding: '16px 18px', borderRadius: 14, background: 'var(--card-bg)', border: '1px solid var(--border-default)' }}>
+                          <div key={b.id} style={{ padding: '16px 18px', borderRadius: 14, background: 'var(--card-bg)', border: '1px solid var(--dt-card-border)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                               <span style={{ fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span>{catInfo?.emoji || '📦'}</span> {catInfo?.label || b.category}
                               </span>
-                              <span style={{ fontSize: 13 }}>{fmt(spent)} / {fmt(b.amount)}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: 13 }}>{fmt(spent)} / {fmt(b.amount)}</span>
+                                <button
+                                  onClick={() => handleDeleteBudget(b)}
+                                  aria-label={`Hapus budget ${catInfo?.label || b.category}`}
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, padding: 4, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'opacity 0.15s' }}
+                                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
+                                  onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
                             </div>
                             <div style={{ height: 10, borderRadius: 5, background: 'var(--input-bg)', overflow: 'hidden' }}>
                               <div style={{ height: '100%', borderRadius: 5, width: `${Math.min(pct, 100)}%`, background: pct > 100 ? 'linear-gradient(90deg, #ef4444, #dc2626)' : pct > 80 ? 'linear-gradient(90deg, #f59e0b, #eab308)' : 'linear-gradient(90deg, #10b981, #34d399)', transition: 'width 0.5s ease' }} />
                             </div>
                             <div style={{ fontSize: 12, marginTop: 6, display: 'flex', justifyContent: 'space-between' }}>
-                              <span style={{ opacity: 0.4 }}>{pct}% terpakai</span>
-                              <span style={{ color: pct > 100 ? 'var(--color-error)' : 'var(--color-success)', fontWeight: 600 }}>
+                              <span style={{ color: 'var(--dt-text-secondary)' }}>{pct}% terpakai</span>
+                              <span style={{ color: pct > 100 ? 'var(--dt-expense)' : 'var(--dt-income)', fontWeight: 600 }}>
                                 {pct > 100 ? `Over ${fmt(spent - b.amount)}` : `Sisa ${fmt(b.amount - spent)}`}
                               </span>
                             </div>
@@ -672,7 +702,7 @@ export default function DuitTrackerPage() {
                         return (
                           <div key={tree.id} style={{
                             padding: '20px 22px', borderRadius: 18, background: 'var(--card-bg)',
-                            border: pct >= 100 ? '2px solid #FFD700' : '1px solid var(--border-default)',
+                            border: pct >= 100 ? '2px solid #FFD700' : '1px solid var(--dt-card-border)',
                             position: 'relative', overflow: 'hidden',
                           }} className="hover-lift">
                             {pct >= 100 && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #FFD700, #FFA500, #FFD700)' }} />}

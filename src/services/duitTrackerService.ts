@@ -88,6 +88,9 @@ export const duitTrackerService = {
   getBudgets: (month: number, year: number) =>
     apiFetch<CategoryBudget[]>(`/duit-tracker/budgets?month=${month}&year=${year}`),
 
+  deleteBudget: (id: string) =>
+    apiFetch(`/duit-tracker/budget/${id}`, { method: 'DELETE' }),
+
   // Trees
   createTree: (data: { name: string; targetAmount: number; deadline?: string; treeType?: string }) =>
     apiFetch<SavingTree>('/duit-tracker/trees', { method: 'POST', body: JSON.stringify(data) }),

@@ -537,8 +537,8 @@ export default function TodosPage() {
                       ))}
                     </div>
 
-                    {/* Category chips (horizontal scroll) */}
-                    <div className="todo-cat-scroll" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+                    {/* Category — dropdown on mobile, chips on desktop */}
+                    <div className="todo-cat-desktop" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
                       <button onClick={() => setCategoryFilter('')} style={chipStyle(categoryFilter === '')}>
                         🌐 Semua <span style={{ opacity: 0.5, marginLeft: 4 }}>{todos.length}</span>
                       </button>
@@ -552,6 +552,23 @@ export default function TodosPage() {
                         );
                       })}
                       <button onClick={() => setShowCategoryCreator(true)} style={{ ...chipStyle(false), whiteSpace: 'nowrap', opacity: 0.65 }}>
+                        <Plus size={12} /> Kategori
+                      </button>
+                    </div>
+                    <div className="todo-cat-mobile" style={{ display: 'none', gap: 6, alignItems: 'center' }}>
+                      <select
+                        className="themed-input"
+                        value={categoryFilter}
+                        onChange={e => setCategoryFilter(e.target.value)}
+                        style={{ flex: 1, fontSize: 13, padding: '8px 12px', borderRadius: 10, fontWeight: 600 }}
+                      >
+                        <option value="">🌐 Semua ({todos.length})</option>
+                        {allCategories.map(cat => {
+                          const count = todos.filter(t => t.category === cat.id).length;
+                          return <option key={cat.id} value={cat.id}>{cat.emoji} {cat.label.replace(cat.emoji + ' ', '')} ({count})</option>;
+                        })}
+                      </select>
+                      <button onClick={() => setShowCategoryCreator(true)} style={{ ...chipStyle(false), whiteSpace: 'nowrap', opacity: 0.65, flexShrink: 0 }}>
                         <Plus size={12} /> Kategori
                       </button>
                     </div>

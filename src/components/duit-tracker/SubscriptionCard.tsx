@@ -160,7 +160,7 @@ export function SubscriptionCard({
               padding: '10px 12px',
               borderRadius: 10,
               background: 'var(--card-bg)',
-              border: '1px solid var(--border-default)',
+              border: '1px solid var(--dt-card-border)',
               transition: 'all 0.2s',
             }}
           >
@@ -185,7 +185,7 @@ export function SubscriptionCard({
               </div>
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-error)' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dt-expense)' }}>
                 {formatCurrency(item.averageAmount)}
               </div>
               <div style={{ fontSize: 10, opacity: 0.4 }}>/bulan</div>
@@ -264,7 +264,7 @@ export function SubscriptionCard({
           <span style={{ fontSize: 13, fontWeight: 700 }}>
             Total &ldquo;bocor halus&rdquo;
           </span>
-          <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--color-error)' }}>
+          <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--dt-expense)' }}>
             {formatCurrency(totalMonthly)}/bulan
           </span>
         </div>

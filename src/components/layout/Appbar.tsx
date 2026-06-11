@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Bell, User, Check, CheckCheck, X } from 'lucide-react';
+import { Bell, User, Check, CheckCheck, X, Search } from 'lucide-react';
 import { notificationService, Notification } from '@/services/notificationService';
 import { useAuth } from '@/lib/AuthContext';
+import { openCommandPalette } from './CommandPalette';
 
 interface AppbarProps {
   title?: string;
@@ -141,6 +142,41 @@ export function Appbar({
       </h1>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        {/* Search input trigger for Command Palette */}
+        <button
+          onClick={() => openCommandPalette()}
+          className="appbar-search-trigger"
+          aria-label="Open search (Ctrl+K)"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            padding: '0.4rem 0.75rem',
+            background: 'var(--input-bg)',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-sm)',
+            cursor: 'pointer',
+            color: 'rgb(var(--text-muted))',
+            fontSize: 'var(--font-xs)',
+            transition: 'var(--transition-fast)',
+            minWidth: 180,
+          }}
+        >
+          <Search size={14} />
+          <span style={{ flex: 1, textAlign: 'left' }}>Cari...</span>
+          <kbd
+            style={{
+              fontSize: '10px',
+              padding: '1px 5px',
+              borderRadius: 3,
+              background: 'rgb(var(--bg-secondary))',
+              border: '1px solid var(--border-default)',
+              fontFamily: 'inherit',
+            }}
+          >
+            ⌘K
+          </kbd>
+        </button>
         <div ref={panelRef} style={{ position: 'relative' }}>
           <button
             onClick={() => setShowPanel((p) => !p)}

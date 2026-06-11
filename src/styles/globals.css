@@ -72,6 +72,47 @@
   color-scheme: light;
 }
 
+/* ─── Duit Tracker Light Mode Tokens ─────────────────────────────────── */
+[data-theme="light"] .duit-tracker {
+  --dt-income: #16a34a;
+  --dt-expense: #dc2626;
+  --dt-card-border: #e5e7eb;
+  --dt-badge-bg: #f3f4f6;
+  --dt-text-primary: #111827;
+  --dt-text-secondary: #4b5563;
+  --dt-chart-grid: #d1d5db;
+}
+
+/* ─── Duit Tracker Dark Mode Tokens (defaults) ───────────────────────── */
+:root .duit-tracker,
+[data-theme="dark"] .duit-tracker {
+  --dt-income: #4ade80;
+  --dt-expense: #f87171;
+  --dt-card-border: rgba(255, 255, 255, 0.08);
+  --dt-badge-bg: rgba(255, 255, 255, 0.06);
+  --dt-text-primary: rgb(240, 240, 255);
+  --dt-text-secondary: rgb(156, 163, 186);
+  --dt-chart-grid: rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Duit Tracker Light Mode Utility Styles ─────────────────────────── */
+[data-theme="light"] .duit-tracker .tx-card {
+  border-color: var(--dt-card-border);
+}
+
+[data-theme="light"] .duit-tracker h3 {
+  color: var(--dt-text-primary);
+}
+
+[data-theme="light"] .duit-tracker .duit-date-filters select {
+  border-color: var(--dt-card-border);
+  color: var(--dt-text-primary);
+}
+
+[data-theme="light"] .duit-tracker .duit-tabs button {
+  color: var(--dt-text-secondary);
+}
+
 /* ─── Shared Tokens ──────────────────────────────────────────────────── */
 :root {
   --color-success: 34 197 94;
@@ -348,8 +389,12 @@ a:hover { opacity: 0.8; }
   .qna-grid {
     grid-template-columns: 1fr !important;
   }
+  .qna-grid > main {
+    order: -1 !important;
+  }
   .qna-sidebar-left {
     position: static !important;
+    order: 1 !important;
   }
   .qna-sidebar-left > div:first-child > div:last-child {
     flex-direction: row !important;
@@ -358,14 +403,24 @@ a:hover { opacity: 0.8; }
   }
   .qna-sidebar-right {
     position: static !important;
+    order: 2 !important;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
 }
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .qna-grid {
+    gap: 12px !important;
+    padding-bottom: calc(var(--bottom-nav-height, 60px) + 12px) !important;
+  }
+  /* Hide left sidebar completely on mobile — stats/categories move inline */
+  .qna-sidebar-left {
+    display: none !important;
+  }
+  /* Right sidebar collapses to single column */
   .qna-sidebar-right {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
 }
 
@@ -373,20 +428,33 @@ a:hover { opacity: 0.8; }
 @media (max-width: 1100px) {
   .qna-detail-grid {
     grid-template-columns: 1fr !important;
+    padding: 16px 12px 48px !important;
+  }
+  .qna-detail-grid > main {
+    order: -1 !important;
   }
   .qna-detail-sidebar-left {
     position: static !important;
+    order: 1 !important;
   }
   .qna-detail-sidebar-right {
     position: static !important;
+    order: 2 !important;
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 12px;
   }
 }
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .qna-detail-grid {
+    gap: 12px !important;
+  }
+  /* On mobile, hide left sidebar (info is already in main content) */
+  .qna-detail-sidebar-left {
+    display: none !important;
+  }
   .qna-detail-sidebar-right {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
 }
 
@@ -403,6 +471,12 @@ a:hover { opacity: 0.8; }
     flex-wrap: wrap;
     gap: 4px !important;
   }
+}
+
+/* ─── Hide bottom-nav when in forum chat (body class toggled by JS) ── */
+body.hide-bottom-nav .bottom-nav,
+body.hide-bottom-nav .quick-action-fab {
+  display: none !important;
 }
 
 /* ─── Themed Input ───────────────────────────────────────────────────── */
@@ -444,6 +518,46 @@ a:hover { opacity: 0.8; }
 }
 .themed-textarea::placeholder {
   color: rgb(var(--text-muted));
+}
+
+/* ─── FormField Component Styles ─────────────────────────────────────── */
+.form-field-input {
+  padding: 0.55rem 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: rgb(var(--text-primary));
+  font-size: var(--font-base);
+  font-family: inherit;
+  outline: none;
+  width: 100%;
+  transition: all 150ms ease;
+}
+.form-field-input:focus {
+  border-color: rgba(var(--color-primary) / 0.5);
+  box-shadow: 0 0 0 3px rgba(var(--color-primary) / 0.1);
+}
+.form-field-input::placeholder {
+  color: rgb(var(--text-muted));
+}
+.form-field-input--error {
+  border-color: rgb(239, 68, 68);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.08);
+}
+.form-field-input--error:focus {
+  border-color: rgb(239, 68, 68);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+[data-theme="dark"] .form-field-input--error {
+  border-color: rgb(248, 113, 113);
+}
+[data-theme="dark"] .form-field-input--error:focus {
+  border-color: rgb(248, 113, 113);
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.12);
+}
+.form-field-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* ContentEditable placeholder */
@@ -985,11 +1099,20 @@ a:hover { opacity: 0.8; }
   .todo-header-stats > div > div:last-child {
     font-size: 9px !important;
   }
-  .todo-cat-scroll {
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+  /* Category: hide chips, show dropdown on mobile */
+  .todo-cat-desktop {
+    display: none !important;
   }
-  .todo-cat-scroll::-webkit-scrollbar { display: none; }
+  .todo-cat-mobile {
+    display: flex !important;
+  }
+  /* Segmented control: ensure it fits on small screens */
+  .todo-segmented {
+    overflow-x: auto !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  .todo-segmented::-webkit-scrollbar { display: none; }
   .todo-calendar {
     font-size: 11px;
   }
@@ -1108,6 +1231,21 @@ a:hover { opacity: 0.8; }
   /* ═══ Q&A page ═══ */
   .qna-grid {
     gap: 12px !important;
+  }
+  .qna-mobile-cat-filter {
+    display: block !important;
+  }
+  .qna-card {
+    padding: 14px 14px 14px 16px !important;
+  }
+
+  /* ═══ Q&A Detail public page ═══ */
+  .qna-detail-grid {
+    gap: 12px !important;
+    padding: 12px 10px 48px !important;
+  }
+  .qna-detail-header {
+    padding: 10px 14px !important;
   }
 }
 

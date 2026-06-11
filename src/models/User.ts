@@ -22,6 +22,7 @@ export interface User {
   role: UserRole;
   plan: UserPlan;
   uploadCount: number;
+  onboardingCompleted: boolean;
   createdAt: string;
   pricingPlan?: PricingPlan;
 }

@@ -1,9 +1,17 @@
 'use client';
 
-import React from 'react';
-import { RefreshCw, Lightbulb, Bell, Loader2 } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { RefreshCw, Lightbulb, Bell, Loader2, ChevronRight } from 'lucide-react';
 import { SiBawelAvatar } from '@/components/shared/SiBawelAvatar';
-import type { AiBriefingResponse } from '@/services/dashboardService';
+import type { AiBriefingResponse, AiBriefingSection } from '@/services/dashboardService';
+import {
+  parseBriefingSections,
+  buildTaskDeepLink,
+  buildTodoDeepLink,
+  type BriefingSection,
+  type BriefingSectionType,
+} from '@/lib/briefing-parser';
 
 interface AiBriefingCardProps {
   briefing: AiBriefingResponse;
@@ -11,17 +19,108 @@ interface AiBriefingCardProps {
   isRefreshing?: boolean;
 }
 
+/** Section types that should render tappable items with deep links */
+const TAPPABLE_SECTIONS: BriefingSectionType[] = ['tugas', 'todo'];
+
+/** Map AI-generated section icons/titles to structured section types */
+const SECTION_TYPE_MAP: Record<string, BriefingSectionType> = {
+  '📅': 'kelas',
+  'jadwal': 'kelas',
+  '💰': 'keuangan',
+  'keuangan': 'keuangan',
+  '✅': 'tugas',
+  'tugas': 'tugas',
+  'tugas & todo': 'tugas',
+  '🔥': 'tabungan',
+  'streak': 'tabungan',
+};
+
+/** Structured section icon overrides for display (Req 8.6) */
+const STRUCTURED_ICONS: Record<BriefingSectionType, string> = {
+  greeting: '👋',
+  tugas: '📝',
+  todo: '✅',
+  keuangan: '💰',
+  kelas: '📚',
+  tabungan: '🌳',
+  motivasi: '💬',
+};
+
+/**
+ * Detect which BriefingSectionType an AI section maps to based on icon/title.
+ */
+function detectSectionType(section: AiBriefingSection): BriefingSectionType | null {
+  const iconMatch = SECTION_TYPE_MAP[section.icon];
+  if (iconMatch) return iconMatch;
+
+  const titleLower = section.title.toLowerCase();
+  if (titleLower.includes('tugas') || titleLower.includes('deadline')) return 'tugas';
+  if (titleLower.includes('todo') || titleLower.includes('to-do')) return 'todo';
+  if (titleLower.includes('keuangan') || titleLower.includes('pengeluaran') || titleLower.includes('finance')) return 'keuangan';
+  if (titleLower.includes('jadwal') || titleLower.includes('kelas') || titleLower.includes('kuliah')) return 'kelas';
+  if (titleLower.includes('tabungan') || titleLower.includes('saving') || titleLower.includes('pohon')) return 'tabungan';
+
+  return null;
+}
+
 /**
  * AiBriefingCard — Prominent, AI-generated "Today's Briefing" hero card.
  * Glass/gradient aesthetic with Si Bawel avatar, grouped icon-prefixed sections,
  * suggestions ("Saran"), reminders ("Pengingat"), and a motivation line.
+ *
+ * Enhanced (Req 8.6, 8.7):
+ * - Renders structured sections with specific icons for tugas, todo, keuangan, kelas, tabungan
+ * - Parses markdown section markers if present in underlying data
+ * - Makes task and todo items tappable with deep links to their detail views
+ *
  * Respects prefers-reduced-motion via the component-scoped <style jsx> block.
  */
 export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefingCardProps) {
-  const { greeting, headline, sections, suggestions, reminders, motivation } = briefing;
+  const router = useRouter();
+  const { greeting, headline, sections, suggestions, reminders, motivation, data } = briefing;
 
   const hasSuggestions = suggestions && suggestions.length > 0;
   const hasReminders = reminders && reminders.length > 0;
+
+  // Extract deadlines and todos from data for building deep links
+  const deadlines = useMemo(() => {
+    if (!data?.deadlines) return [];
+    return (data.deadlines as any[]).map(d => ({
+      id: d.id,
+      title: d.title,
+      className: d.className,
+      classId: d.classId,
+    }));
+  }, [data?.deadlines]);
+
+  const todos = useMemo(() => {
+    if (!data?.todos) return [];
+    return (data.todos as any[]).map(t => ({
+      id: t.id,
+      title: t.title,
+    }));
+  }, [data?.todos]);
+
+  /** Get deep link for a section item based on its detected type */
+  const getItemLink = (sectionType: BriefingSectionType | null, itemText: string): string | null => {
+    if (sectionType === 'tugas') {
+      return buildTaskDeepLink(itemText, deadlines);
+    }
+    if (sectionType === 'todo') {
+      return buildTodoDeepLink(itemText, todos);
+    }
+    return null;
+  };
+
+  /** Handle tapping an item with a deep link */
+  const handleItemTap = (link: string) => {
+    router.push(link);
+  };
+
+  /** Check if a section type is tappable */
+  const isTappableSection = (sectionType: BriefingSectionType | null): boolean => {
+    return sectionType !== null && TAPPABLE_SECTIONS.includes(sectionType);
+  };
 
   return (
     <div className="ai-briefing-card" role="region" aria-label="Briefing AI hari ini">
@@ -58,22 +157,48 @@ export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefing
           </div>
         </div>
 
-        {/* Sections */}
+        {/* Structured Sections (Req 8.6) */}
         {sections && sections.length > 0 && (
           <div className="ai-briefing-sections">
-            {sections.map((section, i) => (
-              <div key={`${section.title}-${i}`} className="ai-briefing-section">
-                <div className="ai-briefing-section-title">
-                  <span className="ai-briefing-section-icon" aria-hidden="true">{section.icon}</span>
-                  <span>{section.title}</span>
+            {sections.map((section, i) => {
+              const detectedType = detectSectionType(section);
+              const displayIcon = detectedType ? STRUCTURED_ICONS[detectedType] : section.icon;
+              const tappable = isTappableSection(detectedType);
+
+              return (
+                <div key={`${section.title}-${i}`} className="ai-briefing-section">
+                  <div className="ai-briefing-section-title">
+                    <span className="ai-briefing-section-icon" aria-hidden="true">{displayIcon}</span>
+                    <span>{section.title}</span>
+                  </div>
+                  <ul className="ai-briefing-list">
+                    {section.items.map((item, j) => {
+                      const link = tappable ? getItemLink(detectedType, item) : null;
+
+                      if (link && tappable) {
+                        return (
+                          <li key={j} className="ai-briefing-list-item ai-briefing-list-item--tappable">
+                            <button
+                              type="button"
+                              className="ai-briefing-item-link"
+                              onClick={() => handleItemTap(link)}
+                              aria-label={`Lihat detail: ${item}`}
+                            >
+                              <span className="ai-briefing-item-text">{item}</span>
+                              <ChevronRight size={12} className="ai-briefing-item-chevron" aria-hidden="true" />
+                            </button>
+                          </li>
+                        );
+                      }
+
+                      return (
+                        <li key={j} className="ai-briefing-list-item">{item}</li>
+                      );
+                    })}
+                  </ul>
                 </div>
-                <ul className="ai-briefing-list">
-                  {section.items.map((item, j) => (
-                    <li key={j} className="ai-briefing-list-item">{item}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -282,6 +407,50 @@ export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefing
           background: rgb(var(--color-primary));
           opacity: 0.6;
         }
+        .ai-briefing-list-item--tappable {
+          padding-left: 0;
+          margin-left: 0;
+        }
+        .ai-briefing-list-item--tappable::before {
+          display: none;
+        }
+        .ai-briefing-item-link {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          width: 100%;
+          padding: 6px 10px;
+          border-radius: var(--radius-sm, 6px);
+          border: 1px solid transparent;
+          background: rgba(var(--color-primary), 0.04);
+          cursor: pointer;
+          text-align: left;
+          font-size: 13px;
+          line-height: 1.5;
+          color: inherit;
+          transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .ai-briefing-item-link:hover {
+          background: rgba(var(--color-primary), 0.09);
+          border-color: rgba(var(--color-primary), 0.15);
+        }
+        .ai-briefing-item-link:active {
+          background: rgba(var(--color-primary), 0.14);
+          transform: scale(0.98);
+        }
+        .ai-briefing-item-text {
+          flex: 1;
+          min-width: 0;
+        }
+        .ai-briefing-item-chevron {
+          flex-shrink: 0;
+          opacity: 0.4;
+          transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        .ai-briefing-item-link:hover .ai-briefing-item-chevron {
+          opacity: 0.7;
+          transform: translateX(2px);
+        }
         .ai-briefing-blocks {
           display: flex;
           flex-direction: column;
@@ -329,6 +498,16 @@ export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefing
           .ai-briefing-spin { animation: none; }
           .ai-briefing-refresh,
           .ai-briefing-refresh:active:not(:disabled) {
+            transition: none;
+            transform: none;
+          }
+          .ai-briefing-item-link,
+          .ai-briefing-item-link:active {
+            transition: none;
+            transform: none;
+          }
+          .ai-briefing-item-chevron,
+          .ai-briefing-item-link:hover .ai-briefing-item-chevron {
             transition: none;
             transform: none;
           }

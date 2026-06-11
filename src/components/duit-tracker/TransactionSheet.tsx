@@ -57,7 +57,7 @@ export function TransactionSheet({
 
   const categories = form.type === 'income' ? incomeCategories : expenseCategories;
   const isIncome = form.type === 'income';
-  const accent = isIncome ? 'var(--color-success)' : 'var(--color-error)';
+  const accent = isIncome ? 'var(--dt-income)' : 'var(--dt-expense)';
 
   const handleQuickParse = async () => {
     if (!quickText.trim() || quickLoading) return;
@@ -172,7 +172,7 @@ export function TransactionSheet({
             className="tx-sheet__toggle-btn"
             style={{
               background: !isIncome ? 'var(--card-bg)' : 'transparent',
-              color: !isIncome ? 'var(--color-error)' : 'inherit',
+              color: !isIncome ? 'var(--dt-expense)' : 'inherit',
               boxShadow: !isIncome ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
             }}
           >
@@ -184,7 +184,7 @@ export function TransactionSheet({
             className="tx-sheet__toggle-btn"
             style={{
               background: isIncome ? 'var(--card-bg)' : 'transparent',
-              color: isIncome ? 'var(--color-success)' : 'inherit',
+              color: isIncome ? 'var(--dt-income)' : 'inherit',
               boxShadow: isIncome ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
             }}
           >

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';
 import { brand } from '@/config/brand';
 import { AuthProvider } from '@/lib/AuthContext';
+import { FeatureAccessProvider } from '@/lib/feature-access';
 import { ThemeProvider } from '@/lib/ThemeContext';
 import { ToastProvider } from '@/components/ui';
 import { ConfirmProvider } from '@/components/ui';
@@ -51,15 +52,17 @@ export default function RootLayout({
         <ThemeProvider>
           <ErrorBoundary>
             <AuthProvider>
-              <ToastProvider>
-                <ConfirmProvider>
-                  <CelebrationProvider>
-                    {children}
-                    <PWAInstallPrompt />
-                    <EveningRecapToast />
-                  </CelebrationProvider>
-                </ConfirmProvider>
-              </ToastProvider>
+              <FeatureAccessProvider>
+                <ToastProvider>
+                  <ConfirmProvider>
+                    <CelebrationProvider>
+                      {children}
+                      <PWAInstallPrompt />
+                      <EveningRecapToast />
+                    </CelebrationProvider>
+                  </ConfirmProvider>
+                </ToastProvider>
+              </FeatureAccessProvider>
             </AuthProvider>
           </ErrorBoundary>
         </ThemeProvider>

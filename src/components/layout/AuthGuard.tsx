@@ -1,14 +1,16 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
+import { completeOnboarding, skipOnboarding } from '@/lib/onboarding-service';
 import { Loader2 } from 'lucide-react';
 import { QuickActionFAB } from './QuickActionFAB';
 import { BottomNav } from './BottomNav';
 import { MobileNavSheet } from './MobileNavSheet';
 import { CommandPalette } from './CommandPalette';
 import { OnboardingFlow } from './OnboardingFlow';
+import type { OnboardingData } from './OnboardingFlow';
 import { TutorialOverlay } from './TutorialOverlay';
 
 interface AuthGuardProps {
@@ -18,7 +20,7 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuardProps) {
-  const { user, session, loading } = useAuth();
+  const { user, session, loading, refetchProfile } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -30,7 +32,7 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
       const onboardingKey = `synapse_onboarding_${user.id}`;
       const tourKey = `synapse_tour_${user.id}`;
       // Check both localStorage and backend flag
-      const isOnboarded = localStorage.getItem(onboardingKey) || (user as any).onboardingCompleted;
+      const isOnboarded = localStorage.getItem(onboardingKey) || user.onboardingCompleted;
       if (!isOnboarded) {
         setShowOnboarding(true);
       } else if (!localStorage.getItem(tourKey)) {
@@ -38,6 +40,40 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
       }
     }
   }, [loading, user]);
+
+  /**
+   * Marks onboarding as completed on the backend and updates local state.
+   * After completion or skip, triggers the Tour Guide.
+   */
+  const triggerTourGuide = useCallback(() => {
+    if (!user) return;
+    setShowOnboarding(false);
+    if (!localStorage.getItem(`synapse_tour_${user.id}`)) {
+      setShowTutorial(true);
+    }
+  }, [user]);
+
+  /**
+   * Handle onboarding completion: save profile data to backend,
+   * mark onboardingCompleted = true, then trigger Tour Guide.
+   */
+  const handleOnboardingComplete = useCallback(async (data: OnboardingData) => {
+    if (!user) return;
+    await completeOnboarding(user.id, data);
+    await refetchProfile();
+    triggerTourGuide();
+  }, [user, refetchProfile, triggerTourGuide]);
+
+  /**
+   * Handle onboarding skip: mark onboardingCompleted = true WITHOUT saving
+   * profile data, then trigger Tour Guide.
+   */
+  const handleOnboardingSkip = useCallback(async () => {
+    if (!user) return;
+    await skipOnboarding(user.id);
+    await refetchProfile();
+    triggerTourGuide();
+  }, [user, refetchProfile, triggerTourGuide]);
 
   useEffect(() => {
     if (!loading) {
@@ -85,14 +121,10 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
   return (
     <>
       {showOnboarding && user && (
-        <OnboardingFlow onComplete={() => {
-          localStorage.setItem(`synapse_onboarding_${user.id}`, 'done');
-          setShowOnboarding(false);
-          // Trigger tour after onboarding
-          if (!localStorage.getItem(`synapse_tour_${user.id}`)) {
-            setShowTutorial(true);
-          }
-        }} />
+        <OnboardingFlow
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+        />
       )}
       {showTutorial && user && (
         <TutorialOverlay onClose={() => {

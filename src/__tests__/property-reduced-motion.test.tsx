@@ -74,7 +74,7 @@ function mockAnimationFrames() {
   return {
     flush: () => {
       // Execute all pending animation frames (simulates animation completion)
-      const cbs = [...callbacks.values()];
+      const cbs = Array.from(callbacks.values());
       callbacks.clear();
       cbs.forEach(cb => cb(performance.now() + 1000));
     },

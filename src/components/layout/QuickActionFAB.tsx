@@ -4,13 +4,14 @@ import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Modal, useToast } from '@/components/ui';
 import { duitTrackerService } from '@/services/duitTrackerService';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { Plus, X, Camera, Wallet, CheckSquare, HelpCircle, Loader2, Sparkles, Check, ImageIcon } from 'lucide-react';
 
 const FAB_ITEMS = [
-  { key: 'scan', icon: Camera, label: 'Scan Struk', color: 'var(--color-warning)' },
-  { key: 'catat', icon: Wallet, label: 'Catat Cepat', color: 'var(--color-primary)' },
-  { key: 'todo', icon: CheckSquare, label: 'Todo Cepat', color: 'var(--color-success)' },
-  { key: 'tanya', icon: HelpCircle, label: 'Tanya', color: 'var(--color-secondary)' },
+  { key: 'scan', icon: Camera, label: 'Scan Struk', color: 'var(--color-warning)', requiredFeature: 'duit_tracker' },
+  { key: 'catat', icon: Wallet, label: 'Catat Cepat', color: 'var(--color-primary)', requiredFeature: 'duit_tracker' },
+  { key: 'todo', icon: CheckSquare, label: 'Todo Cepat', color: 'var(--color-success)', requiredFeature: 'todo' },
+  { key: 'tanya', icon: HelpCircle, label: 'Tanya', color: 'var(--color-secondary)', requiredFeature: 'qna' },
 ] as const;
 
 type ActionType = typeof FAB_ITEMS[number]['key'] | null;
@@ -22,11 +23,17 @@ const CATEGORY_OPTIONS = ['Makanan', 'Minuman & Kafe', 'Belanja Online', 'Transp
 export function QuickActionFAB() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { hasFeature } = useFeatureAccess();
   const [expanded, setExpanded] = useState(false);
   const [activeAction, setActiveAction] = useState<ActionType>(null);
   const [input, setInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [parseResult, setParseResult] = useState<any>(null);
+
+  // Filter FAB items based on feature access
+  const filteredFabItems = FAB_ITEMS.filter(
+    (item) => !item.requiredFeature || hasFeature(item.requiredFeature)
+  );
 
   // Scan struk state
   const [showScanChoice, setShowScanChoice] = useState(false);
@@ -212,7 +219,7 @@ export function QuickActionFAB() {
         {/* Menu items */}
         {expanded && (
           <div style={{ position: 'absolute', bottom: 56, right: 0, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
-            {FAB_ITEMS.map((item, i) => (
+            {filteredFabItems.map((item, i) => (
               <button
                 key={item.key}
                 onClick={() => handleAction(item.key)}

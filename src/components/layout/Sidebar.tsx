@@ -8,6 +8,7 @@ import { ChevronLeft, ChevronRight, ChevronDown, Sun, Moon } from 'lucide-react'
 import { primaryNavItems, secondaryNavItems, superadminNavItems, settingsNavItem, NavItem } from '@/config/navigation';
 import { brand } from '@/config/brand';
 import { useTheme } from '@/lib/ThemeContext';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { XpBar } from './XpBar';
 
 interface SidebarProps {
@@ -23,12 +24,21 @@ export function Sidebar({ userRole = 'USER', collapsed: controlledCollapsed, onT
   const setCollapsed = onToggle ? onToggle : setLocalCollapsed;
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
+  const { hasFeature } = useFeatureAccess();
 
   // For superadmin, show superadmin items only; for regular users, use progressive disclosure
   const isSuperadmin = userRole === 'SUPERADMIN';
 
+  // Filter nav items based on feature access (items without requiredFeature are always shown)
+  const filteredPrimaryNavItems = primaryNavItems.filter(
+    (item) => !item.requiredFeature || hasFeature(item.requiredFeature)
+  );
+  const filteredSecondaryNavItems = secondaryNavItems.filter(
+    (item) => !item.requiredFeature || hasFeature(item.requiredFeature)
+  );
+
   // Auto-expand "Lainnya" if the user is on a secondary page
-  const isOnSecondaryPage = secondaryNavItems.some(
+  const isOnSecondaryPage = filteredSecondaryNavItems.some(
     (item) => pathname === item.path || pathname?.startsWith(item.path + '/')
   );
 
@@ -159,10 +169,10 @@ export function Sidebar({ userRole = 'USER', collapsed: controlledCollapsed, onT
             : (
               <>
                 {/* Primary items (max 6) */}
-                {primaryNavItems.map(renderNavItem)}
+                {filteredPrimaryNavItems.map(renderNavItem)}
 
                 {/* "Lainnya" collapsed section for secondary items */}
-                {secondaryNavItems.length > 0 && (
+                {filteredSecondaryNavItems.length > 0 && (
                   <li>
                     <button
                       onClick={() => setLainnyaOpen(!lainnyaOpen)}
@@ -202,7 +212,7 @@ export function Sidebar({ userRole = 'USER', collapsed: controlledCollapsed, onT
                     {/* Secondary items - shown when expanded or user is on a secondary page */}
                     {(lainnyaOpen || isOnSecondaryPage) && (
                       <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
-                        {secondaryNavItems.map(renderNavItem)}
+                        {filteredSecondaryNavItems.map(renderNavItem)}
                       </ul>
                     )}
                   </li>

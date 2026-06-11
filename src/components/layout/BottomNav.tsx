@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Wallet, CheckSquare, HelpCircle, MoreHorizontal } from 'lucide-react';
+import { useFeatureAccess } from '@/lib/feature-access';
 
 /**
  * BottomNav — Fixed bottom tab bar for mobile viewports (<768px)
@@ -31,13 +32,14 @@ interface BottomNavTab {
   label: string;
   path: string;
   icon: React.ElementType;
+  requiredFeature?: string;
 }
 
 const TABS: BottomNavTab[] = [
   { key: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-  { key: 'duit-tracker', label: 'Duit', path: '/duit-tracker', icon: Wallet },
-  { key: 'todos', label: 'Todo', path: '/todos', icon: CheckSquare },
-  { key: 'qna', label: 'Q&A', path: '/qna', icon: HelpCircle },
+  { key: 'duit-tracker', label: 'Duit', path: '/duit-tracker', icon: Wallet, requiredFeature: 'duit_tracker' },
+  { key: 'todos', label: 'Todo', path: '/todos', icon: CheckSquare, requiredFeature: 'todo' },
+  { key: 'qna', label: 'Q&A', path: '/qna', icon: HelpCircle, requiredFeature: 'qna' },
   { key: 'more', label: 'More', path: '#more', icon: MoreHorizontal },
 ];
 
@@ -48,9 +50,15 @@ const SCROLL_THRESHOLD = 10;
 
 export function BottomNav({ unreadQnaCount = 0, pendingTodoCount = 0, onMoreTap }: BottomNavProps) {
   const pathname = usePathname();
+  const { hasFeature } = useFeatureAccess();
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
+
+  // Filter tabs based on feature access
+  const filteredTabs = TABS.filter(
+    (tab) => !tab.requiredFeature || hasFeature(tab.requiredFeature)
+  );
 
   // Scroll-direction detection with requestAnimationFrame
   const handleScroll = useCallback(() => {
@@ -110,7 +118,7 @@ export function BottomNav({ unreadQnaCount = 0, pendingTodoCount = 0, onMoreTap 
     <>
       <style>{bottomNavStyles}</style>
       <nav className="bottom-nav" data-visible={isVisible} aria-label="Mobile navigation">
-        {TABS.map((tab) => {
+        {filteredTabs.map((tab) => {
           const Icon = tab.icon;
           const active = isActive(tab);
           const badge = getBadge(tab);

@@ -215,10 +215,10 @@ export function FinancialHero({ summary, transactions, month, year }: FinancialH
           flex-shrink: 0;
         }
         .duit-hero__pill-icon--in {
-          background: rgba(16, 185, 129, 0.35);
+          background: rgba(22, 163, 74, 0.35);
         }
         .duit-hero__pill-icon--out {
-          background: rgba(239, 68, 68, 0.35);
+          background: rgba(220, 38, 38, 0.35);
         }
         .duit-hero__pill-label {
           font-size: 11px;

@@ -42,7 +42,7 @@ const arbMarkdownBody = fc.oneof(
 /** Generate a slug-like string */
 const arbSlug = fc
   .array(
-    fc.string({ minLength: 1, maxLength: 10, unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz0123456789') }),
+    fc.string({ minLength: 1, maxLength: 10, unit: fc.constantFrom(...Array.from('abcdefghijklmnopqrstuvwxyz0123456789')) }),
     { minLength: 1, maxLength: 4 }
   )
   .map((parts) => parts.join('-'));
@@ -208,7 +208,7 @@ describe('Feature: synapse-mega-upgrade, Property 1: SEO Metadata Generation', (
   it('stripMarkdown removes all standard markdown syntax', () => {
     // Generate single alphanumeric words (no spaces) that won't be confused with markdown
     const arbWord = fc
-      .string({ minLength: 3, maxLength: 15, unit: fc.constantFrom(...'abcdefghijklmnopqrstuvwxyz') })
+      .string({ minLength: 3, maxLength: 15, unit: fc.constantFrom(...Array.from('abcdefghijklmnopqrstuvwxyz')) })
       .filter((s) => s.length >= 3);
 
     fc.assert(

@@ -241,7 +241,7 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
   return (
     <div style={{ minHeight: '100vh', background: 'rgb(var(--bg-base))' }}>
       {/* Header */}
-      <header style={{
+      <header className="qna-detail-header" style={{
         borderBottom: '1px solid var(--border-default)',
         background: 'rgb(var(--bg-surface))',
         padding: '12px 24px',

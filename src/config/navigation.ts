@@ -15,6 +15,7 @@ export interface NavItem {
   icon: React.ElementType;
   requiredPlan?: 'FREE' | 'PRO';
   requiredRole?: 'USER' | 'SUPERADMIN';
+  requiredFeature?: string; // Feature key from PricingPlan.features for access control
   badge?: string; // Label badge opsional (e.g., "NEW", "PRO")
 }
 
@@ -32,21 +33,25 @@ export const primaryNavItems: NavItem[] = [
     label: 'Kelas Saya',
     path: '/classes',
     icon: BookOpen,
+    requiredFeature: 'class',
   },
   {
     label: 'Duit Tracker',
     path: '/duit-tracker',
     icon: Wallet,
+    requiredFeature: 'duit_tracker',
   },
   {
     label: 'To-Do List',
     path: '/todos',
     icon: CheckSquare,
+    requiredFeature: 'todo',
   },
   {
     label: 'Q&A',
     path: '/qna',
     icon: HelpCircle,
+    requiredFeature: 'qna',
   },
   {
     label: 'Billing',
@@ -64,16 +69,19 @@ export const secondaryNavItems: NavItem[] = [
     label: 'Makan Apa',
     path: '/makan',
     icon: UtensilsCrossed,
+    requiredFeature: 'food_recommend',
   },
   {
     label: 'Split Bill',
     path: '/split-bill',
     icon: Receipt,
+    requiredFeature: 'split_bill',
   },
   {
     label: 'Insight',
     path: '/insight',
     icon: Lightbulb,
+    requiredFeature: 'insight',
   },
 ];
 

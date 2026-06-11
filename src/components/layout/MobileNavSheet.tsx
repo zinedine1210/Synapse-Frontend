@@ -13,6 +13,7 @@ import {
 } from '@/config/navigation';
 import { useTheme } from '@/lib/ThemeContext';
 import { useAuth } from '@/lib/AuthContext';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { XpBar } from './XpBar';
 
 interface MobileNavSheetProps {
@@ -35,8 +36,15 @@ export function MobileNavSheet({ open, onClose }: MobileNavSheetProps) {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const { user, signOut } = useAuth();
+  const { hasFeature } = useFeatureAccess();
 
   const isSuperadmin = user?.role === 'SUPERADMIN';
+
+  const navItems = isSuperadmin
+    ? superadminNavItems
+    : [...primaryNavItems, ...secondaryNavItems].filter(
+        (item) => !item.requiredFeature || hasFeature(item.requiredFeature)
+      );
 
   // Lock body scroll while the sheet is open + close on Escape
   useEffect(() => {
@@ -84,10 +92,6 @@ export function MobileNavSheet({ open, onClose }: MobileNavSheetProps) {
       </li>
     );
   };
-
-  const navItems = isSuperadmin
-    ? superadminNavItems
-    : [...primaryNavItems, ...secondaryNavItems];
 
   return (
     <>

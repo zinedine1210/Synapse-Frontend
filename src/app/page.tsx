@@ -9,8 +9,9 @@ import {
   ChevronRight, Zap, MessageSquare, ArrowRight, Star,
   CheckCircle2, GraduationCap, Layers, Target, Sun, Moon, Globe,
   Shield, Wallet, ClipboardList, PenTool, Vote, Bell,
-  FolderOpen, ChevronDown, Play, Monitor,
+  FolderOpen, ChevronDown, Play, Monitor, Smartphone,
 } from 'lucide-react';
+import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 
 /* ═══════════════════════════════════════════
    i18n
@@ -89,6 +90,13 @@ const T = {
       { num: '03', title: 'AI Memproses Otomatis', desc: 'AI merangkum materi, mengekstrak poin-poin penting, membuat kuis latihan, dan memprediksi soal ujian — semuanya otomatis tanpa perlu setting apapun.', detail: 'Powered by Gemini' },
       { num: '04', title: 'Belajar & Kolaborasi', desc: 'Review rangkuman, latihan kuis adaptif, diskusi di forum, bagi tugas kelompok, dan pantau progress belajarmu. Siap hadapi ujian dengan percaya diri!', detail: 'Semua dalam satu app' },
     ],
+
+    // Video demo
+    videoBadge: 'Lihat Aksi',
+    videoTitle1: 'Saksikan Synapse',
+    videoTitle2: 'Beraksi',
+    videoSub: 'Lihat bagaimana mahasiswa menggunakan Synapse untuk meringkas materi, latihan kuis, dan kolaborasi — semuanya dalam hitungan menit.',
+    videoPlayBtn: 'Tonton Demo',
 
     // Showcase section
     showcaseBadge: 'Tampilan Aplikasi',
@@ -236,6 +244,13 @@ const T = {
       { num: '04', title: 'Learn & Collaborate', desc: 'Review summaries, practice adaptive quizzes, discuss in forums, divide group tasks, and track your learning progress. Ace your exams with confidence!', detail: 'All in one app' },
     ],
 
+    // Video demo
+    videoBadge: 'See It In Action',
+    videoTitle1: 'Watch Synapse',
+    videoTitle2: 'In Action',
+    videoSub: 'See how students use Synapse to summarize materials, practice quizzes, and collaborate — all within minutes.',
+    videoPlayBtn: 'Watch Demo',
+
     showcaseBadge: 'App Preview',
     showcaseTitle1: 'Designed for',
     showcaseTitle2: 'Modern Students',
@@ -340,7 +355,6 @@ const TAG_COLORS: Record<string, { bg: string; color: string; bgLight: string; c
 /* ═══ Hooks ═══ */
 
 function useCounter(end: number, duration = 2000) {
-  const [count, setCount] = useState(0);
   const [started, setStarted] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -350,18 +364,7 @@ function useCounter(end: number, duration = 2000) {
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
-  useEffect(() => {
-    if (!started) return;
-    let startTs: number;
-    const tick = (t: number) => {
-      if (!startTs) startTs = t;
-      const p = Math.min((t - startTs) / duration, 1);
-      setCount(Math.floor(p * end));
-      if (p < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }, [started, end, duration]);
-  return { count, ref };
+  return { started, ref, end, duration };
 }
 
 function useInView(threshold = 0.15) {
@@ -500,6 +503,7 @@ export default function LandingPage() {
   const highlightAnim = useInView();
   const featAnim = useInView();
   const howAnim = useInView();
+  const videoAnim = useInView();
   const showcaseAnim = useInView();
   const testiAnim = useInView();
 
@@ -524,7 +528,7 @@ export default function LandingPage() {
       <style>{`
         @keyframes ctaGlow {
           0%, 100% { box-shadow: 0 4px 24px rgba(0,212,255,0.3), 0 0 60px rgba(0,212,255,0.1); }
-          50% { box-shadow: 0 4px 32px rgba(0,212,255,0.5), 0 0 80px rgba(0,212,255,0.2); }
+          50% { box-shadow: 0 8px 48px rgba(0,212,255,0.6), 0 0 120px rgba(0,212,255,0.25), 0 0 200px rgba(0,245,160,0.1); }
         }
         @keyframes floatOrb {
           0%, 100% { transform: translate(0, 0) scale(1); }
@@ -535,6 +539,16 @@ export default function LandingPage() {
           0% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
           100% { background-position: 0% 50%; }
+        }
+        @keyframes glowPulse {
+          0%, 100% { opacity: 0.6; transform: scale(1); }
+          50% { opacity: 1; transform: scale(1.05); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .landing-cta-primary, .landing-cta-primary:hover {
+            animation: none !important;
+            transition: none !important;
+          }
         }
         .landing-cta-primary:hover {
           transform: translateY(-2px) !important;
@@ -556,6 +570,7 @@ export default function LandingPage() {
           .landing-hero-btns { flex-direction: column !important; align-items: stretch !important; }
           .landing-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .landing-footer-grid { grid-template-columns: 1fr !important; text-align: center !important; }
+          .landing-device-layout { flex-direction: column !important; align-items: center !important; }
         }
         @media (max-width: 480px) {
           .landing-stats-grid { grid-template-columns: 1fr !important; }
@@ -725,7 +740,13 @@ export default function LandingPage() {
               backdropFilter: 'blur(8px)',
             }}>
               <div style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', fontWeight: 800, background: stat.gradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1.1 }}>
-                {stat.counter.count}{stat.suffix}
+                <AnimatedNumber
+                  value={stat.counter.started ? stat.counter.end : 0}
+                  suffix={stat.suffix}
+                  duration={stat.counter.duration}
+                  countUp
+                  style={{ background: stat.gradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+                />
               </div>
               <div style={{ fontSize: '0.8rem', fontWeight: 600, color: c.textSub, marginTop: '0.3rem' }}>{stat.label}</div>
               <div style={{ fontSize: '0.7rem', color: c.textMuted, marginTop: '0.1rem' }}>{stat.sub}</div>
@@ -949,7 +970,100 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ═══ APP SHOWCASE ═══ */}
+      {/* ═══ VIDEO DEMO (Req 14.4) ═══ */}
+      <section ref={videoAnim.ref} style={{ padding: '5rem 1.5rem' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <div style={{
+            textAlign: 'center', marginBottom: '2.5rem',
+            opacity: videoAnim.inView ? 1 : 0, transform: videoAnim.inView ? 'translateY(0)' : 'translateY(30px)',
+            transition: 'all 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+          }}>
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+              padding: '0.3rem 0.85rem', borderRadius: 999, fontSize: '0.75rem',
+              background: isDark ? 'rgba(240,147,251,0.08)' : 'rgba(200,80,180,0.08)',
+              border: isDark ? '1px solid rgba(240,147,251,0.15)' : '1px solid rgba(200,80,180,0.18)',
+              color: isDark ? '#f093fb' : '#b050a0', fontWeight: 600,
+            }}>
+              <Play size={12} /> {t.videoBadge}
+            </span>
+            <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.6rem)', fontWeight: 800, letterSpacing: '-0.03em', marginTop: '0.85rem', marginBottom: '0.75rem' }}>
+              {t.videoTitle1}<br />
+              <span style={{ background: 'linear-gradient(135deg, #f093fb, #f5576c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t.videoTitle2}</span>
+            </h2>
+            <p style={{ fontSize: '1rem', color: c.textMuted, maxWidth: 520, margin: '0 auto', lineHeight: 1.6 }}>{t.videoSub}</p>
+          </div>
+
+          {/* Video embed frame */}
+          <div style={{
+            position: 'relative', borderRadius: 20, overflow: 'hidden',
+            border: `1px solid ${c.cardBorder}`,
+            boxShadow: isDark ? '0 20px 80px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.08)',
+            opacity: videoAnim.inView ? 1 : 0,
+            transform: videoAnim.inView ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.97)',
+            transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s',
+            aspectRatio: '16/9',
+            background: isDark
+              ? 'linear-gradient(135deg, rgba(10,16,32,0.95), rgba(16,22,40,0.95))'
+              : 'linear-gradient(135deg, rgba(248,250,252,0.95), rgba(240,244,248,0.95))',
+          }}>
+            {/* Video placeholder with play button overlay */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: '1rem',
+            }}>
+              {/* Animated background circles */}
+              <div style={{
+                position: 'absolute', width: 300, height: 300, borderRadius: '50%',
+                background: isDark ? 'rgba(0,212,255,0.06)' : 'rgba(0,180,220,0.06)',
+                filter: 'blur(40px)', animation: 'floatOrb 10s ease-in-out infinite',
+              }} />
+              {/* Play button with glow */}
+              <button
+                aria-label={t.videoPlayBtn}
+                style={{
+                  width: 80, height: 80, borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #00D4FF, #00F5A0)',
+                  border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: isDark
+                    ? '0 0 40px rgba(0,212,255,0.4), 0 0 80px rgba(0,212,255,0.15)'
+                    : '0 0 30px rgba(0,180,220,0.3), 0 0 60px rgba(0,180,220,0.1)',
+                  transition: 'all 0.3s ease',
+                  animation: 'ctaGlow 3s ease-in-out infinite',
+                  position: 'relative', zIndex: 1,
+                }}
+              >
+                <Play size={32} fill="#060B18" style={{ color: '#060B18', marginLeft: 4 }} />
+              </button>
+              <span style={{
+                fontSize: '0.85rem', fontWeight: 600, color: c.textSub,
+                position: 'relative', zIndex: 1,
+              }}>
+                {t.videoPlayBtn}
+              </span>
+            </div>
+
+            {/* Decorative screenshot grid behind play button */}
+            <div style={{
+              position: 'absolute', inset: 0, opacity: 0.3,
+              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem',
+              padding: '1.5rem',
+            }}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} style={{
+                  borderRadius: 12,
+                  background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                }} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ DEVICE MOCKUP WITH APP SCREENSHOTS (Req 14.2) ═══ */}
       <section ref={showcaseAnim.ref} style={{ padding: '5rem 1.5rem' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{
@@ -964,7 +1078,7 @@ export default function LandingPage() {
               border: isDark ? '1px solid rgba(79,172,254,0.15)' : '1px solid rgba(60,140,220,0.18)',
               color: isDark ? '#4facfe' : '#2878c8', fontWeight: 600,
             }}>
-              <Monitor size={12} /> {t.showcaseBadge}
+              <Smartphone size={12} /> {t.showcaseBadge}
             </span>
             <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.6rem)', fontWeight: 800, letterSpacing: '-0.03em', marginTop: '0.85rem', marginBottom: '0.75rem' }}>
               {t.showcaseTitle1}<br />
@@ -973,66 +1087,119 @@ export default function LandingPage() {
             <p style={{ fontSize: '1rem', color: c.textMuted, maxWidth: 520, margin: '0 auto', lineHeight: 1.6 }}>{t.showcaseSub}</p>
           </div>
 
-          {/* Mock browser window */}
-          <div style={{
-            borderRadius: 20, overflow: 'hidden',
-            border: `1px solid ${c.cardBorder}`,
-            boxShadow: isDark ? '0 20px 80px rgba(0,0,0,0.5)' : '0 20px 60px rgba(0,0,0,0.08)',
+          {/* Device Mockup Frame */}
+          <div className="landing-device-layout" style={{
+            display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '2rem', flexWrap: 'wrap',
             opacity: showcaseAnim.inView ? 1 : 0,
-            transform: showcaseAnim.inView ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.98)',
+            transform: showcaseAnim.inView ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.95)',
             transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s',
           }}>
-            {/* Browser bar */}
+            {/* Phone mockup */}
             <div style={{
-              padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
-              background: isDark ? 'rgba(20,28,48,0.9)' : 'rgba(240,242,248,0.9)',
-              borderBottom: `1px solid ${c.cardBorder}`,
+              position: 'relative',
+              width: 280, height: 560,
+              borderRadius: 36,
+              background: isDark ? '#1a1a2e' : '#f8f8f8',
+              border: isDark ? '8px solid #2d2d44' : '8px solid #d4d4d4',
+              boxShadow: isDark
+                ? '0 30px 80px rgba(0,0,0,0.6), inset 0 0 0 2px rgba(255,255,255,0.05)'
+                : '0 30px 60px rgba(0,0,0,0.12), inset 0 0 0 2px rgba(255,255,255,0.8)',
+              overflow: 'hidden',
             }}>
-              <div style={{ display: 'flex', gap: '0.4rem' }}>
-                {['#ff5f57', '#febc2e', '#28c840'].map((color, i) => (
-                  <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: color }} />
-                ))}
-              </div>
+              {/* Phone notch */}
               <div style={{
-                flex: 1, padding: '0.3rem 0.8rem', borderRadius: 8, fontSize: '0.7rem',
-                background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                color: c.textMuted, fontFamily: 'monospace',
+                position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                width: 120, height: 24, borderRadius: '0 0 14px 14px',
+                background: isDark ? '#2d2d44' : '#d4d4d4', zIndex: 2,
+              }} />
+              {/* Screen content - app screenshot placeholder */}
+              <div style={{
+                width: '100%', height: '100%', borderRadius: 28,
+                background: isDark
+                  ? 'linear-gradient(180deg, #0f1629 0%, #0a1020 100%)'
+                  : 'linear-gradient(180deg, #f8fafc 0%, #eef2f6 100%)',
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                padding: '2.5rem 1rem 1rem', overflow: 'hidden',
               }}>
-                synapse.dev/dashboard
+                {/* Mini dashboard UI inside phone */}
+                <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <Image src={brand.logoPath} alt={brand.name} width={20} height={20} style={{ objectFit: 'contain' }} />
+                  <span style={{ fontSize: '0.65rem', fontWeight: 700, color: c.text }}>{brand.name}</span>
+                </div>
+                {/* Simulated class cards */}
+                {[
+                  { title: 'Algoritma & Pemrograman', color: '#00D4FF' },
+                  { title: 'Kalkulus II', color: '#00F5A0' },
+                  { title: 'Basis Data', color: '#a18cd1' },
+                ].map((cls, i) => (
+                  <div key={i} style={{
+                    width: '100%', padding: '0.7rem', borderRadius: 10, marginBottom: '0.5rem',
+                    background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: cls.color }} />
+                      <span style={{ fontSize: '0.55rem', fontWeight: 600, color: c.text }}>{cls.title}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.3rem', marginTop: '0.35rem' }}>
+                      {['Sesi 12', '3 Tugas'].map((t2, j) => (
+                        <span key={j} style={{
+                          fontSize: '0.45rem', padding: '0.1rem 0.3rem', borderRadius: 4,
+                          background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                          color: c.textMuted,
+                        }}>
+                          {t2}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {/* Mini AI summary card */}
+                <div style={{
+                  width: '100%', padding: '0.6rem', borderRadius: 10, marginTop: '0.3rem',
+                  background: isDark ? 'rgba(0,212,255,0.06)' : 'rgba(0,180,220,0.06)',
+                  border: `1px solid ${isDark ? 'rgba(0,212,255,0.15)' : 'rgba(0,180,220,0.15)'}`,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginBottom: '0.25rem' }}>
+                    <Brain size={10} style={{ color: '#00D4FF' }} />
+                    <span style={{ fontSize: '0.5rem', fontWeight: 600, color: isDark ? '#00D4FF' : '#0088aa' }}>AI Rangkuman</span>
+                  </div>
+                  <div style={{ width: '90%', height: 4, borderRadius: 2, background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)', marginBottom: '0.2rem' }} />
+                  <div style={{ width: '70%', height: 4, borderRadius: 2, background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' }} />
+                </div>
               </div>
             </div>
-            {/* Content area with feature cards */}
-            <div style={{
-              padding: '2.5rem 2rem',
-              background: isDark ? 'linear-gradient(135deg, rgba(10,16,32,0.95), rgba(16,22,40,0.95))' : 'linear-gradient(135deg, rgba(248,250,252,0.95), rgba(240,244,248,0.95))',
-            }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-                {t.showcaseItems.map((item, i) => {
-                  const showcaseColors = ['#00D4FF', '#a18cd1', '#4facfe', '#00F5A0'];
-                  const showcaseIcons = [Layers, BookOpen, MessageSquare, Brain];
-                  const SIcon = showcaseIcons[i];
-                  return (
-                    <div key={i} style={{
-                      padding: '1.5rem', borderRadius: 16,
-                      background: c.showcaseCardBg, border: `1px solid ${c.cardBorder}`,
-                      display: 'flex', gap: '1rem', alignItems: 'flex-start',
+
+            {/* Side feature cards */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 340 }}>
+              {t.showcaseItems.map((item, i) => {
+                const showcaseColors = ['#00D4FF', '#a18cd1', '#4facfe', '#00F5A0'];
+                const showcaseIcons = [Layers, BookOpen, MessageSquare, Brain];
+                const SIcon = showcaseIcons[i];
+                return (
+                  <div key={i} style={{
+                    padding: '1.15rem', borderRadius: 16,
+                    background: c.showcaseCardBg, border: `1px solid ${c.cardBorder}`,
+                    display: 'flex', gap: '0.85rem', alignItems: 'flex-start',
+                    opacity: showcaseAnim.inView ? 1 : 0,
+                    transform: showcaseAnim.inView ? 'translateX(0)' : 'translateX(30px)',
+                    transition: `all 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${0.3 + i * 0.1}s`,
+                  }}>
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 11, flexShrink: 0,
+                      background: isDark ? `${showcaseColors[i]}10` : `${showcaseColors[i]}08`,
+                      border: `1px solid ${isDark ? `${showcaseColors[i]}20` : `${showcaseColors[i]}15`}`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <div style={{
-                        width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                        background: isDark ? `${showcaseColors[i]}10` : `${showcaseColors[i]}08`,
-                        border: `1px solid ${isDark ? `${showcaseColors[i]}20` : `${showcaseColors[i]}15`}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <SIcon size={20} style={{ color: showcaseColors[i] }} />
-                      </div>
-                      <div>
-                        <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.3rem' }}>{item.title}</h4>
-                        <p style={{ fontSize: '0.78rem', color: c.textMuted, lineHeight: 1.55, margin: 0 }}>{item.desc}</p>
-                      </div>
+                      <SIcon size={18} style={{ color: showcaseColors[i] }} />
                     </div>
-                  );
-                })}
-              </div>
+                    <div>
+                      <h4 style={{ fontSize: '0.85rem', fontWeight: 700, marginBottom: '0.2rem' }}>{item.title}</h4>
+                      <p style={{ fontSize: '0.75rem', color: c.textMuted, lineHeight: 1.5, margin: 0 }}>{item.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

@@ -15,6 +15,7 @@ export interface SplitParticipant {
   name: string;
   totalOwed: number;
   isPaid: boolean;
+  percentage?: number | null;
 }
 
 export interface SplitBill {
@@ -24,6 +25,7 @@ export interface SplitBill {
   totalAmount: number;
   receiptImageUrl: string | null;
   status: 'settling' | 'done';
+  splitMethod: 'item' | 'percentage';
   createdAt: string;
   items: SplitBillItem[];
   participants: SplitParticipant[];
@@ -40,11 +42,33 @@ export interface ReceiptScanResult {
   error?: string;
 }
 
+export interface SplittableTransaction {
+  id: string;
+  label: string;
+  amount: number;
+  category: string;
+  date: string;
+  suggestedReason: string;
+}
+
+export interface HistorySummaryEntry {
+  name: string;
+  totalOwed: number;
+  totalPaid: number;
+  outstanding: number;
+}
+
 export const splitBillService = {
   scanReceipt: (imageBase64: string, mimeType: string) =>
     apiFetch<ReceiptScanResult>('/split-bill/scan-receipt', { method: 'POST', body: JSON.stringify({ imageBase64, mimeType }) }),
 
-  create: (data: { eventName?: string; items: { name: string; price: number; quantity?: number }[]; participants: string[] }) =>
+  create: (data: {
+    eventName?: string;
+    splitMethod?: 'item' | 'percentage';
+    items: { name: string; price: number; quantity?: number }[];
+    participants: string[];
+    percentages?: Record<string, number>;
+  }) =>
     apiFetch<SplitBill>('/split-bill', { method: 'POST', body: JSON.stringify(data) }),
 
   getAll: () => apiFetch<SplitBill[]>('/split-bill'),
@@ -54,12 +78,20 @@ export const splitBillService = {
   assignItem: (itemId: string, participantIds: string[]) =>
     apiFetch<SplitBill>(`/split-bill/items/${itemId}/assign`, { method: 'PATCH', body: JSON.stringify({ participantIds }) }),
 
-  markPaid: (participantId: string) =>
-    apiFetch<SplitBill>(`/split-bill/participants/${participantId}/paid`, { method: 'PATCH' }),
+  markPaid: (billId: string, participantId: string) =>
+    apiFetch<SplitBill>(`/split-bill/${billId}/participants/${participantId}/paid`, { method: 'PATCH' }),
 
   getWhatsAppMessage: (billId: string, participantId: string) =>
     apiFetch<{ message: string; whatsappUrl: string }>(`/split-bill/${billId}/wa-message/${participantId}`),
 
   delete: (id: string) =>
     apiFetch(`/split-bill/${id}`, { method: 'DELETE' }),
+
+  /** Detect potential split-worthy transactions from recent Duit Tracker expenses */
+  detectSplittable: () =>
+    apiFetch<SplittableTransaction[]>('/split-bill/detect-splittable', { method: 'POST' }),
+
+  /** Get historical debt/credit summary with friends */
+  getHistorySummary: () =>
+    apiFetch<HistorySummaryEntry[]>('/split-bill/history-summary'),
 };

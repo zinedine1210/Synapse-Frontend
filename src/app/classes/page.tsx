@@ -111,7 +111,7 @@ export default function ClassesPage() {
               <Search size={15} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'rgb(var(--text-muted))' }} />
               <input
                 type="text"
-                className="themed-input"
+                className="themed-input classes-search"
                 placeholder="Cari kelas..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -138,7 +138,7 @@ export default function ClassesPage() {
                 {!searchQuery && <Button size="sm" onClick={() => setShowCreateModal(true)} leftIcon={<Plus size={14} />}>Buat Kelas</Button>}
               </Card>
             ) : (
-              <div className="stagger-enter" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
+              <div className="stagger-enter classes-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
                 {filteredClasses.map((cls, idx) => {
                   const gradients = [
                     'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',

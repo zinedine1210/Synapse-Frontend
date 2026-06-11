@@ -70,7 +70,10 @@ export const qnaService = {
     apiFetch(`/qna/answers/${answerId}/approve`, { method: 'PATCH' }),
 
   upvoteAnswer: (answerId: string) =>
-    apiFetch(`/qna/answers/${answerId}/upvote`, { method: 'PATCH' }),
+    apiFetch(`/qna/answers/${answerId}/upvote`, { method: 'POST' }),
+
+  removeUpvote: (answerId: string) =>
+    apiFetch(`/qna/answers/${answerId}/upvote`, { method: 'DELETE' }),
 
   deleteQuestion: (id: string) =>
     apiFetch(`/qna/questions/${id}`, { method: 'DELETE' }),
@@ -82,4 +85,11 @@ export const qnaService = {
     apiFetch(`/qna/answers/${answerId}/report`, { method: 'POST' }),
 
   getReputation: () => apiFetch<UserReputation>('/qna/reputation'),
+
+  getTrendingQuestions: (params?: { page?: number; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    return apiFetch<QnaPaginated>(`/qna/questions/trending?${q.toString()}`);
+  },
 };

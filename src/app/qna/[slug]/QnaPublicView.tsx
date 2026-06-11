@@ -1,12 +1,16 @@
 'use client';
 
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
-import { MarkdownRenderer, Button, useToast } from '@/components/ui';
+import { MarkdownRenderer, Button, useToast, useConfirm } from '@/components/ui';
 import { qnaService } from '@/services/qnaService';
-import { ThumbsUp, CheckCircle, MessageSquare, Eye, Clock, ArrowLeft, LogIn, Flag, Bold, Italic, Code, List, ListOrdered, Link2, Image as ImageIcon, Quote, Heading2, Loader2, Share2, Hash, HelpCircle, Award } from 'lucide-react';
+import { ThumbsUp, CheckCircle, MessageSquare, Eye, Clock, ArrowLeft, LogIn, Flag, Loader2, Share2, Hash, HelpCircle, Award } from 'lucide-react';
 import { brand } from '@/config/brand';
+
+// Lazy-load Tiptap editor (heavy, no SSR needed)
+const RichTextEditor = dynamic(() => import('@/components/ui/RichTextEditor').then(m => ({ default: m.RichTextEditor })), { ssr: false });
 
 interface Answer {
   id: string;
@@ -16,6 +20,7 @@ interface Answer {
   upvotes: number;
   createdAt: string;
   user: { id: string; fullName: string; avatarUrl?: string };
+  hasUpvoted?: boolean;
 }
 
 interface Question {
@@ -60,88 +65,36 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-// ─── Inline Rich Text Editor ──────────────────────────────────────────
-function RichTextEditor({ value, onChange, placeholder, rows = 5 }: { value: string; onChange: (v: string) => void; placeholder?: string; rows?: number }) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  const wrapSelection = (before: string, after: string) => {
-    const el = ref.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const text = el.value;
-    const selected = text.slice(start, end) || 'teks';
-    const newText = text.slice(0, start) + before + selected + after + text.slice(end);
-    onChange(newText);
-    setTimeout(() => { el.focus(); el.setSelectionRange(start + before.length, start + before.length + selected.length); }, 0);
-  };
-
-  const insertLine = (prefix: string) => {
-    const el = ref.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const text = el.value;
-    const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-    const newText = text.slice(0, lineStart) + prefix + text.slice(lineStart);
-    onChange(newText);
-    setTimeout(() => { el.focus(); el.setSelectionRange(lineStart + prefix.length, lineStart + prefix.length); }, 0);
-  };
-
-  const toolbar = [
-    { icon: <Bold size={14} />, title: 'Bold', action: () => wrapSelection('**', '**') },
-    { icon: <Italic size={14} />, title: 'Italic', action: () => wrapSelection('*', '*') },
-    { icon: <Code size={14} />, title: 'Code', action: () => wrapSelection('`', '`') },
-    { icon: <Heading2 size={14} />, title: 'Heading', action: () => insertLine('## ') },
-    { icon: <Quote size={14} />, title: 'Quote', action: () => insertLine('> ') },
-    { icon: <List size={14} />, title: 'List', action: () => insertLine('- ') },
-    { icon: <ListOrdered size={14} />, title: 'Numbered', action: () => insertLine('1. ') },
-    { icon: <Link2 size={14} />, title: 'Link', action: () => wrapSelection('[', '](url)') },
-    { icon: <ImageIcon size={14} />, title: 'Image', action: () => wrapSelection('![alt](', ')') },
-  ];
-
-  return (
-    <div style={{ border: '1px solid var(--border-default)', borderRadius: 14, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, padding: '8px 10px', borderBottom: '1px solid var(--border-default)', background: 'rgb(var(--bg-elevated))' }}>
-        {toolbar.map((t, i) => (
-          <button key={i} type="button" title={t.title} onClick={t.action} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 6px', borderRadius: 6, color: 'rgb(var(--text-secondary))', display: 'flex', alignItems: 'center', transition: 'background 0.15s' }}>
-            {t.icon}
-          </button>
-        ))}
-      </div>
-      <textarea ref={ref} className="themed-textarea" placeholder={placeholder} value={value} onChange={e => onChange(e.target.value)} rows={rows} style={{ width: '100%', border: 'none', borderRadius: 0, resize: 'vertical', padding: '12px 14px', fontSize: 14 }} />
-      <div style={{ padding: '6px 10px', fontSize: 11, color: 'rgb(var(--text-muted))', borderTop: '1px solid var(--border-subtle)', background: 'rgb(var(--bg-elevated))' }}>
-        Markdown: **bold**, *italic*, `code`, [link](url), ```code block```
-      </div>
-    </div>
-  );
+interface RelatedQuestion {
+  id: string;
+  title: string;
+  slug: string;
+  category: string[];
+  tags: string[];
+  viewCount: number;
+  createdAt: string;
+  _count?: { answers: number };
 }
 
-export function QnaPublicView({ question: initialQuestion }: { question: Question }) {
+export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssrRelatedQuestions = [] }: { question: Question; relatedQuestions?: RelatedQuestion[] }) {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [question, setQuestion] = useState<Question>(initialQuestion);
-  const [answerText, setAnswerText] = useState('');
-  const [previewMode, setPreviewMode] = useState<'write' | 'preview'>('write');
+  const [answerHtml, setAnswerHtml] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [relatedQuestions, setRelatedQuestions] = useState<Question[]>([]);
+  const [relatedQuestions] = useState<RelatedQuestion[]>(ssrRelatedQuestions);
+  // Track which answers the user has upvoted (optimistic state)
+  const [upvotedAnswers, setUpvotedAnswers] = useState<Set<string>>(new Set());
 
   const answers = question.answers || [];
   const approvedAnswer = answers.find(a => a.isApprovedByAsker);
-  const otherAnswers = answers.filter(a => !a.isApprovedByAsker).sort((a, b) => b.upvotes - a.upvotes);
+  const otherAnswers = answers.filter(a => !a.isApprovedByAsker).sort((a, b) => {
+    // Sort by upvotes descending, then by createdAt ascending
+    if (b.upvotes !== a.upvotes) return b.upvotes - a.upvotes;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
   const sortedAnswers = approvedAnswer ? [approvedAnswer, ...otherAnswers] : otherAnswers;
-
-  // Fetch related questions
-  useEffect(() => {
-    const fetchRelated = async () => {
-      try {
-        const category = question.category?.[0];
-        const res = await qnaService.getQuestions({ limit: 5, category: category || undefined });
-        const filtered = (res.questions || []).filter((q: Question) => q.id !== question.id).slice(0, 4);
-        setRelatedQuestions(filtered);
-      } catch {}
-    };
-    fetchRelated();
-  }, [question.id, question.category]);
 
   // Get unique contributors
   const contributors = useMemo(() => {
@@ -161,34 +114,103 @@ export function QnaPublicView({ question: initialQuestion }: { question: Questio
     } catch {}
   }, [question.slug]);
 
+  // ─── Answer submission ──────────────────────────────────────────
   const handleAnswer = async () => {
-    if (!answerText.trim() || !user) return;
+    if (!answerHtml.trim() || !user) return;
+    // Strip HTML tags to check minimum length
+    const plainText = answerHtml.replace(/<[^>]+>/g, '').trim();
+    if (plainText.length < 20) {
+      showToast('Jawaban minimal 20 karakter.', 'error');
+      return;
+    }
     setSubmitting(true);
     try {
-      await qnaService.createAnswer(question.id, answerText);
+      await qnaService.createAnswer(question.id, answerHtml);
       showToast('Jawaban terkirim! 💬', 'success');
-      setAnswerText('');
-      setPreviewMode('write');
+      // XP notification for submitting an answer
+      setTimeout(() => showToast('+10 XP untuk jawaban! ⭐', 'success'), 800);
+      setAnswerHtml('');
       await refreshQuestion();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
 
+  // ─── Upvote with optimistic UI ──────────────────────────────────
   const handleUpvote = async (answerId: string) => {
     if (!user) { showToast('Login untuk upvote.', 'error'); return; }
-    try { await qnaService.upvoteAnswer(answerId); await refreshQuestion(); }
-    catch (e: any) { showToast(e.message, 'error'); }
+
+    const alreadyUpvoted = upvotedAnswers.has(answerId);
+
+    // Optimistic update
+    setQuestion(prev => ({
+      ...prev,
+      answers: prev.answers?.map(a =>
+        a.id === answerId
+          ? { ...a, upvotes: a.upvotes + (alreadyUpvoted ? -1 : 1) }
+          : a
+      ),
+    }));
+
+    if (alreadyUpvoted) {
+      setUpvotedAnswers(prev => { const next = new Set(prev); next.delete(answerId); return next; });
+    } else {
+      setUpvotedAnswers(prev => new Set(prev).add(answerId));
+    }
+
+    try {
+      if (alreadyUpvoted) {
+        await qnaService.removeUpvote(answerId);
+      } else {
+        await qnaService.upvoteAnswer(answerId);
+      }
+    } catch (e: any) {
+      // Revert optimistic update on error
+      setQuestion(prev => ({
+        ...prev,
+        answers: prev.answers?.map(a =>
+          a.id === answerId
+            ? { ...a, upvotes: a.upvotes + (alreadyUpvoted ? 1 : -1) }
+            : a
+        ),
+      }));
+      if (alreadyUpvoted) {
+        setUpvotedAnswers(prev => new Set(prev).add(answerId));
+      } else {
+        setUpvotedAnswers(prev => { const next = new Set(prev); next.delete(answerId); return next; });
+      }
+      showToast(e.message || 'Gagal memproses upvote.', 'error');
+    }
   };
 
+  // ─── Approve answer (question owner only) ──────────────────────
   const handleApprove = async (answerId: string) => {
-    try { await qnaService.approveAnswer(answerId); showToast('Jawaban di-approve! ✅', 'success'); await refreshQuestion(); }
-    catch (e: any) { showToast(e.message, 'error'); }
+    try {
+      await qnaService.approveAnswer(answerId);
+      showToast('Jawaban di-approve! ✅', 'success');
+      // XP notification for approving an answer (+30 XP to the answerer)
+      setTimeout(() => showToast('+30 XP diberikan ke penjawab! 🎉', 'success'), 800);
+      await refreshQuestion();
+    } catch (e: any) { showToast(e.message, 'error'); }
   };
 
+  // ─── Report answer with confirmation dialog ────────────────────
   const handleReport = async (answerId: string) => {
     if (!user) { showToast('Login untuk melaporkan.', 'error'); return; }
-    try { await qnaService.reportAnswer(answerId); showToast('Laporan dikirim.', 'success'); }
-    catch (e: any) { showToast(e.message, 'error'); }
+
+    const confirmed = await confirm({
+      title: 'Laporkan Jawaban',
+      message: 'Apakah kamu yakin ingin melaporkan jawaban ini? Jawaban yang dilaporkan akan ditinjau oleh moderator.',
+      confirmText: 'Ya, Laporkan',
+      cancelText: 'Batal',
+      variant: 'warning',
+    });
+
+    if (!confirmed) return;
+
+    try {
+      await qnaService.reportAnswer(answerId);
+      showToast('Laporan dikirim. Terima kasih!', 'success');
+    } catch (e: any) { showToast(e.message, 'error'); }
   };
 
   const handleShare = () => {
@@ -199,6 +221,22 @@ export function QnaPublicView({ question: initialQuestion }: { question: Questio
       showToast('Link disalin!', 'success');
     }
   };
+
+  // ─── Login CTA component for unauthenticated users ─────────────
+  const LoginCTA = ({ action }: { action: string }) => (
+    <Link href="/auth" style={{ textDecoration: 'none' }}>
+      <button style={{
+        display: 'flex', alignItems: 'center', gap: 5, fontSize: 12,
+        color: 'rgb(var(--color-primary))',
+        background: 'rgba(var(--color-primary), 0.05)', border: '1px solid rgba(var(--color-primary), 0.15)',
+        cursor: 'pointer',
+        padding: '6px 12px', borderRadius: 8, fontFamily: 'inherit',
+        transition: 'all 0.15s', fontWeight: 600,
+      }}>
+        <LogIn size={12} /> Masuk untuk {action}
+      </button>
+    </Link>
+  );
 
   return (
     <div style={{ minHeight: '100vh', background: 'rgb(var(--bg-base))' }}>
@@ -361,122 +399,118 @@ export function QnaPublicView({ question: initialQuestion }: { question: Questio
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {sortedAnswers.map((answer, idx) => (
-                  <div
-                    key={answer.id}
-                    style={{
-                      padding: '20px 22px',
-                      background: answer.isApprovedByAsker ? 'rgba(var(--color-success) / 0.04)' : 'rgb(var(--bg-surface))',
-                      borderRadius: 16,
-                      border: answer.isApprovedByAsker ? '2px solid rgba(var(--color-success) / 0.25)' : '1px solid var(--border-default)',
-                      animation: `fadeSlideIn 0.3s ease-out ${idx * 0.05}s both`,
-                    }}
-                  >
-                    {answer.isApprovedByAsker && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, color: 'rgb(var(--color-success))', fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 8, background: 'rgba(var(--color-success), 0.06)', width: 'fit-content' }}>
-                        <CheckCircle size={14} /> Jawaban Terbaik
-                      </div>
-                    )}
+                {sortedAnswers.map((answer, idx) => {
+                  const isUpvoted = upvotedAnswers.has(answer.id);
+                  return (
+                    <div
+                      key={answer.id}
+                      style={{
+                        padding: '20px 22px',
+                        background: answer.isApprovedByAsker ? 'rgba(var(--color-success) / 0.04)' : 'rgb(var(--bg-surface))',
+                        borderRadius: 16,
+                        border: answer.isApprovedByAsker ? '2px solid rgba(var(--color-success) / 0.25)' : '1px solid var(--border-default)',
+                        animation: `fadeSlideIn 0.3s ease-out ${idx * 0.05}s both`,
+                      }}
+                    >
+                      {answer.isApprovedByAsker && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12, color: 'rgb(var(--color-success))', fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 8, background: 'rgba(var(--color-success), 0.06)', width: 'fit-content' }}>
+                          <CheckCircle size={14} /> Jawaban Terbaik
+                        </div>
+                      )}
 
-                    {/* Author row */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: answer.isApprovedByAsker ? 'rgba(var(--color-success), 0.1)' : 'rgba(var(--color-primary), 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: answer.isApprovedByAsker ? 'var(--color-success)' : 'rgb(var(--color-primary))' }}>
-                        {answer.user.fullName.charAt(0).toUpperCase()}
+                      {/* Author row */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: answer.isApprovedByAsker ? 'rgba(var(--color-success), 0.1)' : 'rgba(var(--color-primary), 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: answer.isApprovedByAsker ? 'var(--color-success)' : 'rgb(var(--color-primary))' }}>
+                          {answer.user.fullName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <strong style={{ fontSize: 13 }}>{answer.user.fullName}</strong>
+                          <span style={{ fontSize: 11, opacity: 0.4, marginLeft: 8 }}>· {timeAgo(answer.createdAt)}</span>
+                        </div>
                       </div>
-                      <div>
-                        <strong style={{ fontSize: 13 }}>{answer.user.fullName}</strong>
-                        <span style={{ fontSize: 11, opacity: 0.4, marginLeft: 8 }}>· {timeAgo(answer.createdAt)}</span>
-                      </div>
-                    </div>
 
-                    <div style={{ lineHeight: 1.8, marginBottom: 14, fontSize: 15 }}>
-                      <MarkdownRenderer content={answer.body} />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {/* Upvote button */}
-                        <button
-                          onClick={() => handleUpvote(answer.id)}
-                          disabled={!user}
-                          style={{
-                            display: 'flex', alignItems: 'center', gap: 5, fontSize: 12,
-                            color: user ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))',
-                            background: 'rgba(var(--color-primary), 0.05)', border: 'none', cursor: user ? 'pointer' : 'default',
-                            padding: '6px 12px', borderRadius: 8, fontFamily: 'inherit',
-                            transition: 'all 0.15s', fontWeight: 600,
-                          }}
-                          title={user ? 'Upvote jawaban ini' : 'Login untuk upvote'}
-                        >
-                          <ThumbsUp size={13} /> {answer.upvotes}
-                        </button>
-                        {/* Approve */}
-                        {user && question.userId === user.id && !answer.isApprovedByAsker && (
+                      <div style={{ lineHeight: 1.8, marginBottom: 14, fontSize: 15 }}>
+                        <MarkdownRenderer content={answer.body} />
+                      </div>
+
+                      {/* Action buttons */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {/* Upvote button - show login CTA for unauthenticated */}
+                          {user ? (
+                            <button
+                              onClick={() => handleUpvote(answer.id)}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 5, fontSize: 12,
+                                color: isUpvoted ? 'white' : 'rgb(var(--color-primary))',
+                                background: isUpvoted ? 'rgb(var(--color-primary))' : 'rgba(var(--color-primary), 0.05)',
+                                border: isUpvoted ? 'none' : '1px solid rgba(var(--color-primary), 0.15)',
+                                cursor: 'pointer',
+                                padding: '6px 12px', borderRadius: 8, fontFamily: 'inherit',
+                                transition: 'all 0.2s', fontWeight: 600,
+                              }}
+                              title={isUpvoted ? 'Batalkan upvote' : 'Upvote jawaban ini'}
+                            >
+                              <ThumbsUp size={13} fill={isUpvoted ? 'white' : 'none'} /> {answer.upvotes}
+                            </button>
+                          ) : (
+                            <LoginCTA action="upvote" />
+                          )}
+
+                          {/* Approve button - only for question owner, non-approved answers */}
+                          {user && question.userId === user.id && !answer.isApprovedByAsker && (
+                            <button
+                              onClick={() => handleApprove(answer.id)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'rgb(var(--color-success))', background: 'rgba(var(--color-success), 0.06)', border: '1px solid rgba(var(--color-success), 0.15)', cursor: 'pointer', padding: '6px 12px', borderRadius: 8, fontFamily: 'inherit', fontWeight: 600, transition: 'all 0.15s' }}
+                              title="Tandai sebagai jawaban terbaik"
+                            >
+                              <CheckCircle size={13} /> Approve
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Report button - show login CTA for unauthenticated */}
+                        {user ? (
                           <button
-                            onClick={() => handleApprove(answer.id)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'rgb(var(--color-success))', background: 'rgba(var(--color-success), 0.06)', border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 8, fontFamily: 'inherit', fontWeight: 600, transition: 'all 0.15s' }}
-                            title="Tandai sebagai jawaban terbaik"
+                            onClick={() => handleReport(answer.id)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'rgb(var(--text-muted))', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6, fontFamily: 'inherit', opacity: 0.6, transition: 'all 0.15s' }}
+                            title="Laporkan jawaban"
+                            onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'rgb(var(--color-error))'; }}
+                            onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.color = 'rgb(var(--text-muted))'; }}
                           >
-                            <CheckCircle size={13} /> Approve
+                            <Flag size={12} /> Laporkan
                           </button>
+                        ) : (
+                          <Link href="/auth" style={{ textDecoration: 'none' }}>
+                            <span style={{ fontSize: 11, color: 'rgb(var(--text-muted))', opacity: 0.5, display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <Flag size={11} />
+                            </span>
+                          </Link>
                         )}
                       </div>
-                      {/* Report */}
-                      {user && (
-                        <button
-                          onClick={() => handleReport(answer.id)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'rgb(var(--text-muted))', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 4, fontFamily: 'inherit', opacity: 0.5, transition: 'opacity 0.15s' }}
-                          title="Laporkan jawaban"
-                        >
-                          <Flag size={12} />
-                        </button>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
-            {/* Answer Form */}
+            {/* Answer Form - Tiptap editor for authenticated users, CTA for unauthenticated */}
             {user ? (
               <div style={{ marginTop: 32, padding: '24px', background: 'rgb(var(--bg-surface))', borderRadius: 16, border: '1px solid var(--border-default)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                  <h3 style={{ fontWeight: 700, fontSize: 16 }}>✍️ Tulis Jawaban</h3>
-                  <div style={{ display: 'flex', gap: 4, padding: 3, borderRadius: 10, background: 'var(--input-bg)' }}>
-                    <button
-                      onClick={() => setPreviewMode('write')}
-                      style={{
-                        padding: '5px 12px', fontSize: 12, borderRadius: 8, cursor: 'pointer',
-                        background: previewMode === 'write' ? 'var(--card-bg)' : 'transparent',
-                        border: 'none',
-                        color: previewMode === 'write' ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))',
-                        fontWeight: previewMode === 'write' ? 600 : 400, fontFamily: 'inherit',
-                        boxShadow: previewMode === 'write' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-                        transition: 'all 0.2s',
-                      }}
-                    >Tulis</button>
-                    <button
-                      onClick={() => setPreviewMode('preview')}
-                      style={{
-                        padding: '5px 12px', fontSize: 12, borderRadius: 8, cursor: 'pointer',
-                        background: previewMode === 'preview' ? 'var(--card-bg)' : 'transparent',
-                        border: 'none',
-                        color: previewMode === 'preview' ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))',
-                        fontWeight: previewMode === 'preview' ? 600 : 400, fontFamily: 'inherit',
-                        boxShadow: previewMode === 'preview' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-                        transition: 'all 0.2s',
-                      }}
-                    >Preview</button>
-                  </div>
-                </div>
-                {previewMode === 'write' ? (
-                  <RichTextEditor value={answerText} onChange={setAnswerText} placeholder="Tulis jawabanmu di sini... (mendukung Markdown)" />
-                ) : (
-                  <div style={{ minHeight: 120, padding: '14px 16px', border: '1px solid var(--border-default)', borderRadius: 14, background: 'rgb(var(--bg-elevated))' }}>
-                    {answerText.trim() ? <MarkdownRenderer content={answerText} compact /> : <p style={{ color: 'rgb(var(--text-muted))', fontSize: 14 }}>Belum ada konten untuk di-preview.</p>}
-                  </div>
-                )}
-                <div style={{ marginTop: 14 }}>
-                  <Button onClick={handleAnswer} disabled={submitting || !answerText.trim()} style={{ borderRadius: 12, padding: '12px 24px' }}>
+                <h3 style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>✍️ Tulis Jawaban</h3>
+                <RichTextEditor
+                  content={answerHtml}
+                  onChange={setAnswerHtml}
+                  placeholder="Tulis jawabanmu di sini... (min. 20 karakter)"
+                  minHeight={150}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+                  <span style={{ fontSize: 12, color: 'rgb(var(--text-muted))' }}>
+                    {answerHtml.replace(/<[^>]+>/g, '').trim().length < 20 && answerHtml.replace(/<[^>]+>/g, '').trim().length > 0 &&
+                      `Minimal 20 karakter (${answerHtml.replace(/<[^>]+>/g, '').trim().length}/20)`
+                    }
+                  </span>
+                  <Button onClick={handleAnswer} disabled={submitting || !answerHtml.replace(/<[^>]+>/g, '').trim()} style={{ borderRadius: 12, padding: '12px 24px' }}>
                     {submitting ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : '🚀 Kirim Jawaban'}
                   </Button>
                 </div>
@@ -491,8 +525,9 @@ export function QnaPublicView({ question: initialQuestion }: { question: Questio
                     background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
                     color: 'white', border: 'none', cursor: 'pointer', fontWeight: 700,
                     fontSize: 14, fontFamily: 'inherit',
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
                   }}>
-                    Bergabung Gratis →
+                    <LogIn size={16} /> Bergabung Gratis →
                   </button>
                 </Link>
               </div>
@@ -509,16 +544,15 @@ export function QnaPublicView({ question: initialQuestion }: { question: Questio
             </h3>
             {relatedQuestions.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {relatedQuestions.map(rq => (
+                {relatedQuestions.slice(0, 5).map(rq => (
                   <Link key={rq.id} href={`/qna/${rq.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                     <div style={{ padding: '8px 10px', borderRadius: 10, transition: 'background 0.15s', cursor: 'pointer' }} className="hover-lift">
                       <div style={{ fontSize: 13, fontWeight: 600, lineHeight: 1.4, marginBottom: 4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any, overflow: 'hidden' }}>
                         {rq.title}
                       </div>
                       <div style={{ display: 'flex', gap: 10, fontSize: 10, opacity: 0.45 }}>
-                        <span>{rq.answers?.length ?? 0} jawaban</span>
+                        <span>{rq._count?.answers ?? 0} jawaban</span>
                         <span>{rq.viewCount} views</span>
-                        {rq.status === 'answered' && <span style={{ color: 'var(--color-success)' }}>✅</span>}
                       </div>
                     </div>
                   </Link>

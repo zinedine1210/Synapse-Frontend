@@ -18,7 +18,11 @@ export interface NavItem {
   badge?: string; // Label badge opsional (e.g., "NEW", "PRO")
 }
 
-export const navItems: NavItem[] = [
+/**
+ * Primary navigation items — always visible in the sidebar.
+ * Max 6 items for progressive disclosure (Requirement 10.2, 10.3).
+ */
+export const primaryNavItems: NavItem[] = [
   {
     label: 'Dashboard',
     path: '/dashboard',
@@ -33,37 +37,16 @@ export const navItems: NavItem[] = [
     label: 'Duit Tracker',
     path: '/duit-tracker',
     icon: Wallet,
-    badge: 'NEW',
   },
   {
     label: 'To-Do List',
     path: '/todos',
     icon: CheckSquare,
-    badge: 'NEW',
   },
   {
     label: 'Q&A',
     path: '/qna',
     icon: HelpCircle,
-    badge: 'NEW',
-  },
-  {
-    label: 'Makan Apa',
-    path: '/makan',
-    icon: UtensilsCrossed,
-    badge: 'NEW',
-  },
-  {
-    label: 'Split Bill',
-    path: '/split-bill',
-    icon: Receipt,
-    badge: 'NEW',
-  },
-  {
-    label: 'Insight',
-    path: '/insight',
-    icon: Lightbulb,
-    badge: 'NEW',
   },
   {
     label: 'Billing',
@@ -71,6 +54,34 @@ export const navItems: NavItem[] = [
     icon: CreditCard,
   },
 ];
+
+/**
+ * Secondary navigation items — grouped under "Lainnya" collapsed section.
+ * Phase 2 items (Requirement 10.4).
+ */
+export const secondaryNavItems: NavItem[] = [
+  {
+    label: 'Makan Apa',
+    path: '/makan',
+    icon: UtensilsCrossed,
+  },
+  {
+    label: 'Split Bill',
+    path: '/split-bill',
+    icon: Receipt,
+  },
+  {
+    label: 'Insight',
+    path: '/insight',
+    icon: Lightbulb,
+  },
+];
+
+/**
+ * Combined nav items for backwards compatibility.
+ * Used by components that don't yet support progressive disclosure.
+ */
+export const navItems: NavItem[] = [...primaryNavItems, ...secondaryNavItems];
 
 export const settingsNavItem: NavItem = {
   label: 'Pengaturan',

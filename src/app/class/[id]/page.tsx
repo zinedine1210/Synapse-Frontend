@@ -402,16 +402,16 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
       <div className="app-shell">
         <Sidebar userRole={user?.role} collapsed={sidebarCollapsed} onToggle={setSidebarCollapsed} />
 
-        <div className={`app-main ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`} style={{ paddingTop: 0 }}>
+        <div className={`app-main ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`} style={{ paddingTop: 0, overflowX: 'hidden' }}>
 
           {isLoading ? (
             <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Loader2 className="animate-spin" size={32} style={{ color: 'rgb(var(--color-primary))' }} />
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+            <div className="class-page-container" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxWidth: '100vw', overflowX: 'hidden' }}>
               {/* Class header bar */}
-              <div style={{
+              <div className="class-header-bar" style={{
                 padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border-default)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
                 background: 'rgb(var(--bg-surface))',
@@ -431,17 +431,17 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                     <Info size={15} />
                   </button>
                 </div>
-                <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
-                  <Button variant="ghost" size="sm" leftIcon={<Share2 size={13} />} onClick={handleShareClass}>Bagikan</Button>
+                <div className="class-header-actions" style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+                  <Button variant="ghost" size="sm" leftIcon={<Share2 size={13} />} onClick={handleShareClass}><span>Bagikan</span></Button>
                   {(classData?.memberRole === 'OWNER' || classData?.memberRole === 'ADMIN') && (
-                    <Button variant="ghost" size="sm" leftIcon={<Pencil size={13} />} onClick={handleOpenEditClassModal}>Edit</Button>
+                    <Button variant="ghost" size="sm" leftIcon={<Pencil size={13} />} onClick={handleOpenEditClassModal}><span>Edit</span></Button>
                   )}
                 </div>
               </div>
 
               {/* Class info dropdown */}
               {showClassInfo && (
-                <div style={{
+                <div className="class-info-bar" style={{
                   padding: '0.5rem 1.25rem', borderBottom: '1px solid var(--border-default)',
                   fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))',
                   background: 'rgba(var(--color-primary) / 0.02)', flexShrink: 0,
@@ -459,10 +459,10 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
               )}
 
               {/* Feature tabs */}
-              <div style={{
+              <div className="class-feature-tabs" style={{
                 display: 'flex', gap: '0', borderBottom: '1px solid var(--border-default)', flexShrink: 0,
                 background: 'rgb(var(--bg-surface))', paddingLeft: '0.75rem',
-                overflowX: 'auto',
+                overflowX: 'auto', scrollbarWidth: 'none',
               }}>
                 {availableFeatures.map((feat) => {
                   const isActive = activeFeature === feat.id;
@@ -483,7 +483,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
               </div>
 
               {/* Feature content */}
-              <div style={{ flex: 1, minHeight: 0, overflow: activeFeature === 'forum' ? 'hidden' : 'auto' }}>
+              <div className="class-feature-content" style={{ flex: 1, minHeight: 0, overflow: activeFeature === 'forum' ? 'hidden' : 'auto', overflowX: 'hidden' }}>
                 {activeFeature === 'forum' && classData && user && (
                   <ForumTab classId={classData.id} userId={user.id} memberRole={classData.memberRole} permissions={classData.permissions} sessions={sessions} tasks={classTasks} onNavigate={(tab, params) => {
                     const p = new URLSearchParams(searchParams.toString());

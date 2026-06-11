@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
-import { navItems, superadminNavItems, settingsNavItem } from '@/config/navigation';
+import { ChevronLeft, ChevronRight, ChevronDown, Sun, Moon } from 'lucide-react';
+import { primaryNavItems, secondaryNavItems, superadminNavItems, settingsNavItem, NavItem } from '@/config/navigation';
 import { brand } from '@/config/brand';
 import { useTheme } from '@/lib/ThemeContext';
 import { XpBar } from './XpBar';
@@ -18,15 +18,80 @@ interface SidebarProps {
 
 export function Sidebar({ userRole = 'USER', collapsed: controlledCollapsed, onToggle }: SidebarProps) {
   const [localCollapsed, setLocalCollapsed] = useState(false);
+  const [lainnyaOpen, setLainnyaOpen] = useState(false);
   const collapsed = controlledCollapsed !== undefined ? controlledCollapsed : localCollapsed;
   const setCollapsed = onToggle ? onToggle : setLocalCollapsed;
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
 
-  const allNavItems = userRole === 'SUPERADMIN' ? superadminNavItems : navItems;
+  // For superadmin, show superadmin items only; for regular users, use progressive disclosure
+  const isSuperadmin = userRole === 'SUPERADMIN';
+
+  // Auto-expand "Lainnya" if the user is on a secondary page
+  const isOnSecondaryPage = secondaryNavItems.some(
+    (item) => pathname === item.path || pathname?.startsWith(item.path + '/')
+  );
+
+  const renderNavItem = (item: NavItem) => {
+    const Icon = item.icon;
+    const isActive = pathname === item.path || pathname?.startsWith(item.path + '/');
+
+    return (
+      <li key={item.path}>
+        <Link
+          href={item.path}
+          title={collapsed ? item.label : undefined}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            padding: collapsed ? '0.6rem' : '0.5rem 0.75rem',
+            borderRadius: 'var(--radius-sm)',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            textDecoration: 'none',
+            position: 'relative',
+            background: isActive ? 'rgba(var(--color-primary) / 0.1)' : 'transparent',
+            transition: 'var(--transition-fast)',
+            color: isActive ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))',
+          }}
+        >
+          {isActive && (
+            <span
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: 3,
+                height: '55%',
+                borderRadius: '0 3px 3px 0',
+                background: 'rgb(var(--color-primary))',
+              }}
+            />
+          )}
+
+          <Icon size={18} style={{ flexShrink: 0 }} />
+
+          {!collapsed && (
+            <>
+              <span style={{ fontSize: 'var(--font-sm)', fontWeight: isActive ? 600 : 400, whiteSpace: 'nowrap' }}>
+                {item.label}
+              </span>
+              {item.badge && (
+                <span className="badge badge-pro" style={{ marginLeft: 'auto' }}>
+                  {item.badge}
+                </span>
+              )}
+            </>
+          )}
+        </Link>
+      </li>
+    );
+  };
 
   return (
     <aside
+      className="app-sidebar"
       style={{
         position: 'fixed',
         top: 0,
@@ -89,62 +154,62 @@ export function Sidebar({ userRole = 'USER', collapsed: controlledCollapsed, onT
       {/* Nav Items */}
       <nav style={{ flex: 1, padding: '0.75rem 0.5rem', overflowY: 'auto' }}>
         <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-          {allNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.path || pathname?.startsWith(item.path + '/');
+          {isSuperadmin
+            ? superadminNavItems.map(renderNavItem)
+            : (
+              <>
+                {/* Primary items (max 6) */}
+                {primaryNavItems.map(renderNavItem)}
 
-            return (
-              <li key={item.path}>
-                <Link
-                  href={item.path}
-                  title={collapsed ? item.label : undefined}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.6rem',
-                    padding: collapsed ? '0.6rem' : '0.5rem 0.75rem',
-                    borderRadius: 'var(--radius-sm)',
-                    justifyContent: collapsed ? 'center' : 'flex-start',
-                    textDecoration: 'none',
-                    position: 'relative',
-                    background: isActive ? 'rgba(var(--color-primary) / 0.1)' : 'transparent',
-                    transition: 'var(--transition-fast)',
-                    color: isActive ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))',
-                  }}
-                >
-                  {isActive && (
-                    <span
+                {/* "Lainnya" collapsed section for secondary items */}
+                {secondaryNavItems.length > 0 && (
+                  <li>
+                    <button
+                      onClick={() => setLainnyaOpen(!lainnyaOpen)}
+                      title={collapsed ? 'Lainnya' : undefined}
                       style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        width: 3,
-                        height: '55%',
-                        borderRadius: '0 3px 3px 0',
-                        background: 'rgb(var(--color-primary))',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        width: '100%',
+                        padding: collapsed ? '0.6rem' : '0.5rem 0.75rem',
+                        borderRadius: 'var(--radius-sm)',
+                        justifyContent: collapsed ? 'center' : 'flex-start',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: isOnSecondaryPage ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))',
+                        transition: 'var(--transition-fast)',
+                        fontFamily: 'inherit',
+                        marginTop: '0.5rem',
                       }}
-                    />
-                  )}
-
-                  <Icon size={18} style={{ flexShrink: 0 }} />
-
-                  {!collapsed && (
-                    <>
-                      <span style={{ fontSize: 'var(--font-sm)', fontWeight: isActive ? 600 : 400, whiteSpace: 'nowrap' }}>
-                        {item.label}
-                      </span>
-                      {item.badge && (
-                        <span className="badge badge-pro" style={{ marginLeft: 'auto' }}>
-                          {item.badge}
+                    >
+                      <ChevronDown
+                        size={18}
+                        style={{
+                          flexShrink: 0,
+                          transform: (lainnyaOpen || isOnSecondaryPage) ? 'rotate(0deg)' : 'rotate(-90deg)',
+                          transition: 'transform 0.2s ease',
+                        }}
+                      />
+                      {!collapsed && (
+                        <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                          Lainnya
                         </span>
                       )}
-                    </>
-                  )}
-                </Link>
-              </li>
-            );
-          })}
+                    </button>
+
+                    {/* Secondary items - shown when expanded or user is on a secondary page */}
+                    {(lainnyaOpen || isOnSecondaryPage) && (
+                      <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                        {secondaryNavItems.map(renderNavItem)}
+                      </ul>
+                    )}
+                  </li>
+                )}
+              </>
+            )
+          }
         </ul>
       </nav>
 

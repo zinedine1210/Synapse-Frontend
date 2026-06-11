@@ -119,6 +119,7 @@ export function Appbar({
 
   return (
     <header
+      className="app-appbar"
       style={{
         position: 'fixed',
         top: 0,
@@ -143,6 +144,7 @@ export function Appbar({
         <div ref={panelRef} style={{ position: 'relative' }}>
           <button
             onClick={() => setShowPanel((p) => !p)}
+            className="appbar-bell"
             style={{
               position: 'relative',
               background: showPanel ? 'rgba(var(--color-primary) / 0.1)' : 'var(--input-bg)',
@@ -185,7 +187,7 @@ export function Appbar({
 
           {/* Notification Panel */}
           {showPanel && (
-            <div style={{
+            <div className="notif-panel" style={{
               position: 'absolute',
               top: '100%',
               right: 0,

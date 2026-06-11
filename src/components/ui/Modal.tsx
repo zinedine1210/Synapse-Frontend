@@ -45,7 +45,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
-        className="animate-scale-in"
+        className="animate-scale-in modal-content"
         style={{
           background: 'var(--modal-bg)',
           border: '1px solid var(--border-strong)',

@@ -160,6 +160,32 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
   const [discMenuId, setDiscMenuId] = useState<string | null>(null);
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
+  // Mobile responsive: detect viewport and use WhatsApp-style navigation
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    setIsMobile(mq.matches);
+    // On mobile, start with sidebar open (discussion list view)
+    if (mq.matches) setSidebarOpen(true);
+    const handler = (e: MediaQueryListEvent) => {
+      setIsMobile(e.matches);
+      if (!e.matches) setSidebarOpen(true); // reset on desktop
+    };
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // On mobile, selecting a discussion closes sidebar to show chat
+  const handleSelectDiscussion = useCallback((discId: string | null) => {
+    setActiveDiscussionId(discId);
+    if (isMobile) setSidebarOpen(false);
+  }, [isMobile]);
+
+  // On mobile, back button shows sidebar again
+  const handleMobileBack = useCallback(() => {
+    setSidebarOpen(true);
+  }, []);
+
   // Discussion assignment state
   const [discAssignType, setDiscAssignType] = useState<'ALL' | 'INDIVIDUAL' | 'GROUP'>('ALL');
   const [discAssignedUserIds, setDiscAssignedUserIds] = useState<string[]>([]);
@@ -638,7 +664,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
       setNewDiscContext('general'); setNewDiscTaskId(''); setNewDiscSessionId('');
       setDiscAssignType('ALL'); setDiscAssignedUserIds([]); setDiscAssignedGroupId('');
       fetchDiscussions();
-      setActiveDiscussionId(disc.id);
+      handleSelectDiscussion(disc.id);
     } catch (err) { showToast(err instanceof Error ? err.message : 'Gagal membuat pembahasan.', 'error'); }
     finally { setIsCreatingDisc(false); }
   };
@@ -762,22 +788,29 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
   }, [posts]);
 
   // ─── RENDER ───────────────────────────────────────────────────────────
+  // On mobile: show EITHER sidebar OR chat, never both
+  const showSidebar = isMobile ? sidebarOpen : sidebarOpen;
+  const showChat = isMobile ? !sidebarOpen : true;
+
   return (
-    <div style={{ display: 'flex', height: '100%', minHeight: 0 }}>
+    <div className="forum-container" style={{ display: 'flex', height: '100%', minHeight: 0, overflow: 'hidden', width: '100%', maxWidth: '100%' }}>
       {/* ═══ DISCUSSIONS SIDEBAR ═══ */}
-      {sidebarOpen && (
-        <div style={{ width: 220, minWidth: 220, borderRight: '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', background: 'rgba(var(--color-primary) / 0.01)', flexShrink: 0 }}>
-          <div style={{ padding: '0.6rem 0.65rem', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      {showSidebar && (
+        <div className="forum-sidebar" style={{ width: isMobile ? '100%' : 220, minWidth: isMobile ? '100%' : 220, borderRight: isMobile ? 'none' : '1px solid var(--border-default)', display: 'flex', flexDirection: 'column', background: isMobile ? 'rgb(var(--bg-surface))' : 'rgba(var(--color-primary) / 0.01)', flexShrink: 0 }}>
+          <div className="forum-sidebar-header" style={{ padding: '0.6rem 0.65rem', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Pembahasan</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
               <button onClick={() => setShowCreateDiscussion(true)} title="Buat pembahasan baru" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--color-primary))', padding: '0.15rem', display: 'flex' }}>
                 <Plus size={14} />
               </button>
-              <button onClick={() => setSidebarOpen(false)} title="Tutup sidebar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.15rem', display: 'flex', borderRadius: '4px', transition: 'all 0.15s' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(var(--color-primary) / 0.08)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}>
-                <ChevronLeft size={14} />
-              </button>
+              {/* Hide close button on mobile — sidebar IS the main view */}
+              {!isMobile && (
+                <button onClick={() => setSidebarOpen(false)} title="Tutup sidebar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.15rem', display: 'flex', borderRadius: '4px', transition: 'all 0.15s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(var(--color-primary) / 0.08)'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}>
+                  <ChevronLeft size={14} />
+                </button>
+              )}
             </div>
           </div>
           {/* Search discussions */}
@@ -790,7 +823,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {/* Umum */}
-            <button onClick={() => { setActiveDiscussionId(null); }} style={{
+            <button onClick={() => { handleSelectDiscussion(null); }} style={{
               width: '100%', padding: '0.55rem 0.65rem', background: activeDiscussionId === null ? 'rgba(var(--color-primary) / 0.08)' : 'none',
               border: 'none', borderLeft: activeDiscussionId === null ? '3px solid rgb(var(--color-primary))' : '3px solid transparent',
               cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
@@ -810,7 +843,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
               const unread = unreadCounts[disc.id] || 0;
               return (
               <div key={disc.id} style={{ position: 'relative' }}>
-                <button onClick={() => { setActiveDiscussionId(disc.id); }} style={{
+                <button onClick={() => { handleSelectDiscussion(disc.id); }} style={{
                   width: '100%', padding: '0.5rem 0.65rem', background: activeDiscussionId === disc.id ? 'rgba(var(--color-primary) / 0.08)' : 'none',
                   border: 'none', borderLeft: activeDiscussionId === disc.id ? '3px solid rgb(var(--color-primary))' : '3px solid transparent',
                   cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
@@ -874,10 +907,17 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
       )}
 
       {/* ═══ MAIN CONTENT AREA ═══ */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      {showChat && (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, width: isMobile ? '100%' : undefined }}>
         {/* Chat header */}
-        <div style={{ padding: '0.45rem 0.75rem', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0, background: 'rgba(var(--color-primary) / 0.01)' }}>
-          {!sidebarOpen && (
+        <div className="forum-chat-header" style={{ padding: '0.45rem 0.75rem', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0, background: 'rgba(var(--color-primary) / 0.01)' }}>
+          {/* Mobile back button — always visible on mobile when chat is showing */}
+          {isMobile && (
+            <button className="forum-back-btn" onClick={handleMobileBack} title="Kembali ke pembahasan" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.25rem', display: 'flex', borderRadius: '4px', transition: 'all 0.15s' }}>
+              <ChevronLeft size={18} />
+            </button>
+          )}
+          {!sidebarOpen && !isMobile && (
             <button onClick={() => setSidebarOpen(true)} title="Tampilkan pembahasan" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.15rem', display: 'flex', borderRadius: '4px', transition: 'all 0.15s' }}
               onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgb(var(--color-primary))'; }}
               onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.color = 'rgb(var(--text-muted))'; }}>
@@ -921,7 +961,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
         )}
 
         {/* Discussion Sub-Tabs: Chat, Lampiran, Canvas tabs, + button */}
-        <div className="animate-fade-in" style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-default)', flexShrink: 0, background: 'rgba(var(--color-primary) / 0.01)', paddingLeft: '0.75rem', alignItems: 'center' }}>
+        <div className="forum-tab-bar animate-fade-in" style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-default)', flexShrink: 0, background: 'rgba(var(--color-primary) / 0.01)', paddingLeft: '0.75rem', alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}>
           <button onClick={() => setDiscussionTab('chat')} style={{
             padding: '0.45rem 0.85rem', fontSize: 'var(--font-xs)', fontWeight: discussionTab === 'chat' ? 700 : 500,
             color: discussionTab === 'chat' ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))',
@@ -1401,7 +1441,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
             </div>
 
             {/* Input bar */}
-            <div style={{ borderTop: '1px solid var(--border-default)', flexShrink: 0 }}>
+            <div className="forum-input-area" style={{ borderTop: '1px solid var(--border-default)', flexShrink: 0 }}>
               {/* Pending file preview */}
               {pendingFile && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'rgba(var(--color-primary) / 0.03)', borderBottom: '1px solid var(--border-subtle)' }}>
@@ -1546,6 +1586,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
           </div>
         ) : null}
       </div>
+      )}
 
       {/* Context Menu */}
       {contextMenu && (

@@ -11,8 +11,15 @@ interface AnimatedNumberProps {
   locale?: string;
   style?: React.CSSProperties;
   className?: string;
+  /** When true, always animates from 0 to target value on mount (count-up effect) */
+  countUp?: boolean;
 }
 
+/**
+ * AnimatedNumber — animates between number values with an ease-out cubic easing.
+ * Supports count-up from 0 via the `countUp` prop.
+ * Respects prefers-reduced-motion: shows final value immediately when enabled.
+ */
 export function AnimatedNumber({
   value,
   prefix = '',
@@ -22,14 +29,42 @@ export function AnimatedNumber({
   locale = 'id-ID',
   style,
   className,
+  countUp = false,
 }: AnimatedNumberProps) {
-  const [display, setDisplay] = useState(0);
-  const prevRef = useRef(0);
+  const [display, setDisplay] = useState(countUp ? 0 : value);
+  const prevRef = useRef(countUp ? 0 : value);
   const frameRef = useRef<number>(0);
+  const mountedRef = useRef(false);
+  const reducedMotionRef = useRef(false);
+
+  // Check prefers-reduced-motion
+  useEffect(() => {
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    reducedMotionRef.current = mql.matches;
+
+    const handler = (e: MediaQueryListEvent) => {
+      reducedMotionRef.current = e.matches;
+    };
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
 
   useEffect(() => {
-    const start = prevRef.current;
+    // If reduced motion is preferred, show final value immediately
+    if (reducedMotionRef.current) {
+      setDisplay(value);
+      prevRef.current = value;
+      return;
+    }
+
+    const start = mountedRef.current ? prevRef.current : (countUp ? 0 : value);
     const diff = value - start;
+
+    if (diff === 0) {
+      mountedRef.current = true;
+      return;
+    }
+
     const startTime = performance.now();
 
     const animate = (currentTime: number) => {
@@ -44,13 +79,16 @@ export function AnimatedNumber({
       if (progress < 1) {
         frameRef.current = requestAnimationFrame(animate);
       } else {
+        setDisplay(value);
         prevRef.current = value;
       }
     };
 
     frameRef.current = requestAnimationFrame(animate);
+    mountedRef.current = true;
+
     return () => cancelAnimationFrame(frameRef.current);
-  }, [value, duration]);
+  }, [value, duration, countUp]);
 
   const formatted = display.toLocaleString(locale, {
     minimumFractionDigits: decimals,

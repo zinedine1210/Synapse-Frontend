@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import { QnaPublicView } from './QnaPublicView';
+import { stripMarkdown } from '@/lib/qna-metadata';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -24,18 +24,22 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     return { title: 'Pertanyaan tidak ditemukan - Synapse Q&A' };
   }
 
-  const description = question.answers?.find((a: any) => a.isApprovedByAsker)?.body?.slice(0, 160)
-    || question.body?.slice(0, 160)
-    || `Lihat jawaban untuk: ${question.title}`;
+  // Derive description: best (approved) answer body → question body → fallback
+  const bestAnswerBody = question.answers?.find((a: any) => a.isApprovedByAsker)?.body;
+  const rawDescription = bestAnswerBody || question.body || `Lihat jawaban untuk: ${question.title}`;
+  const description = stripMarkdown(rawDescription).slice(0, 160);
+
+  const title = `${question.title} - Synapse Q&A`;
 
   return {
-    title: `${question.title} - Synapse Q&A`,
+    title,
     description,
     openGraph: {
-      title: `${question.title} - Synapse Q&A`,
+      title,
       description,
       type: 'article',
       siteName: 'Synapse',
+      url: `/qna/${question.slug}`,
     },
   };
 }
@@ -47,5 +51,8 @@ export default async function QnaDetailPage({ params }: { params: { slug: string
     notFound();
   }
 
-  return <QnaPublicView question={question} />;
+  // The backend response includes relatedQuestions (up to 5) — pass them as SSR data
+  const relatedQuestions = question.relatedQuestions ?? [];
+
+  return <QnaPublicView question={question} relatedQuestions={relatedQuestions} />;
 }

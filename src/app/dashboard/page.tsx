@@ -7,11 +7,19 @@ import { useDashboard, useContextualSuggestion } from '@/viewmodels/useDashboard
 import { useDeadlines } from '@/viewmodels/useDeadlines';
 import { aiService } from '@/services/aiService';
 import { todoService } from '@/services/todoService';
-import { dashboardService, DashboardSummary } from '@/services/dashboardService';
+import { dashboardService, DashboardSummary, TodaysBriefingResponse, ClassComparison, TrendingQuestion, WeeklyChallengeData, AiBriefingResponse } from '@/services/dashboardService';
+import { detectDayOfWeekPatterns, DayOfWeekPattern } from '@/services/contextualIntelligence';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, Alert, Modal, useToast, useConfirm } from '@/components/ui';
+import { Card, Button, Alert, Modal, useToast, useConfirm, PullToRefresh, AnimatedNumber } from '@/components/ui';
+import { TodaysBriefing, BriefingData } from '@/components/dashboard/TodaysBriefing';
+import { AiBriefingCard, AiBriefingSkeleton } from '@/components/dashboard/AiBriefingCard';
+import { ContextualBubbles } from '@/components/dashboard/ContextualBubbles';
+import { ClassComparisonCard } from '@/components/dashboard/ClassComparisonCard';
+import { TrendingQnA } from '@/components/dashboard/TrendingQnA';
+import { WeeklyChallengeCard } from '@/components/dashboard/WeeklyChallengeCard';
+import { SiBawelAvatar } from '@/components/shared/SiBawelAvatar';
 import {
   Plus, BookOpen, Trash2, Calendar, Upload, Loader2, Check, Sparkles,
   Clock, AlertTriangle, Wallet, TrendingUp, TrendingDown, Target, TreePine,
@@ -48,6 +56,16 @@ export default function DashboardPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
+  const [briefing, setBriefing] = useState<TodaysBriefingResponse | null>(null);
+  const [briefingLoading, setBriefingLoading] = useState(true);
+  const [aiBriefing, setAiBriefing] = useState<AiBriefingResponse | null>(null);
+  const [aiBriefingLoading, setAiBriefingLoading] = useState(true);
+  const [aiBriefingFailed, setAiBriefingFailed] = useState(false);
+  const [aiBriefingRefreshing, setAiBriefingRefreshing] = useState(false);
+  const [patterns, setPatterns] = useState<DayOfWeekPattern[]>([]);
+  const [classComparisons, setClassComparisons] = useState<ClassComparison[]>([]);
+  const [trendingQuestions, setTrendingQuestions] = useState<TrendingQuestion[]>([]);
+  const [weeklyChallenge, setWeeklyChallenge] = useState<WeeklyChallengeData | null>(null);
 
   // Collapsible sections
   const [showDeadlines, setShowDeadlines] = useState(false);
@@ -74,9 +92,92 @@ export default function DashboardPage() {
       .then(setSummary)
       .catch(() => {})
       .finally(() => setSummaryLoading(false));
+
+    dashboardService.getTodaysBriefing()
+      .then(setBriefing)
+      .catch(() => setBriefing(null))
+      .finally(() => setBriefingLoading(false));
+
+    dashboardService.getAiBriefing()
+      .then((res) => { setAiBriefing(res); setAiBriefingFailed(false); })
+      .catch(() => { setAiBriefing(null); setAiBriefingFailed(true); })
+      .finally(() => setAiBriefingLoading(false));
+
+    // Load social proof data
+    dashboardService.getClassComparison()
+      .then(res => setClassComparisons(res.comparisons || []))
+      .catch(() => setClassComparisons([]));
+
+    dashboardService.getTrendingQna()
+      .then(setTrendingQuestions)
+      .catch(() => setTrendingQuestions([]));
+
+    dashboardService.getSummaryV2()
+      .then(res => setWeeklyChallenge(res.weeklyChallenge))
+      .catch(() => setWeeklyChallenge(null));
+  }, []);
+
+  // Detect contextual patterns from cached transaction data (frontend-only)
+  useEffect(() => {
+    // Use financial data from summary to build patterns if available
+    // In production, this would use the SWR-cached transactions
+    // For now, patterns are populated if the contextual intelligence service finds any
+    async function loadPatterns() {
+      try {
+        const { apiFetch } = await import('@/lib/api');
+        const transactions = await apiFetch<any[]>('/duit-tracker/transactions');
+        if (transactions && transactions.length > 0) {
+          const detected = detectDayOfWeekPatterns(transactions);
+          setPatterns(detected);
+        }
+      } catch {
+        // Silently fail — patterns are optional enhancement
+      }
+    }
+    loadPatterns();
   }, []);
 
   const greeting = getGreeting(user?.fullName || 'Mahasiswa');
+
+  const handleRefreshAiBriefing = useCallback(async () => {
+    setAiBriefingRefreshing(true);
+    try {
+      const res = await dashboardService.getAiBriefing();
+      setAiBriefing(res);
+      setAiBriefingFailed(false);
+    } catch {
+      showToast('Gagal memuat ulang briefing.', 'error');
+    } finally {
+      setAiBriefingRefreshing(false);
+    }
+  }, [showToast]);
+
+  // Build briefing data from API response or fallback to summary data
+  const briefingData: BriefingData | null = briefing
+    ? briefing
+    : summary
+    ? {
+        schedule: summary.academicSummary?.todaySchedule.map(s => ({
+          className: s.className,
+          time: s.time,
+          room: s.room || undefined,
+        })) || [],
+        deadlines: summary.deadlines.slice(0, 3).map(d => {
+          const dueDate = new Date(d.deadline);
+          const daysLeft = Math.ceil((dueDate.getTime() - Date.now()) / 86400000);
+          return {
+            title: d.title,
+            className: d.className,
+            dueLabel: daysLeft <= 0 ? 'Hari ini' : daysLeft === 1 ? 'Besok' : `${daysLeft} hari lagi`,
+          };
+        }),
+        spendingSummary: summary.financeSummary.expense > 0
+          ? { total: summary.financeSummary.expense, topCategory: summary.topBudgetAlert?.category || 'lainnya' }
+          : null,
+        todos: summary.todoStats,
+        contextualTip: contextSuggestion,
+      }
+    : null;
 
   const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,14 +225,12 @@ export default function DashboardPage() {
       await todoService.create({ title: parsed.title || quickTodo, dueDate: parsed.dueDate, dueTime: parsed.dueTime, priority: parsed.priority || 'medium', category: parsed.category });
       showToast('Todo ditambahkan! ✅', 'success');
       setQuickTodo('');
-      // Refresh summary
       dashboardService.getSummary().then(setSummary).catch(() => {});
     } catch { showToast('Gagal menambah todo.', 'error'); }
     finally { setAddingTodo(false); }
   };
 
   const handleToggleTodo = async (id: string) => {
-    // Optimistic update
     setSummary(prev => {
       if (!prev) return prev;
       const updatedTodos = prev.todosToday.map(t => t.id === id ? { ...t, status: t.status === 'done' ? 'pending' : 'done' } : t);
@@ -149,40 +248,80 @@ export default function DashboardPage() {
         <div className={`app-main ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
           <Appbar title="Dashboard" userName={user?.fullName} userId={user?.id} sidebarCollapsed={sidebarCollapsed} />
           <div className="page-content" style={{ animation: 'fadeSlideIn 0.4s ease-out' }}>
-            <div style={{ maxWidth: 960, margin: '0 auto' }}>
+            <PullToRefresh onRefresh={async () => {
+              const [s, b] = await Promise.all([
+                dashboardService.getSummary(),
+                dashboardService.getTodaysBriefing().catch(() => null),
+              ]);
+              setSummary(s);
+              if (b) setBriefing(b);
+              // Refresh AI briefing
+              dashboardService.getAiBriefing()
+                .then((res) => { setAiBriefing(res); setAiBriefingFailed(false); })
+                .catch(() => setAiBriefingFailed(true));
+              // Refresh social proof data
+              dashboardService.getClassComparison()
+                .then(res => setClassComparisons(res.comparisons || []))
+                .catch(() => {});
+              dashboardService.getTrendingQna()
+                .then(setTrendingQuestions)
+                .catch(() => {});
+              dashboardService.getSummaryV2()
+                .then(res => setWeeklyChallenge(res.weeklyChallenge))
+                .catch(() => {});
+            }}>
+            {/* ═══════ VERTICAL FEED LAYOUT ═══════ */}
+            <div className="dashboard-feed" style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', padding: '0 4px' }}>
 
-              {/* ═══════ GREETING BANNER ═══════ */}
-              <div className="dashboard-greeting" style={{ marginBottom: 28, padding: '24px 28px', borderRadius: 16, background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.08) 0%, rgba(var(--color-primary), 0.02) 100%)', border: '1px solid rgba(var(--color-primary), 0.1)', position: 'relative', overflow: 'hidden' }}>
+              {/* ═══════ SECTION 1: GREETING CARD (full-width, prominent) ═══════ */}
+              <div className="dashboard-greeting" style={{
+                marginBottom: 24,
+                padding: '28px 28px',
+                borderRadius: 18,
+                background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.08) 0%, rgba(var(--color-primary), 0.02) 100%)',
+                border: '1px solid rgba(var(--color-primary), 0.1)',
+                position: 'relative',
+                overflow: 'hidden',
+                width: '100%',
+              }}>
                 <div style={{ position: 'relative', zIndex: 1 }}>
-                  <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 4 }}>
+                  <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 6, margin: 0 }}>
                     {greeting.emoji} {greeting.text}
                   </h1>
-                  <p style={{ fontSize: 14, opacity: 0.7, margin: 0 }}>
+                  <p style={{ fontSize: 14, opacity: 0.7, margin: '6px 0 0' }}>
                     {summary?.aiOneLiner || greeting.sub}
                   </p>
                   {summary?.streakDays != null && summary.streakDays > 0 && (
-                    <div style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, background: 'rgba(255, 100, 0, 0.1)', fontSize: 13, fontWeight: 600, color: '#ff6400' }}>
-                      <Flame size={14} /> {summary.streakDays} hari streak!
-                    </div>
-                  )}
-                  {contextSuggestion && (
-                    <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                      <Zap size={14} style={{ color: 'rgb(var(--color-primary))', opacity: 0.7 }} />
-                      <span style={{ opacity: 0.6 }}>{contextSuggestion}</span>
-                      {suggestAction && (
-                        <Link href={suggestAction.href} style={{ color: 'rgb(var(--color-primary))', fontWeight: 600, textDecoration: 'none', fontSize: 12 }}>
-                          {suggestAction.label} →
-                        </Link>
-                      )}
+                    <div style={{ marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, background: 'rgba(255, 100, 0, 0.1)', fontSize: 13, fontWeight: 600, color: '#ff6400' }}>
+                      <span className="streak-fire"><Flame size={14} /></span> {summary.streakDays} hari streak!
                     </div>
                   )}
                 </div>
                 {/* Decorative gradient orb */}
-                <div style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: 'radial-gradient(circle, rgba(var(--color-primary), 0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                <div className="greeting-orb" style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(var(--color-primary), 0.08) 0%, transparent 70%)', pointerEvents: 'none' }} />
               </div>
 
-              {/* ═══════ QUICK ACTIONS ═══════ */}
-              <div style={{ display: 'flex', gap: 10, marginBottom: 24, overflowX: 'auto', paddingBottom: 4 }}>
+              {/* ═══════ SECTION 2: TODAY'S BRIEFING (AI-powered) ═══════ */}
+              {aiBriefingLoading ? (
+                <AiBriefingSkeleton />
+              ) : aiBriefing ? (
+                <AiBriefingCard
+                  briefing={aiBriefing}
+                  onRefresh={handleRefreshAiBriefing}
+                  isRefreshing={aiBriefingRefreshing}
+                />
+              ) : aiBriefingFailed && briefingData ? (
+                /* Fallback to the rule-based briefing if the AI request failed */
+                <TodaysBriefing data={briefingData} isLoading={briefingLoading && summaryLoading} />
+              ) : null}
+
+              {/* ═══════ SECTION 3: SI BAWEL CONTEXTUAL BUBBLES ═══════ */}
+              {patterns.length > 0 && (
+                <ContextualBubbles patterns={patterns} />
+              )}
+
+              {/* ═══════ SECTION 4: QUICK ACTIONS ═══════ */}
+              <div className="dashboard-quick-actions" style={{ display: 'flex', gap: 10, marginBottom: 24, overflowX: 'auto', paddingBottom: 4 }}>
                 {[
                   { label: 'Scan Struk', icon: '📸', href: '/duit-tracker' },
                   { label: 'Catat', icon: '💸', href: '/duit-tracker' },
@@ -198,142 +337,145 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              {/* ═══════ MAIN GRID ═══════ */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16, marginBottom: 24 }}>
+              {/* ═══════ SECTION 5: KEUANGAN SNAPSHOT ═══════ */}
+              <Card style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                    <Wallet size={16} style={{ color: 'rgb(var(--color-primary))' }} /> Keuangan
+                  </h3>
+                  <Link href="/duit-tracker" style={{ fontSize: 12, color: 'rgb(var(--color-primary))', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, opacity: 0.8 }}>
+                    Detail <ArrowRight size={12} />
+                  </Link>
+                </div>
 
-                {/* KEUANGAN SNAPSHOT */}
-                <Card>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                    <h3 style={{ fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-                      <Wallet size={16} style={{ color: 'rgb(var(--color-primary))' }} /> Keuangan
-                    </h3>
-                    <Link href="/duit-tracker" style={{ fontSize: 12, color: 'rgb(var(--color-primary))', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, opacity: 0.8 }}>
-                      Detail <ArrowRight size={12} />
-                    </Link>
+                {summaryLoading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div className="skeleton" style={{ height: 20, borderRadius: 6, width: '80%' }} />
+                    <div className="skeleton" style={{ height: 20, borderRadius: 6, width: '60%' }} />
+                    <div className="skeleton" style={{ height: 20, borderRadius: 6, width: '70%' }} />
                   </div>
-
-                  {summaryLoading ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <div className="skeleton" style={{ height: 20, borderRadius: 6, width: '80%' }} />
-                      <div className="skeleton" style={{ height: 20, borderRadius: 6, width: '60%' }} />
-                      <div className="skeleton" style={{ height: 20, borderRadius: 6, width: '70%' }} />
-                    </div>
-                  ) : summary?.financeSummary ? (
-                    <>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
-                        <div style={{ padding: '8px 0' }}>
-                          <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 2 }}>Pemasukan</div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-success)' }}>{fmt(summary.financeSummary.income)}</div>
-                        </div>
-                        <div style={{ padding: '8px 0' }}>
-                          <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 2 }}>Pengeluaran</div>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-error)' }}>{fmt(summary.financeSummary.expense)}</div>
-                        </div>
-                        <div style={{ padding: '8px 0' }}>
-                          <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 2 }}>Saldo</div>
-                          <div style={{ fontSize: 14, fontWeight: 700 }}>{fmt(summary.financeSummary.balance)}</div>
+                ) : summary?.financeSummary ? (
+                  <>
+                    <div className="finance-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+                      <div style={{ padding: '8px 0' }}>
+                        <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 2 }}>Pemasukan</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-success)' }}>
+                          <AnimatedNumber value={summary.financeSummary.income} prefix="Rp" countUp duration={800} />
                         </div>
                       </div>
-
-                      {summary.topBudgetAlert && (
-                        <div style={{ padding: '8px 12px', borderRadius: 8, background: summary.topBudgetAlert.percentage > 90 ? 'rgba(var(--color-error), 0.06)' : 'rgba(var(--color-warning), 0.06)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                          <Target size={13} style={{ flexShrink: 0 }} />
-                          <span>Budget <strong style={{ textTransform: 'capitalize' }}>{summary.topBudgetAlert.category}</strong>: {summary.topBudgetAlert.percentage}% terpakai</span>
+                      <div style={{ padding: '8px 0' }}>
+                        <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 2 }}>Pengeluaran</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--color-error)' }}>
+                          <AnimatedNumber value={summary.financeSummary.expense} prefix="Rp" countUp duration={800} />
                         </div>
-                      )}
-
-                      {summary.trees && summary.trees.length > 0 && (
-                        <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <TreePine size={14} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
-                          <span style={{ opacity: 0.7 }}>{summary.trees[0].name}</span>
-                          <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--input-bg)', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${Math.min(summary.trees[0].progress, 100)}%`, background: 'var(--color-success)', borderRadius: 3, transition: 'width 0.6s ease' }} />
-                          </div>
-                          <span style={{ fontWeight: 600, opacity: 0.7 }}>{summary.trees[0].progress}%</span>
+                      </div>
+                      <div style={{ padding: '8px 0' }}>
+                        <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 2 }}>Saldo</div>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>
+                          <AnimatedNumber value={summary.financeSummary.balance} prefix="Rp" countUp duration={800} />
                         </div>
-                      )}
-
-                      {/* Si Bawel Bubble */}
-                      {summary.bawelBubble && (
-                        <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(var(--color-primary), 0.04)', border: '1px solid rgba(var(--color-primary), 0.08)', fontSize: 13, fontStyle: 'italic', lineHeight: 1.5 }}>
-                          🗣️ {summary.bawelBubble}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: 20, opacity: 0.4, fontSize: 13 }}>
-                      <Wallet size={28} style={{ opacity: 0.3, marginBottom: 8 }} /><br />
-                      Mulai catat keuanganmu
+                      </div>
                     </div>
-                  )}
-                </Card>
 
-                {/* TODO HARI INI */}
-                <Card>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                    <h3 style={{ fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-                      <CheckSquare size={16} style={{ color: 'var(--color-success)' }} /> Todo Hari Ini
-                      {summary?.todoStats && (
-                        <span style={{ fontSize: 12, opacity: 0.5, fontWeight: 400 }}>({summary.todoStats.done}/{summary.todoStats.total})</span>
-                      )}
-                    </h3>
-                    <Link href="/todos" style={{ fontSize: 12, color: 'rgb(var(--color-primary))', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, opacity: 0.8 }}>
-                      Semua <ArrowRight size={12} />
-                    </Link>
-                  </div>
-
-                  {summaryLoading ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {[1, 2, 3].map(n => <div key={n} className="skeleton" style={{ height: 28, borderRadius: 6 }} />)}
-                    </div>
-                  ) : summary?.todosToday && summary.todosToday.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
-                      {summary.todosToday.slice(0, 5).map(todo => (
-                        <div key={todo.id} onClick={() => handleToggleTodo(todo.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 6px', cursor: 'pointer', borderRadius: 8, transition: 'background 0.15s' }} className="todo-hover-row">
-                          {todo.status === 'done' ? (
-                            <CheckSquare size={18} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
-                          ) : (
-                            <Square size={18} style={{ opacity: 0.35, flexShrink: 0 }} />
-                          )}
-                          <span style={{ fontSize: 13, textDecoration: todo.status === 'done' ? 'line-through' : 'none', opacity: todo.status === 'done' ? 0.45 : 1, flex: 1, lineHeight: 1.3 }}>
-                            {todo.title}
-                          </span>
-                          {todo.dueTime && <span style={{ fontSize: 11, opacity: 0.35, fontFamily: 'monospace' }}>{todo.dueTime}</span>}
-                          {todo.priority === 'high' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-error)', flexShrink: 0 }} />}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: 16, opacity: 0.4, fontSize: 13 }}>
-                      Tidak ada todo hari ini 🎉
-                    </div>
-                  )}
-
-                  {/* Quick Add Todo */}
-                  <form onSubmit={handleQuickTodo} style={{ display: 'flex', gap: 6 }}>
-                    <input
-                      className="input"
-                      placeholder='+ "bayar kos besok"'
-                      value={quickTodo}
-                      onChange={e => setQuickTodo(e.target.value)}
-                      style={{ fontSize: 13, flex: 1, padding: '8px 12px' }}
-                    />
-                    {quickTodo && (
-                      <Button size="sm" type="submit" disabled={addingTodo} style={{ padding: '6px 10px' }}>
-                        {addingTodo ? <Loader2 className="spin" size={14} /> : <Plus size={14} />}
-                      </Button>
+                    {summary.topBudgetAlert && (
+                      <div style={{ padding: '8px 12px', borderRadius: 8, background: summary.topBudgetAlert.percentage > 90 ? 'rgba(var(--color-error), 0.06)' : 'rgba(var(--color-warning), 0.06)', fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                        <Target size={13} style={{ flexShrink: 0 }} />
+                        <span>Budget <strong style={{ textTransform: 'capitalize' }}>{summary.topBudgetAlert.category}</strong>: {summary.topBudgetAlert.percentage}% terpakai</span>
+                      </div>
                     )}
-                  </form>
-                </Card>
-              </div>
 
-              {/* ═══════ RINGKASAN AKADEMIK ═══════ */}
+                    {summary.trees && summary.trees.length > 0 && (
+                      <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <TreePine size={14} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
+                        <span style={{ opacity: 0.7 }}>{summary.trees[0].name}</span>
+                        <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--input-bg)', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${Math.min(summary.trees[0].progress, 100)}%`, background: 'var(--color-success)', borderRadius: 3, transition: 'width 0.6s ease' }} />
+                        </div>
+                        <span style={{ fontWeight: 600, opacity: 0.7 }}>{summary.trees[0].progress}%</span>
+                      </div>
+                    )}
+
+                    {/* Si Bawel inline bubble */}
+                    {summary.bawelBubble && (
+                      <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(var(--color-primary), 0.04)', border: '1px solid rgba(var(--color-primary), 0.08)', fontSize: 13, lineHeight: 1.5, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                        <SiBawelAvatar size="inline" />
+                        <span style={{ fontStyle: 'italic', opacity: 0.85 }}>{summary.bawelBubble}</span>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: 20, opacity: 0.4, fontSize: 13 }}>
+                    <Wallet size={28} style={{ opacity: 0.3, marginBottom: 8 }} /><br />
+                    Mulai catat keuanganmu
+                  </div>
+                )}
+              </Card>
+
+              {/* ═══════ SECTION 6: TODO HARI INI ═══════ */}
+              <Card style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                    <CheckSquare size={16} style={{ color: 'var(--color-success)' }} /> Todo Hari Ini
+                    {summary?.todoStats && (
+                      <span style={{ fontSize: 12, opacity: 0.5, fontWeight: 400 }}>({summary.todoStats.done}/{summary.todoStats.total})</span>
+                    )}
+                  </h3>
+                  <Link href="/todos" style={{ fontSize: 12, color: 'rgb(var(--color-primary))', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, opacity: 0.8 }}>
+                    Semua <ArrowRight size={12} />
+                  </Link>
+                </div>
+
+                {summaryLoading ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {[1, 2, 3].map(n => <div key={n} className="skeleton" style={{ height: 28, borderRadius: 6 }} />)}
+                  </div>
+                ) : summary?.todosToday && summary.todosToday.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+                    {summary.todosToday.slice(0, 5).map(todo => (
+                      <div key={todo.id} onClick={() => handleToggleTodo(todo.id)} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 6px', cursor: 'pointer', borderRadius: 8, transition: 'background 0.15s' }} className="todo-hover-row">
+                        {todo.status === 'done' ? (
+                          <CheckSquare size={18} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
+                        ) : (
+                          <Square size={18} style={{ opacity: 0.35, flexShrink: 0 }} />
+                        )}
+                        <span style={{ fontSize: 13, textDecoration: todo.status === 'done' ? 'line-through' : 'none', opacity: todo.status === 'done' ? 0.45 : 1, flex: 1, lineHeight: 1.3 }}>
+                          {todo.title}
+                        </span>
+                        {todo.dueTime && <span style={{ fontSize: 11, opacity: 0.35, fontFamily: 'monospace' }}>{todo.dueTime}</span>}
+                        {todo.priority === 'high' && <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-error)', flexShrink: 0 }} />}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: 16, opacity: 0.4, fontSize: 13 }}>
+                    Tidak ada todo hari ini 🎉
+                  </div>
+                )}
+
+                {/* Quick Add Todo — conversational prompt */}
+                <form onSubmit={handleQuickTodo} style={{ display: 'flex', gap: 6 }}>
+                  <input
+                    className="input"
+                    placeholder='Mau catat apa?'
+                    value={quickTodo}
+                    onChange={e => setQuickTodo(e.target.value)}
+                    style={{ fontSize: 13, flex: 1, padding: '8px 12px' }}
+                  />
+                  {quickTodo && (
+                    <Button size="sm" type="submit" disabled={addingTodo} style={{ padding: '6px 10px' }}>
+                      {addingTodo ? <Loader2 className="spin" size={14} /> : <Plus size={14} />}
+                    </Button>
+                  )}
+                </form>
+              </Card>
+
+              {/* ═══════ SECTION 7: RINGKASAN AKADEMIK ═══════ */}
               {summary?.academicSummary && (
                 <Card style={{ marginBottom: 16, padding: '18px 22px' }}>
                   <h3 style={{ fontSize: 15, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 16px' }}>
                     <BookOpen size={16} style={{ color: 'rgb(var(--color-primary))' }} /> Ringkasan Akademik
                   </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, marginBottom: summary.academicSummary.todaySchedule.length > 0 ? 16 : 0 }}>
+                  <div className="academic-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12, marginBottom: summary.academicSummary.todaySchedule.length > 0 ? 16 : 0 }}>
                     {[
                       { label: 'Kelas Aktif', value: summary.academicSummary.activeClasses, icon: <BookOpen size={14} />, color: 'rgb(var(--color-primary))' },
                       { label: 'Tugas Pending', value: summary.academicSummary.pendingTasks, icon: <AlertTriangle size={14} />, color: 'var(--color-warning)' },
@@ -368,7 +510,7 @@ export default function DashboardPage() {
                 </Card>
               )}
 
-              {/* ═══════ GAMIFIKASI ═══════ */}
+              {/* ═══════ SECTION 8: GAMIFIKASI ═══════ */}
               {summary?.gamification && (
                 <Card style={{ marginBottom: 16, padding: '18px 22px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -379,7 +521,6 @@ export default function DashboardPage() {
                       {summary.gamification.currentXp}{summary.gamification.nextLevelXp ? `/${summary.gamification.nextLevelXp}` : ''} XP
                     </span>
                   </div>
-                  {/* XP Progress Bar */}
                   {summary.gamification.nextLevelXp && (
                     <div style={{ marginBottom: 14 }}>
                       <div style={{ height: 8, borderRadius: 4, background: 'var(--input-bg)', overflow: 'hidden' }}>
@@ -394,7 +535,7 @@ export default function DashboardPage() {
                   )}
                   <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13 }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Flame size={14} style={{ color: '#ff6400' }} /> {summary.gamification.currentStreak} hari streak
+                      <span className="streak-fire"><Flame size={14} style={{ color: '#ff6400' }} /></span> {summary.gamification.currentStreak} hari streak
                     </span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       <Award size={14} style={{ color: '#8b5cf6' }} /> {summary.gamification.totalAchievements} achievement
@@ -432,7 +573,16 @@ export default function DashboardPage() {
                 </Card>
               )}
 
-              {/* ═══════ COLLAPSIBLE: DEADLINES ═══════ */}
+              {/* ═══════ SECTION 9: SOCIAL PROOF — CLASS COMPARISON ═══════ */}
+              <ClassComparisonCard comparisons={classComparisons} />
+
+              {/* ═══════ SECTION 10: SOCIAL PROOF — TRENDING Q&A ═══════ */}
+              <TrendingQnA questions={trendingQuestions} />
+
+              {/* ═══════ SECTION 11: SOCIAL PROOF — WEEKLY CHALLENGE ═══════ */}
+              {weeklyChallenge && <WeeklyChallengeCard challenge={weeklyChallenge} />}
+
+              {/* ═══════ SECTION 12: COLLAPSIBLE DEADLINES ═══════ */}
               {!deadlinesLoading && deadlines && deadlines.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
                   <button onClick={() => setShowDeadlines(!showDeadlines)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderRadius: 12, border: '1px solid var(--border-default)', background: 'var(--card-bg)', cursor: 'pointer', transition: 'all 0.2s' }}>
@@ -470,7 +620,7 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* ═══════ COLLAPSIBLE: KELAS AKTIF ═══════ */}
+              {/* ═══════ SECTION 10: COLLAPSIBLE KELAS AKTIF ═══════ */}
               <div style={{ marginBottom: 24 }}>
                 <button onClick={() => setShowClasses(!showClasses)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderRadius: 12, border: '1px solid var(--border-default)', background: 'var(--card-bg)', cursor: 'pointer', transition: 'all 0.2s' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 14 }}>
@@ -558,6 +708,7 @@ export default function DashboardPage() {
               </div>
 
             </div>
+            </PullToRefresh>
           </div>
         </div>
       </div>
@@ -571,6 +722,18 @@ export default function DashboardPage() {
           <Button type="submit" disabled={isCreating}>{isCreating ? <Loader2 className="spin" size={16} /> : 'Buat Kelas'}</Button>
         </form>
       </Modal>
+
+      <style jsx>{`
+        /* Account for the fixed bottom nav on mobile so content isn't hidden */
+        .dashboard-feed {
+          padding-bottom: 8px;
+        }
+        @media (max-width: 767.98px) {
+          .dashboard-feed {
+            padding-bottom: calc(var(--bottom-nav-height, 60px) + env(safe-area-inset-bottom, 0px) + 24px);
+          }
+        }
+      `}</style>
     </AuthGuard>
   );
 }

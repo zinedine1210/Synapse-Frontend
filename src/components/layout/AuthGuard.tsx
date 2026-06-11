@@ -5,6 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { Loader2 } from 'lucide-react';
 import { QuickActionFAB } from './QuickActionFAB';
+import { BottomNav } from './BottomNav';
+import { MobileNavSheet } from './MobileNavSheet';
 import { CommandPalette } from './CommandPalette';
 import { OnboardingFlow } from './OnboardingFlow';
 import { TutorialOverlay } from './TutorialOverlay';
@@ -21,6 +23,7 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
   const pathname = usePathname();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [navSheetOpen, setNavSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && user) {
@@ -98,6 +101,8 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
         }} />
       )}
       {children}
+      <BottomNav onMoreTap={() => setNavSheetOpen(true)} />
+      <MobileNavSheet open={navSheetOpen} onClose={() => setNavSheetOpen(false)} />
       <QuickActionFAB />
       <CommandPalette />
     </>

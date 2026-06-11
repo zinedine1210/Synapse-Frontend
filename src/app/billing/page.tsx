@@ -140,6 +140,7 @@ export default function BillingPage() {
 
             {/* Pricing Cards Grid */}
             <div
+              className="billing-grid"
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',

@@ -5,10 +5,17 @@ import { useAuth } from '@/lib/AuthContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, Alert, Modal, useToast, useConfirm, CurrencyInput, parseCurrency, DateTimePicker } from '@/components/ui';
+import { Card, Button, Alert, Modal, useToast, useConfirm, CurrencyInput, parseCurrency, DateTimePicker, PullToRefresh } from '@/components/ui';
+import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { duitTrackerService, Transaction, Summary, SavingTree, CategoryBudget } from '@/services/duitTrackerService';
 import { siBawelService, BawelSetting, WeeklyRoast } from '@/services/siBawelService';
-import { Plus, Trash2, Loader2, TrendingUp, TrendingDown, Wallet, TreePine, Sparkles, ArrowUpCircle, ArrowDownCircle, Edit2, Target, Settings, Camera, ChevronDown, ChevronUp } from 'lucide-react';
+import { SubscriptionCard } from '@/components/duit-tracker/SubscriptionCard';
+import { QuickInputBar } from '@/components/duit-tracker/QuickInputBar';
+import { ParsePreview } from '@/components/duit-tracker/ParsePreview';
+import { FinancialHero } from '@/components/duit-tracker/FinancialHero';
+import { TransactionSheet } from '@/components/duit-tracker/TransactionSheet';
+import { useCelebration } from '@/components/shared/CelebrationOverlay';
+import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings } from 'lucide-react';
 
 const EXPENSE_CATEGORIES = [
   { id: 'makanan', emoji: '🍛', label: 'Makanan' },
@@ -32,6 +39,26 @@ const INCOME_CATEGORIES = [
   { id: 'lainnya', emoji: '📦', label: 'Lainnya' },
 ];
 
+/** Category color map for accent strip on transaction cards */
+const CATEGORY_COLORS: Record<string, string> = {
+  makanan: '#f59e0b',
+  minuman: '#8b5cf6',
+  transportasi: '#3b82f6',
+  belanja: '#ec4899',
+  hiburan: '#10b981',
+  tagihan: '#ef4444',
+  kesehatan: '#06b6d4',
+  pendidikan: '#6366f1',
+  kos: '#f97316',
+  lainnya: '#6b7280',
+  gaji: '#10b981',
+  freelance: '#8b5cf6',
+  kiriman: '#ec4899',
+  beasiswa: '#6366f1',
+  bonus: '#f59e0b',
+  jualan: '#3b82f6',
+};
+
 const TREE_TEMPLATES = [
   { emoji: '🎧', name: 'AirPods Pro', target: 4200000 },
   { emoji: '📱', name: 'iPhone Baru', target: 16000000 },
@@ -52,6 +79,84 @@ function getTreeStage(pct: number) {
   return { emoji: '🏆🎊', label: 'Target tercapai!', color: '#FFD700' };
 }
 
+/** Enhanced tree stage SVG visualization */
+function TreeStageSvg({ pct }: { pct: number }) {
+  const getScale = () => {
+    if (pct <= 0) return 0.3;
+    if (pct < 15) return 0.4;
+    if (pct < 30) return 0.55;
+    if (pct < 50) return 0.7;
+    if (pct < 70) return 0.82;
+    if (pct < 85) return 0.92;
+    if (pct < 100) return 0.96;
+    return 1;
+  };
+
+  const getColor = () => {
+    if (pct <= 0) return '#8B7355';
+    if (pct < 15) return '#90EE90';
+    if (pct < 30) return '#3CB371';
+    if (pct < 50) return '#228B22';
+    if (pct < 70) return '#006400';
+    if (pct < 85) return '#006400';
+    if (pct < 100) return '#FF6347';
+    return '#FFD700';
+  };
+
+  const scale = getScale();
+  const color = getColor();
+  const isComplete = pct >= 100;
+
+  return (
+    <div style={{
+      width: 120,
+      height: 120,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      position: 'relative',
+    }}>
+      <svg
+        width="100"
+        height="100"
+        viewBox="0 0 100 100"
+        style={{
+          transform: `scale(${scale})`,
+          transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          filter: isComplete ? 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.5))' : 'none',
+        }}
+      >
+        {/* Ground */}
+        <ellipse cx="50" cy="90" rx="30" ry="6" fill="#8B7355" opacity="0.3" />
+        {/* Trunk */}
+        <rect x="44" y="50" width="12" height="40" rx="4" fill="#8B4513" />
+        {/* Canopy */}
+        {pct > 0 && (
+          <>
+            <circle cx="50" cy="35" r={pct < 30 ? 15 : pct < 50 ? 20 : 25} fill={color} style={{ transition: 'r 0.6s ease, fill 0.4s ease' }} />
+            {pct >= 30 && <circle cx="35" cy="45" r={pct < 50 ? 10 : 14} fill={color} opacity="0.85" />}
+            {pct >= 30 && <circle cx="65" cy="45" r={pct < 50 ? 10 : 14} fill={color} opacity="0.85" />}
+            {pct >= 70 && <circle cx="40" cy="25" r="10" fill={color} opacity="0.7" />}
+            {pct >= 70 && <circle cx="60" cy="25" r="10" fill={color} opacity="0.7" />}
+          </>
+        )}
+        {/* Fruits / sparkles for near-complete */}
+        {pct >= 85 && pct < 100 && (
+          <>
+            <circle cx="38" cy="38" r="4" fill="#FF6347" />
+            <circle cx="62" cy="40" r="4" fill="#FF6347" />
+            <circle cx="50" cy="48" r="3.5" fill="#FF6347" />
+          </>
+        )}
+        {/* Trophy for complete */}
+        {isComplete && (
+          <text x="50" y="20" textAnchor="middle" fontSize="16">🏆</text>
+        )}
+      </svg>
+    </div>
+  );
+}
+
 function getCatEmoji(id: string, type: string) {
   const list = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
   return list.find(c => c.id === id)?.emoji || '📦';
@@ -61,6 +166,7 @@ export default function DuitTrackerPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { showUndoToast } = useCelebration();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tab, setTab] = useState<'transactions' | 'summary' | 'trees' | 'budget'>('transactions');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -90,7 +196,8 @@ export default function DuitTrackerPage() {
   const [weeklyRoast, setWeeklyRoast] = useState<WeeklyRoast | null>(null);
   const [showBawelSettings, setShowBawelSettings] = useState(false);
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
-  const categories = form.type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const [quickInputText, setQuickInputText] = useState('');
+  const [quickInputSubmitting, setQuickInputSubmitting] = useState(false);
 
   useEffect(() => {
     siBawelService.getSetting().then(setBawelSetting).catch(() => {});
@@ -154,9 +261,25 @@ export default function DuitTrackerPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!await confirm({ message: 'Hapus transaksi ini?', variant: 'danger' })) return;
-    try { await duitTrackerService.deleteTransaction(id); showToast('Transaksi dihapus.', 'success'); fetchData(); }
-    catch (e: any) { showToast(e.message, 'error'); }
+    const tx = transactions.find(t => t.id === id);
+    if (!tx) return;
+
+    // Optimistic removal
+    setTransactions(prev => prev.filter(t => t.id !== id));
+
+    // Show undo toast
+    showUndoToast(`Transaksi "${tx.label || tx.category}" dihapus`, () => {
+      // Undo: re-fetch data
+      fetchData();
+    });
+
+    // Actually delete
+    try {
+      await duitTrackerService.deleteTransaction(id);
+    } catch (e: any) {
+      showToast(e.message, 'error');
+      fetchData();
+    }
   };
 
   const handleAiParse = async () => {
@@ -171,6 +294,20 @@ export default function DuitTrackerPage() {
       } else { showToast('Gagal memparse input.', 'error'); }
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); setAiText(''); }
+  };
+
+  const handleQuickInputSubmit = async (text: string) => {
+    setQuickInputSubmitting(true);
+    try {
+      const p = await duitTrackerService.parseNaturalInput(text);
+      if (p.amount) {
+        setForm({ amount: String(p.amount), type: p.type || 'expense', category: p.category || 'lainnya', label: p.label || text, note: p.note || '', date: '' });
+        setQuickInputText('');
+        setShowAddModal(true);
+        showToast('Berhasil diparsing!', 'success');
+      } else { showToast('Gagal memparse input.', 'error'); }
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setQuickInputSubmitting(false); }
   };
 
   const handleAddTree = async (e: React.FormEvent) => {
@@ -235,15 +372,15 @@ export default function DuitTrackerPage() {
         <div className="app-main">
           <Appbar sidebarCollapsed={sidebarCollapsed} />
           <div className="page-content" style={{ animation: 'fadeSlideIn 0.4s ease-out' }}>
-            <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+            <PullToRefresh onRefresh={fetchData}>
+            <div className="duit-tracker-container" style={{ maxWidth: 1000, margin: '0 auto', paddingBottom: 'calc(var(--bottom-nav-height, 60px) + 16px)' }}>
 
-              {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <div className="duit-tracker-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
                   <h1 style={{ fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>💰 Duit Tracker</h1>
                   <p style={{ fontSize: 13, opacity: 0.5, marginTop: 2 }}>Lacak keuanganmu dengan cerdas</p>
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div className="duit-tracker-header-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   <button onClick={() => setShowBawelSettings(true)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-default)', cursor: 'pointer', padding: '8px 10px', borderRadius: 10, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'inherit' }} className="hover-lift" title="Pengaturan Si Bawel">
                     <Settings size={14} /> 🗣️
                   </button>
@@ -254,30 +391,13 @@ export default function DuitTrackerPage() {
 
               {error && <Alert type="error" message={error} />}
 
-              {/* Summary Cards — glassmorphism style */}
+              {/* Financial Hero — bold overview with count-up + daily trend */}
               {summary && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
-                  {[
-                    { icon: <TrendingUp size={20} />, label: 'Pemasukan', value: summary.income, color: 'var(--color-success)', gradient: 'rgba(16, 185, 129, 0.06)' },
-                    { icon: <TrendingDown size={20} />, label: 'Pengeluaran', value: summary.expense, color: 'var(--color-error)', gradient: 'rgba(239, 68, 68, 0.06)' },
-                    { icon: <Wallet size={20} />, label: 'Saldo', value: summary.balance, color: summary.balance >= 0 ? 'var(--color-success)' : 'var(--color-error)', gradient: 'rgba(var(--color-primary), 0.04)' },
-                    { icon: <Target size={20} />, label: 'Transaksi', value: summary.transactionCount, color: 'rgb(var(--color-primary))', gradient: 'rgba(var(--color-primary), 0.04)', isCurrency: false },
-                  ].map((s, i) => (
-                    <div key={i} style={{ padding: '18px 20px', borderRadius: 16, background: s.gradient, border: '1px solid var(--border-default)', backdropFilter: 'blur(8px)', transition: 'all 0.2s' }} className="hover-lift">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                        <div style={{ color: s.color, opacity: 0.8 }}>{s.icon}</div>
-                        <span style={{ fontSize: 12, opacity: 0.6, fontWeight: 500 }}>{s.label}</span>
-                      </div>
-                      <div style={{ fontSize: 20, fontWeight: 800, color: s.color, letterSpacing: -0.5 }}>
-                        {s.isCurrency === false ? s.value : fmt(s.value as number)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <FinancialHero summary={summary} transactions={transactions} month={month} year={year} />
               )}
 
               {/* Tabs — pill style */}
-              <div style={{ display: 'flex', gap: 4, marginBottom: 24, padding: 4, borderRadius: 14, background: 'var(--input-bg)', width: 'fit-content' }}>
+              <div className="duit-tabs" style={{ display: 'flex', gap: 4, marginBottom: 24, padding: 4, borderRadius: 14, background: 'var(--input-bg)', width: 'fit-content' }}>
                 {[
                   { key: 'transactions', label: '📝 Transaksi' },
                   { key: 'summary', label: '📊 Ringkasan' },
@@ -297,7 +417,7 @@ export default function DuitTrackerPage() {
 
               {/* Date filters */}
               {tab !== 'trees' && (
-                <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
+                <div className="duit-date-filters" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
                   <select value={month} onChange={e => setMonth(parseInt(e.target.value))} style={{ width: 140, borderRadius: 10, fontSize: 13, padding: '9px 12px', background: 'var(--input-bg)', border: '1px solid var(--border-default)', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 500 }}>
                     {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{new Date(2000, i).toLocaleDateString('id-ID', { month: 'long' })}</option>)}
                   </select>
@@ -305,7 +425,7 @@ export default function DuitTrackerPage() {
                     {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                   {tab === 'transactions' && (
-                    <div style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
+                    <div className="duit-type-filters" style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
                       {[{ v: '', l: 'Semua' }, { v: 'income', l: '↑ Masuk' }, { v: 'expense', l: '↓ Keluar' }].map(f => (
                         <button key={f.v} onClick={() => setTypeFilter(f.v)} style={{
                           padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500,
@@ -316,6 +436,19 @@ export default function DuitTrackerPage() {
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* QuickInputBar — Sticky natural language input */}
+              {tab === 'transactions' && (
+                <>
+                  <QuickInputBar
+                    value={quickInputText}
+                    onChange={setQuickInputText}
+                    onSubmit={handleQuickInputSubmit}
+                    submitting={quickInputSubmitting}
+                  />
+                  <ParsePreview inputText={quickInputText} debounceMs={300} />
+                </>
               )}
 
               {loading ? (
@@ -338,49 +471,57 @@ export default function DuitTrackerPage() {
                       <h3 style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.4, marginBottom: 8 }}>{dateLabel}</h3>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {txs.map(tx => (
-                          <div key={tx.id} style={{
-                            padding: '14px 16px', borderRadius: 14, background: 'var(--card-bg)',
-                            border: '1px solid var(--border-default)', transition: 'all 0.2s',
-                          }} className="hover-lift">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                              {/* Category emoji bubble */}
-                              <div style={{
-                                width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-                                background: tx.type === 'income' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.06)',
-                                flexShrink: 0,
-                              }}>
-                                {getCatEmoji(tx.category, tx.type)}
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                  <span style={{ fontWeight: 600, fontSize: 14 }}>{tx.label}</span>
-                                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'var(--input-bg)', textTransform: 'capitalize', opacity: 0.7 }}>{tx.category}</span>
+                          <SwipeableRow
+                            key={tx.id}
+                            onSwipeLeft={() => handleDelete(tx.id)}
+                            leftLabel="🗑️ Hapus"
+                            leftColor="var(--color-error)"
+                          >
+                            <div style={{
+                              padding: '14px 16px', borderRadius: 14, background: 'var(--card-bg)',
+                              border: '1px solid var(--border-default)', transition: 'all 0.2s',
+                              borderLeft: `4px solid ${CATEGORY_COLORS[tx.category] || CATEGORY_COLORS.lainnya}`,
+                            }} className="hover-lift">
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                {/* Category emoji bubble */}
+                                <div style={{
+                                  width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                                  background: tx.type === 'income' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.06)',
+                                  flexShrink: 0,
+                                }}>
+                                  {getCatEmoji(tx.category, tx.type)}
                                 </div>
-                                {tx.note && <div style={{ fontSize: 12, opacity: 0.45, marginTop: 2 }}>{tx.note}</div>}
-                              </div>
-                              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                <div style={{ fontWeight: 700, fontSize: 15, color: tx.type === 'income' ? 'var(--color-success)' : 'var(--color-error)' }}>
-                                  {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ fontWeight: 600, fontSize: 14 }}>{tx.label}</span>
+                                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'var(--input-bg)', textTransform: 'capitalize', opacity: 0.7 }}>{tx.category}</span>
+                                  </div>
+                                  {tx.note && <div style={{ fontSize: 12, opacity: 0.45, marginTop: 2 }}>{tx.note}</div>}
+                                </div>
+                                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                  <div style={{ fontWeight: 700, fontSize: 15, color: tx.type === 'income' ? 'var(--color-success)' : 'var(--color-error)' }}>
+                                    {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 2, flexShrink: 0, marginLeft: 4 }}>
+                                  <button onClick={(e) => { e.stopPropagation(); openEdit(tx); }} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.25, padding: 4, borderRadius: 6, transition: 'opacity 0.2s' }}><Edit2 size={13} /></button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleDelete(tx.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.25, padding: 4, borderRadius: 6, transition: 'opacity 0.2s' }}><Trash2 size={13} /></button>
                                 </div>
                               </div>
-                              <div style={{ display: 'flex', gap: 2, flexShrink: 0, marginLeft: 4 }}>
-                                <button onClick={(e) => { e.stopPropagation(); openEdit(tx); }} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.25, padding: 4, borderRadius: 6, transition: 'opacity 0.2s' }}><Edit2 size={13} /></button>
-                                <button onClick={(e) => { e.stopPropagation(); handleDelete(tx.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.25, padding: 4, borderRadius: 6, transition: 'opacity 0.2s' }}><Trash2 size={13} /></button>
-                              </div>
+                              {/* Si Bawel comment */}
+                              {tx.bawelComment && (
+                                <div style={{
+                                  marginTop: 8, fontSize: 12, lineHeight: 1.5, padding: '8px 12px', borderRadius: 10,
+                                  background: tx.bawelLevel === 'warning' ? 'rgba(245, 158, 11, 0.06)' : tx.bawelLevel === 'praise' ? 'rgba(16, 185, 129, 0.06)' : 'var(--input-bg)',
+                                  border: '1px solid transparent',
+                                  display: 'flex', alignItems: 'flex-start', gap: 6,
+                                }}>
+                                  <span style={{ flexShrink: 0 }}>🗣️</span>
+                                  <span style={{ opacity: 0.7 }}>{tx.bawelComment}</span>
+                                </div>
+                              )}
                             </div>
-                            {/* Si Bawel comment */}
-                            {tx.bawelComment && (
-                              <div style={{
-                                marginTop: 8, fontSize: 12, lineHeight: 1.5, padding: '8px 12px', borderRadius: 10,
-                                background: tx.bawelLevel === 'warning' ? 'rgba(245, 158, 11, 0.06)' : tx.bawelLevel === 'praise' ? 'rgba(16, 185, 129, 0.06)' : 'var(--input-bg)',
-                                border: '1px solid transparent',
-                                display: 'flex', alignItems: 'flex-start', gap: 6,
-                              }}>
-                                <span style={{ flexShrink: 0 }}>🗣️</span>
-                                <span style={{ opacity: 0.7 }}>{tx.bawelComment}</span>
-                              </div>
-                            )}
-                          </div>
+                          </SwipeableRow>
                         ))}
                       </div>
                     </div>
@@ -460,49 +601,11 @@ export default function DuitTrackerPage() {
                   </Card>
 
                   {/* ─── Subscription Tracker (Bocor Halus) ─── */}
-                  {(() => {
-                    // Rule-based: detect recurring expenses (same category + similar amount ±10%)
-                    if (transactions.length < 10) return null;
-                    const SUBSCRIPTION_KEYWORDS = ['spotify', 'netflix', 'icloud', 'youtube premium', 'shopee', 'kredivo', 'akulaku', 'indosat', 'telkomsel', 'xl', 'tri', 'disney', 'hbo', 'apple', 'google one', 'canva'];
-                    const expenseTxs = transactions.filter(t => t.type === 'expense');
-                    // Group by label (lowercase) and detect keyword matches
-                    const labelGroups: Record<string, { count: number; totalAmount: number; label: string; category: string }> = {};
-                    for (const tx of expenseTxs) {
-                      const key = tx.label.toLowerCase().trim();
-                      if (!labelGroups[key]) labelGroups[key] = { count: 0, totalAmount: 0, label: tx.label, category: tx.category };
-                      labelGroups[key].count++;
-                      labelGroups[key].totalAmount += tx.amount;
-                    }
-                    const detected = Object.values(labelGroups).filter(g => {
-                      const isKeyword = SUBSCRIPTION_KEYWORDS.some(kw => g.label.toLowerCase().includes(kw));
-                      return isKeyword || g.count >= 2;
-                    }).filter(g => g.count >= 2);
-                    if (detected.length === 0) return null;
-                    const totalMonthly = detected.reduce((s, d) => s + (d.totalAmount / d.count), 0);
-                    const totalYearly = totalMonthly * 12;
-                    return (
-                      <Card style={{ padding: '20px 22px', border: '1px solid rgba(245, 158, 11, 0.15)', background: 'rgba(245, 158, 11, 0.03)' }}>
-                        <h3 style={{ marginBottom: 14, fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          🔄 Pengeluaran Rutin Terdeteksi
-                        </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-                          {detected.map((d, i) => (
-                            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0' }}>
-                              <span style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span>{getCatEmoji(d.category, 'expense')}</span> {d.label}
-                              </span>
-                              <span style={{ fontSize: 13, fontWeight: 600 }}>{fmt(Math.round(d.totalAmount / d.count))}/bulan</span>
-                            </div>
-                          ))}
-                        </div>
-                        <div style={{ padding: '12px 14px', borderRadius: 10, background: 'rgba(245, 158, 11, 0.06)', fontSize: 13 }}>
-                          <div style={{ fontWeight: 700, marginBottom: 4 }}>Total &ldquo;bocor halus&rdquo;: {fmt(Math.round(totalMonthly))}/bulan</div>
-                          <div style={{ opacity: 0.7 }}>= {fmt(Math.round(totalYearly))}/tahun 😱</div>
-                          <div style={{ marginTop: 6, opacity: 0.6, fontSize: 12 }}>Kamu sadar gak kalau setahun kamu bayar segitu buat ini?</div>
-                        </div>
-                      </Card>
-                    );
-                  })()}
+                  <SubscriptionCard
+                    transactions={transactions}
+                    getCategoryEmoji={(cat) => getCatEmoji(cat, 'expense')}
+                    onDismiss={fetchData}
+                  />
                 </div>
               )}
 
@@ -562,7 +665,7 @@ export default function DuitTrackerPage() {
                       <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Buat pohon untuk menabung dengan cara menyenangkan!</p>
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                    <div className="duit-trees-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
                       {trees.map(tree => {
                         const pct = tree.targetAmount > 0 ? Math.min(Math.round((tree.currentAmount / tree.targetAmount) * 100), 100) : 0;
                         const stage = getTreeStage(pct);
@@ -581,9 +684,9 @@ export default function DuitTrackerPage() {
                               <button onClick={() => handleDeleteTree(tree.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 4 }}><Trash2 size={14} /></button>
                             </div>
                             <div style={{ textAlign: 'center', padding: '20px 0', borderRadius: 14, background: 'var(--input-bg)', marginBottom: 14 }}>
-                              <div style={{ fontSize: 52, marginBottom: 4, filter: pct >= 100 ? 'drop-shadow(0 0 8px rgba(255,215,0,0.5))' : 'none' }}>{stage.emoji}</div>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: stage.color }}>{stage.label}</div>
-                              <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4 }}>{pct}%</div>
+                              <TreeStageSvg pct={pct} />
+                              <div style={{ fontSize: 13, fontWeight: 600, color: stage.color, transition: 'color 0.4s ease' }}>{stage.label}</div>
+                              <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4, transition: 'all 0.4s ease' }}>{pct}%</div>
                             </div>
                             <div style={{ fontSize: 14, marginBottom: 10, textAlign: 'center' }}>
                               <span style={{ fontWeight: 700 }}>{fmt(tree.currentAmount)}</span>
@@ -608,74 +711,18 @@ export default function DuitTrackerPage() {
 
             {/* ─── MODALS ─── */}
 
-            {/* Add/Edit Transaction */}
-            <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); setEditingTx(null); }} title={editingTx ? '✏️ Edit Transaksi' : '💰 Tambah Transaksi'}>
-              <form onSubmit={handleAddTransaction} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {/* Type toggle */}
-                <div style={{ display: 'flex', gap: 6, padding: 4, borderRadius: 12, background: 'var(--input-bg)' }}>
-                  <button type="button" onClick={() => setForm({ ...form, type: 'expense', category: EXPENSE_CATEGORIES[0].id })} style={{
-                    flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
-                    background: form.type === 'expense' ? 'var(--card-bg)' : 'transparent',
-                    color: form.type === 'expense' ? 'var(--color-error)' : 'inherit',
-                    boxShadow: form.type === 'expense' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
-                    transition: 'all 0.2s',
-                  }}>↓ Pengeluaran</button>
-                  <button type="button" onClick={() => setForm({ ...form, type: 'income', category: INCOME_CATEGORIES[0].id })} style={{
-                    flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13,
-                    background: form.type === 'income' ? 'var(--card-bg)' : 'transparent',
-                    color: form.type === 'income' ? 'var(--color-success)' : 'inherit',
-                    boxShadow: form.type === 'income' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
-                    transition: 'all 0.2s',
-                  }}>↑ Pemasukan</button>
-                </div>
-
-                {/* Amount — CurrencyInput */}
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: 'block', opacity: 0.6 }}>Jumlah</label>
-                  <CurrencyInput value={form.amount} onChange={(val) => setForm({ ...form, amount: val })} placeholder="Rp 0" />
-                </div>
-
-                {/* Label */}
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: 'block', opacity: 0.6 }}>Keterangan</label>
-                  <input className="input" placeholder="Kopi, makan siang, gajian..." value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} required style={{ borderRadius: 10, padding: '10px 14px' }} />
-                </div>
-
-                {/* Category chips */}
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, display: 'block', opacity: 0.6 }}>Kategori</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {categories.map(c => (
-                      <button key={c.id} type="button" onClick={() => setForm({ ...form, category: c.id })} style={{
-                        padding: '6px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                        fontSize: 12, fontWeight: form.category === c.id ? 600 : 400,
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        background: form.category === c.id ? 'rgba(var(--color-primary), 0.1)' : 'var(--input-bg)',
-                        color: form.category === c.id ? 'rgb(var(--color-primary))' : 'inherit',
-                        outline: form.category === c.id ? '2px solid rgb(var(--color-primary))' : 'none',
-                        outlineOffset: -1, transition: 'all 0.2s',
-                      }}><span>{c.emoji}</span> {c.label}</button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Note */}
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: 'block', opacity: 0.6 }}>Catatan (opsional)</label>
-                  <textarea className="input" placeholder="Detail tambahan..." value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} rows={2} style={{ borderRadius: 10, padding: '10px 14px', resize: 'none' }} />
-                </div>
-
-                {/* Date */}
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: 'block', opacity: 0.6 }}>Tanggal</label>
-                  <DateTimePicker mode="date" value={form.date} onChange={v => setForm({ ...form, date: v })} placeholder="Pilih tanggal" />
-                </div>
-
-                <Button type="submit" disabled={submitting} style={{ borderRadius: 12, padding: '12px 0', marginTop: 4 }}>
-                  {submitting ? <Loader2 className="spin" size={16} /> : (editingTx ? 'Simpan Perubahan' : '💾 Simpan Transaksi')}
-                </Button>
-              </form>
-            </Modal>
+            {/* Add/Edit Transaction — attractive BottomSheet experience */}
+            <TransactionSheet
+              isOpen={showAddModal}
+              onClose={() => { setShowAddModal(false); setEditingTx(null); }}
+              form={form}
+              setForm={setForm}
+              editingTx={editingTx}
+              submitting={submitting}
+              onSubmit={handleAddTransaction}
+              expenseCategories={EXPENSE_CATEGORIES}
+              incomeCategories={INCOME_CATEGORIES}
+            />
 
             {/* AI Input */}
             <Modal isOpen={showAiInput} onClose={() => setShowAiInput(false)} title="✨ Input Cerdas">
@@ -802,6 +849,7 @@ export default function DuitTrackerPage() {
                 </div>
               </div>
             </Modal>
+            </PullToRefresh>
           </div>
         </div>
       </div>

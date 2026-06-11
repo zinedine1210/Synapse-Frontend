@@ -32,6 +32,91 @@ export interface DashboardSummary {
   } | null;
 }
 
+export interface TodaysBriefingResponse {
+  schedule: { className: string; time: string; room?: string }[];
+  deadlines: { title: string; className: string; dueLabel: string }[];
+  spendingSummary: { total: number; topCategory: string } | null;
+  todos: { total: number; done: number };
+  contextualTip: string | null;
+}
+
+export interface ClassComparison {
+  classId: string;
+  className: string;
+  averageSpending: number;
+  minSpending: number;
+  maxSpending: number;
+  memberCount: number;
+  userSpending: number;
+}
+
+export interface ClassComparisonResponse {
+  comparisons: ClassComparison[];
+}
+
+export interface TrendingQuestion {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  viewCount: number;
+  createdAt: string;
+  _count: { answers: number };
+  trendingScore?: number;
+}
+
+export interface WeeklyChallengeData {
+  id: string;
+  title: string;
+  description: string | null;
+  targetType: string;
+  targetValue: number;
+  rewardXp: number;
+  current: number;
+  completed: boolean;
+  daysLeft: number;
+  startDate: string;
+  endDate: string;
+}
+
+export interface AiBriefingSection {
+  icon: '📅' | '💰' | '✅' | '🔥' | '💡' | string;
+  title: string;
+  items: string[];
+}
+
+export interface AiBriefingResponse {
+  greeting: string;
+  headline: string;
+  sections: AiBriefingSection[];
+  suggestions: string[];
+  reminders: string[];
+  motivation: string;
+  source: 'ai' | 'fallback';
+  data: {
+    schedule?: unknown;
+    deadlines?: unknown;
+    finance?: unknown;
+    todos?: unknown;
+    gamification?: unknown;
+    savingTrees?: unknown;
+    [key: string]: unknown;
+  };
+}
+
+export interface SummaryV2Response {
+  weeklyChallenge: WeeklyChallengeData | null;
+  classSummary: { classId: string; className: string; memberCount: number; role: string }[];
+  financeSummary: { income: number; expense: number; balance: number };
+  gamification: { totalXp: number; level: number; currentStreak: number } | null;
+  comparisonAvailable: boolean;
+}
+
 export const dashboardService = {
   getSummary: () => apiFetch<DashboardSummary>('/dashboard/summary'),
+  getSummaryV2: () => apiFetch<SummaryV2Response>('/dashboard/summary-v2'),
+  getTodaysBriefing: () => apiFetch<TodaysBriefingResponse>('/dashboard/todays-briefing'),
+  getAiBriefing: () => apiFetch<AiBriefingResponse>('/dashboard/ai-briefing'),
+  getClassComparison: () => apiFetch<ClassComparisonResponse>('/dashboard/class-comparison'),
+  getTrendingQna: () => apiFetch<TrendingQuestion[]>('/dashboard/trending-qna'),
 };

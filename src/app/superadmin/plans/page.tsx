@@ -260,6 +260,50 @@ export default function SuperadminPlansPage() {
     }
   };
 
+  // Bulk toggle: section-level for expanded view
+  const handleSectionToggle = async (plan: PricingPlan, section: FeatureSection, checked: boolean) => {
+    const sectionIds = section.items.map(i => i.id);
+    const updatedFeatures = checked
+      ? Array.from(new Set([...plan.features, ...sectionIds]))
+      : plan.features.filter(f => !sectionIds.includes(f));
+    try {
+      setConfigs((prev) => prev.map((c) => (c.id === plan.id ? { ...c, features: updatedFeatures } : c)));
+      await superadminService.updatePricingPlan(plan.id, { features: updatedFeatures });
+      showToast(`Section ${section.section} ${checked ? 'diaktifkan' : 'dinonaktifkan'} untuk ${plan.name}`, 'success');
+      await loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gagal memperbarui fitur paket.', 'error');
+      await loadData();
+    }
+  };
+
+  // Bulk toggle: select all / deselect all for expanded view
+  const handleSelectAllToggle = async (plan: PricingPlan, selectAll: boolean) => {
+    const updatedFeatures = selectAll ? ALL_FEATURES.map(f => f.id) : [];
+    try {
+      setConfigs((prev) => prev.map((c) => (c.id === plan.id ? { ...c, features: updatedFeatures } : c)));
+      await superadminService.updatePricingPlan(plan.id, { features: updatedFeatures });
+      showToast(`Semua fitur ${selectAll ? 'diaktifkan' : 'dinonaktifkan'} untuk ${plan.name}`, 'success');
+      await loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gagal memperbarui fitur paket.', 'error');
+      await loadData();
+    }
+  };
+
+  // Helpers for modal section/all toggles
+  const handleModalSectionToggle = (section: FeatureSection, checked: boolean) => {
+    const sectionIds = section.items.map(i => i.id);
+    setPlanFeatures(prev => checked
+      ? Array.from(new Set([...prev, ...sectionIds]))
+      : prev.filter(f => !sectionIds.includes(f))
+    );
+  };
+
+  const handleModalSelectAll = (selectAll: boolean) => {
+    setPlanFeatures(selectAll ? ALL_FEATURES.map(f => f.id) : []);
+  };
+
   const formatRupiah = (val: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
 
@@ -394,13 +438,27 @@ export default function SuperadminPlansPage() {
                 if (!plan) return null;
                 return (
                   <Card style={{ border: '1px solid rgba(var(--color-primary) / 0.15)', background: 'rgba(var(--color-primary) / 0.02)' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgb(var(--text-muted))', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
-                      Fitur Aktif – {plan.name}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgb(var(--text-muted))', textTransform: 'uppercase' }}>
+                        Fitur Aktif – {plan.name} ({plan.features.length}/{ALL_FEATURES.length})
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        <Button size="sm" variant="ghost" onClick={() => handleSelectAllToggle(plan, true)} style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem' }}>✅ Pilih Semua</Button>
+                        <Button size="sm" variant="ghost" onClick={() => handleSelectAllToggle(plan, false)} style={{ fontSize: '0.7rem', padding: '0.25rem 0.6rem' }}>❌ Hapus Semua</Button>
+                      </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {FEATURE_SECTIONS.map((section) => (
+                      {FEATURE_SECTIONS.map((section) => {
+                        const sectionIds = section.items.map(i => i.id);
+                        const checkedCount = sectionIds.filter(id => plan.features.includes(id)).length;
+                        const allChecked = checkedCount === sectionIds.length;
+                        const someChecked = checkedCount > 0 && !allChecked;
+                        return (
                         <div key={section.section}>
-                          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'rgb(var(--text-muted))', marginBottom: '0.4rem' }}>{section.section}</div>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.72rem', fontWeight: 700, color: 'rgb(var(--text-muted))', marginBottom: '0.4rem', cursor: 'pointer', userSelect: 'none' }}>
+                            <input type="checkbox" checked={allChecked} ref={el => { if (el) el.indeterminate = someChecked; }} onChange={(e) => handleSectionToggle(plan, section, e.target.checked)} style={{ accentColor: 'rgb(var(--color-primary))', cursor: 'pointer' }} />
+                            {section.section} <span style={{ fontWeight: 400, opacity: 0.7 }}>({checkedCount}/{sectionIds.length})</span>
+                          </label>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
                             {section.items.map((feat) => {
                               const isChecked = plan.features.includes(feat.id);
@@ -413,7 +471,8 @@ export default function SuperadminPlansPage() {
                             })}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </Card>
                 );
@@ -470,10 +529,24 @@ export default function SuperadminPlansPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Akses Fitur</label>
-              {FEATURE_SECTIONS.map((section) => (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Akses Fitur ({planFeatures.length}/{ALL_FEATURES.length})</label>
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => handleModalSelectAll(true)} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>✅ Semua</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => handleModalSelectAll(false)} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>❌ Hapus</Button>
+                </div>
+              </div>
+              {FEATURE_SECTIONS.map((section) => {
+                const sectionIds = section.items.map(i => i.id);
+                const checkedCount = sectionIds.filter(id => planFeatures.includes(id)).length;
+                const allChecked = checkedCount === sectionIds.length;
+                const someChecked = checkedCount > 0 && !allChecked;
+                return (
                 <div key={section.section}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgb(var(--text-muted))', marginBottom: '0.35rem' }}>{section.section}</div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.7rem', fontWeight: 700, color: 'rgb(var(--text-muted))', marginBottom: '0.35rem', cursor: 'pointer', userSelect: 'none' }}>
+                    <input type="checkbox" checked={allChecked} ref={el => { if (el) el.indeterminate = someChecked; }} onChange={(e) => handleModalSectionToggle(section, e.target.checked)} style={{ accentColor: 'rgb(var(--color-primary))', cursor: 'pointer' }} />
+                    {section.section} <span style={{ fontWeight: 400, opacity: 0.7 }}>({checkedCount}/{sectionIds.length})</span>
+                  </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                     {section.items.map((feat) => {
                       const isChecked = planFeatures.includes(feat.id);
@@ -486,7 +559,8 @@ export default function SuperadminPlansPage() {
                     })}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               <Button type="button" variant="ghost" onClick={() => setShowPlanModal(false)}>Batal</Button>

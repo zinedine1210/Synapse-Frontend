@@ -17,6 +17,7 @@ import {
   Bell, CheckCheck, Check, BookOpen, Wallet, ListTodo,
   Trophy, HelpCircle, Filter, Inbox,
 } from 'lucide-react';
+import { usePushNotifications } from '@/lib/usePushNotifications';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -134,6 +135,10 @@ export default function NotificationsPage() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
   const socketRef = useRef<Socket | null>(null);
+
+  // Push notification state
+  const push = usePushNotifications();
+  const [pushDismissed, setPushDismissed] = useState(false);
 
   // ─── Fetch notifications ─────────────────────────────────────────────────
 
@@ -348,6 +353,40 @@ export default function NotificationsPage() {
               </button>
             ))}
           </div>
+
+          {/* Push Notification Banner */}
+          {push.isSupported && !push.isSubscribed && !pushDismissed && push.permission !== 'denied' && (
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem',
+              padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-lg)',
+              background: 'rgba(var(--color-primary) / 0.06)',
+              border: '1px solid rgba(var(--color-primary) / 0.12)',
+              marginBottom: '0.75rem', flexWrap: 'wrap',
+            }}>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', margin: 0, flex: 1, minWidth: 180 }}>
+                📱 Aktifkan notifikasi HP agar tidak ketinggalan info penting!
+              </p>
+              <div style={{ display: 'flex', gap: '0.35rem' }}>
+                <Button
+                  size="sm"
+                  isLoading={push.loading}
+                  onClick={async () => {
+                    const ok = await push.subscribe();
+                    if (ok) showToast('Push notification aktif!', 'success');
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
+                    color: 'black', fontWeight: 700, border: 'none', fontSize: 'var(--font-xs)',
+                  }}
+                >
+                  Aktifkan
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setPushDismissed(true)} style={{ fontSize: 'var(--font-xs)' }}>
+                  Nanti
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Notifications List */}
           {loading ? (

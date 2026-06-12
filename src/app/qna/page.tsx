@@ -6,9 +6,12 @@ import { useAuth } from '@/lib/AuthContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Button, useToast, PullToRefresh, BottomSheet, TagInput, TextInput, SelectOption, TextArea } from '@/components/ui';
+import { Button, useToast, PullToRefresh, BottomSheet, TagInput, TextInput, SelectOption } from '@/components/ui';
 import { stripMarkdown } from '@/components/ui/MarkdownRenderer';
 import { InfiniteScroll } from '@/components/ui/InfiniteScroll';
+import dynamic from 'next/dynamic';
+
+const RichTextEditor = dynamic(() => import('@/components/ui/RichTextEditor').then(m => ({ default: m.RichTextEditor })), { ssr: false });
 import { qnaService, QnaQuestion, QnaPaginated, UserReputation } from '@/services/qnaService';
 import { Plus, Loader2, MessageSquare, CheckCircle, Search, Award, Clock, User as UserIcon, Hash, Eye, HelpCircle, Flame, Star, Sparkles, Zap } from 'lucide-react';
 
@@ -586,18 +589,18 @@ export default function QnaPage() {
                 {/* Detail */}
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: 'block', opacity: 0.6 }}>Detail <span style={{ opacity: 0.6, fontWeight: 400 }}>(opsional)</span></label>
-                  <TextArea
-                    placeholder="Jelaskan konteksnya: apa yang sudah kamu coba, error yang muncul, dll. Semakin jelas, semakin cepat dijawab..."
-                    value={askForm.body}
+                  <RichTextEditor
+                    content={askForm.body}
                     onChange={v => {
                       setAskForm({ ...askForm, body: v });
                       if (askBodyError && v.replace(/<[^>]+>/g, '').trim().length >= MIN_BODY_LEN) {
                         setAskBodyError('');
                       }
                     }}
-                    rows={5}
-                    error={askBodyError}
+                    placeholder="Jelaskan konteksnya: apa yang sudah kamu coba, error yang muncul, dll..."
+                    minHeight={140}
                   />
+                  {askBodyError && <p style={{ color: '#ef4444', fontSize: 11, marginTop: 4 }}>{askBodyError}</p>}
                   {/* Character count hint */}
                   {bodyPlainLen > 0 && bodyPlainLen < MIN_BODY_LEN && !askBodyError && (
                     <p style={{ color: 'rgb(var(--text-muted))', fontSize: 11, marginTop: 5 }}>

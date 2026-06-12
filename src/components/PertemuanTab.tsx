@@ -70,6 +70,15 @@ export function PertemuanTab({
   const [sessionModalValue, setSessionModalValue] = useState('');
   const [editingSessionForModal, setEditingSessionForModal] = useState<Session | null>(null);
 
+  // Mobile detection for pertemuan layout
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   const handleAddSession = () => {
     if (!createSession) return;
     setSessionModalMode('create');
@@ -235,12 +244,44 @@ export function PertemuanTab({
   const combinedSummary = readyMaterials.map((m) => m.aiSummary).filter(Boolean).join('\n\n');
 
   // ─── Split Layout: Session list (left) | Detail (right) ──────────────
+
+  // Desktop: grid layout. Mobile: show list OR detail (not both)
   return (
-    <div className="pertemuan-layout" style={{ display: 'grid', gridTemplateColumns: selectedSession ? '200px 1fr' : '1fr', gap: 0, height: '100%', minHeight: 0 }}>
-      {/* Left: Session list */}
-      <div className="pertemuan-session-list" style={{
-        borderRight: selectedSession ? '1px solid var(--border-default)' : 'none',
-        padding: '0.5rem 0.4rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px',
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0, height: '100%', minHeight: 0 }}>
+      {/* Mobile: back + dropdown selector when session is selected */}
+      {isMobile && selectedSession && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderBottom: '1px solid var(--border-default)' }}>
+          <button onClick={() => setSelectedSession(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--color-primary))', padding: '0.25rem', display: 'flex', alignItems: 'center' }}>
+            <ChevronLeft size={18} />
+          </button>
+          <select
+            value={selectedSession.id}
+            onChange={(e) => {
+              const sess = sessions.find((s) => s.id === e.target.value);
+              if (sess) { setSelectedSession(sess); setSubTab('materi'); resetQuiz(); }
+            }}
+            className="themed-input"
+            style={{ flex: 1, fontSize: 'var(--font-sm)', padding: '0.4rem 0.6rem' }}
+          >
+            {sessions.map((s) => (
+              <option key={s.id} value={s.id}>{s.title}</option>
+            ))}
+          </select>
+          {canSession && (
+            <button onClick={handleAddSession} title="Tambah" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--color-primary))', padding: '0.25rem' }}>
+              <Plus size={16} />
+            </button>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: (!isMobile && selectedSession) ? '200px 1fr' : '1fr', gap: 0, flex: 1, minHeight: 0 }}>
+
+      {/* Left: Session list — hidden on mobile when session is selected */}
+      {!(isMobile && selectedSession) && (
+      <div style={{
+        borderRight: (!isMobile && selectedSession) ? '1px solid var(--border-default)' : 'none',
+        padding: '0.75rem 0.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px',
         background: 'rgba(var(--color-primary) / 0.01)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.4rem', marginBottom: '0.4rem' }}>
@@ -294,11 +335,12 @@ export function PertemuanTab({
           );
         })}
       </div>
+      )}
 
       {/* Right: Detail */}
       {selectedSession ? (
-        <div className="pertemuan-detail" style={{ padding: '0.6rem 0.75rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-          <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600, margin: 0 }}>{selectedSession.title}</h3>
+        <div style={{ padding: '0.75rem 1rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600 }}>{selectedSession.title}</h3>
 
           {/* Sub-tabs */}
           <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-default)' }}>
@@ -391,7 +433,7 @@ export function PertemuanTab({
                 </Card>
               )}
               {combinedSummary.trim() ? (
-                <Card className="digitalisasi-content" data-digitalisasi-content style={{ padding: '0.75rem' }}><MarkdownRenderer content={combinedSummary} /></Card>
+                <Card data-digitalisasi-content style={{ padding: '1rem' }}><MarkdownRenderer content={combinedSummary} /></Card>
               ) : (
                 <Card style={{ textAlign: 'center', padding: '1.5rem' }}><Sparkles size={24} style={{ color: 'rgb(var(--text-muted))', opacity: 0.3 }} /><p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginTop: '0.3rem' }}>Unggah berkas terlebih dahulu.</p></Card>
               )}
@@ -498,6 +540,7 @@ export function PertemuanTab({
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, useToast, useConfirm, TextInput, TagInput, TimePicker, SelectOption } from '@/components/ui';
 import { apiFetch } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import { usePushNotifications } from '@/lib/usePushNotifications';
 import {
   Settings, User, Bell, Palette, Database, Shield,
   Camera, Save, Loader2, Moon, Sun, Monitor, Globe,
@@ -88,6 +89,9 @@ export default function SettingsPage() {
   const [quietEnd, setQuietEnd] = useState('');
   const [themeChoice, setThemeChoice] = useState<'light' | 'dark' | 'system'>('system');
   const [language, setLanguage] = useState<'id' | 'en'>('id');
+
+  // Push notification state
+  const pushNotifications = usePushNotifications();
 
   // Load preferences on mount
   const loadPreferences = useCallback(async () => {
@@ -418,6 +422,7 @@ export default function SettingsPage() {
                     setQuietEnd={setQuietEnd}
                     handleSaveQuietHours={handleSaveQuietHours}
                     saving={saving}
+                    pushNotifications={pushNotifications}
                   />
                 )}
 
@@ -668,6 +673,7 @@ function NotificationsTab({
   setQuietEnd,
   handleSaveQuietHours,
   saving,
+  pushNotifications,
 }: {
   notifToggles: Record<string, boolean>;
   handleToggleNotif: (key: string, value: boolean) => void;
@@ -677,6 +683,14 @@ function NotificationsTab({
   setQuietEnd: (v: string) => void;
   handleSaveQuietHours: () => void;
   saving: boolean;
+  pushNotifications: {
+    isSupported: boolean;
+    isSubscribed: boolean;
+    permission: NotificationPermission;
+    loading: boolean;
+    subscribe: () => Promise<boolean>;
+    unsubscribe: () => Promise<boolean>;
+  };
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -688,6 +702,53 @@ function NotificationsTab({
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>
           Pilih notifikasi yang ingin kamu terima.
         </p>
+
+        {/* Push Notifications Toggle */}
+        {pushNotifications.isSupported && (
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '0.75rem', borderRadius: 'var(--radius-md)',
+            background: pushNotifications.isSubscribed
+              ? 'rgba(var(--color-secondary) / 0.06)'
+              : 'rgba(var(--text-muted) / 0.03)',
+            border: pushNotifications.isSubscribed
+              ? '1px solid rgba(var(--color-secondary) / 0.15)'
+              : '1px solid transparent',
+            marginBottom: '0.75rem',
+          }}>
+            <div>
+              <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                📱 Push Notification ke HP
+              </p>
+              <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>
+                {pushNotifications.isSubscribed
+                  ? 'Notifikasi akan muncul di HP kamu meskipun browser ditutup'
+                  : pushNotifications.permission === 'denied'
+                    ? 'Izin notifikasi diblokir. Aktifkan di pengaturan browser.'
+                    : 'Aktifkan untuk menerima notifikasi langsung di HP kamu'}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant={pushNotifications.isSubscribed ? 'secondary' : 'primary'}
+              isLoading={pushNotifications.loading}
+              disabled={pushNotifications.permission === 'denied'}
+              onClick={() => {
+                if (pushNotifications.isSubscribed) {
+                  pushNotifications.unsubscribe();
+                } else {
+                  pushNotifications.subscribe();
+                }
+              }}
+              style={!pushNotifications.isSubscribed ? {
+                background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
+                color: 'black', fontWeight: 700, border: 'none',
+              } : undefined}
+            >
+              {pushNotifications.isSubscribed ? 'Nonaktifkan' : 'Aktifkan'}
+            </Button>
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {NOTIFICATION_TOGGLES.map(toggle => (

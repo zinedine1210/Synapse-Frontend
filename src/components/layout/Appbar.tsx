@@ -137,7 +137,7 @@ export function Appbar({
         transition: 'left 0.3s ease',
       }}
     >
-      <h1 style={{ fontSize: 'var(--font-md)', fontWeight: 600, margin: 0, color: 'rgb(var(--text-primary))' }}>
+      <h1 className="appbar-title" style={{ fontSize: 'var(--font-sm)', fontWeight: 600, margin: 0, color: 'rgb(var(--text-primary))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 }}>
         {title}
       </h1>
 
@@ -160,7 +160,8 @@ export function Appbar({
             color: 'rgb(var(--text-muted))',
             fontSize: 'var(--font-xs)',
             transition: 'var(--transition-fast)',
-            minWidth: 180,
+            minWidth: 120,
+            maxWidth: 180,
           }}
         >
           <Search size={14} />
@@ -300,7 +301,7 @@ export function Appbar({
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            padding: '0.3rem 0.65rem 0.3rem 0.3rem',
+            padding: '0.3rem',
             background: 'var(--input-bg)',
             border: '1px solid var(--border-default)',
             borderRadius: 'var(--radius-sm)',
@@ -315,11 +316,12 @@ export function Appbar({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
+              flexShrink: 0,
             }}
           >
             <User size={13} color="white" />
           </div>
-          <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>
+          <span className="appbar-username" style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))', paddingRight: '0.35rem' }}>
             {resolvedUserName}
           </span>
         </div>

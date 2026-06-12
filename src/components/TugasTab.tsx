@@ -425,7 +425,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
           </div>
         </div>
 
-        <Card className="tugas-card" style={{ padding: '0.85rem', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)' }}>
+        <Card style={{ padding: '1.25rem', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
             <h3 style={{ fontSize: 'var(--font-lg)', fontWeight: 800, color: 'rgb(var(--text-primary))', margin: 0 }}>{selectedTask.title}</h3>
             <span style={{ 
@@ -461,7 +461,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
         </Card>
 
         {/* TEXT EDITOR for answers */}
-        <Card className="tugas-card" style={{ padding: '0.85rem', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)' }}>
+        <Card style={{ padding: '1.25rem', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
             <h5 style={{ fontWeight: 700, color: 'rgb(var(--text-primary))', fontSize: 'var(--font-sm)', display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0 }}>
               <FileText size={15} style={{ color: 'rgb(var(--color-primary))' }} /> Editor Jawaban
@@ -689,10 +689,10 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
   }
 
   return (
-    <div className="tugas-container flex flex-col gap-4 animate-fade-in">
-      <div className="tugas-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.02)', padding: '0.75rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-default)' }}>
-        <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 800, color: 'rgb(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
-          <ClipboardList size={16} style={{ color: 'rgb(var(--color-primary))' }} /> Pusat Tugas
+    <div className="flex flex-col gap-4 animate-fade-in">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.02)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--border-default)' }}>
+        <h3 style={{ fontSize: 'var(--font-lg)', fontWeight: 800, color: 'rgb(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+          <ClipboardList size={18} style={{ color: 'rgb(var(--color-primary))' }} /> Pusat Tugas Kelas
         </h3>
         {isOwner && (
           <Button 

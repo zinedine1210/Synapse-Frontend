@@ -99,7 +99,7 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
       <BottomNav onMoreTap={() => setNavSheetOpen(true)} />
       <MobileNavSheet open={navSheetOpen} onClose={() => setNavSheetOpen(false)} />
       {hasFeature('quick_action') && <QuickActionFAB />}
-      {hasFeature('command_palette') && <CommandPalette />}
+      <CommandPalette />
     </>
   );
 }

@@ -209,8 +209,8 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
 
   if (activeFund) {
     return (
-      <div className="kolektif-container flex flex-col gap-5 animate-fade-in">
-        <div className="kolektif-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.02)', padding: '0.75rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-default)' }}>
+      <div className="flex flex-col gap-5 animate-fade-in">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.02)', padding: '1rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-default)' }}>
           <button 
             onClick={() => setSelectedFund(null)} 
             style={{ 
@@ -253,7 +253,7 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
           </div>
         </div>
 
-        <Card className="kolektif-card" style={{ padding: '1rem', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-xl)' }}>
+        <Card style={{ padding: '1.5rem', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-xl)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
               <h3 style={{ fontSize: 'var(--font-lg)', fontWeight: 800, color: 'rgb(var(--text-primary))', letterSpacing: '-0.01em' }}>{activeFund.name}</h3>
@@ -267,7 +267,7 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
             )}
           </div>
 
-          <div className="kolektif-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid var(--border-subtle)' }}>
             <div style={{ padding: '1rem', borderRadius: 'var(--radius-lg)', background: 'rgba(0, 212, 255, 0.05)', border: '1px solid rgba(0, 212, 255, 0.12)', boxShadow: '0 4px 12px rgba(0, 212, 255, 0.02)' }}>
               <span style={{ fontSize: '0.65rem', color: 'rgb(0, 212, 255)', fontWeight: 700, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Saldo Kas Saat Ini</span>
               <span style={{ fontSize: 'var(--font-xl)', fontWeight: 800, color: 'rgb(var(--text-primary))', marginTop: '0.35rem', display: 'block', textShadow: '0 0 10px rgba(0, 212, 255, 0.2)' }}>{formatCurrency(activeFund.balance)}</span>
@@ -283,7 +283,7 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
           </div>
         </Card>
 
-        <div className="kolektif-subtabs" style={{ display: 'flex', gap: '0.35rem', background: 'rgba(255, 255, 255, 0.02)', padding: '0.25rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-default)', alignSelf: 'flex-start', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255, 255, 255, 0.02)', padding: '0.35rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-default)', alignSelf: 'flex-start' }}>
           {[
             { id: 'ringkasan' as const, label: 'Laporan Ringkas' },
             { id: 'riwayat' as const, label: 'Riwayat Transaksi' },

@@ -7,6 +7,7 @@ import { X, TrendingUp } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { Transaction } from '@/services/duitTrackerService';
 import { PersonalTodo } from '@/services/todoService';
+import { useAuth } from '@/lib/AuthContext';
 
 // --- Helpers ---
 
@@ -57,12 +58,13 @@ const fetchTodos = (): Promise<PersonalTodo[]> => {
 
 export function EveningRecapToast() {
   const router = useRouter();
+  const { session } = useAuth();
   const [visible, setVisible] = useState(false);
   const [recapMessage, setRecapMessage] = useState('');
 
-  // Use SWR to read cached data (or fetch if not cached)
+  // Only fetch when user is logged in — pass null key to skip SWR fetch
   const { data: transactions } = useSWR<Transaction[]>(
-    '/duit-tracker/transactions',
+    session ? '/duit-tracker/transactions' : null,
     fetchTransactions,
     {
       revalidateOnFocus: false,
@@ -72,7 +74,7 @@ export function EveningRecapToast() {
   );
 
   const { data: todos } = useSWR<PersonalTodo[]>(
-    '/todos',
+    session ? '/todos' : null,
     fetchTodos,
     {
       revalidateOnFocus: false,

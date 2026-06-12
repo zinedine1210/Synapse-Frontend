@@ -238,11 +238,11 @@ export default function QuizPage() {
         <div className={`app-main ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
           <Appbar title="Kuis AI Custom" userName={user?.fullName} userId={user?.id} sidebarCollapsed={sidebarCollapsed} />
 
-          <div className="page-content animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <div className="page-content feature-container animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto' }}>
             
             {/* Title */}
-            <div style={{ marginBottom: '2rem' }}>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: 'var(--font-xl)', fontWeight: 800, color: 'rgb(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <GraduationCap style={{ color: 'rgb(0, 212, 255)' }} />
                 Flexible Quiz Predictor (PRO)
               </h2>

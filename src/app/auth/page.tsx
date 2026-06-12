@@ -278,7 +278,7 @@ export default function AuthPage() {
       </div>
 
       {/* ═══ RIGHT PANEL — form ═══ */}
-      <div style={{
+      <div className="auth-form-panel" style={{
         flex: '1 1 50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: '2rem 1.5rem', position: 'relative',
       }}>
@@ -303,7 +303,7 @@ export default function AuthPage() {
 
         <div style={{ width: '100%', maxWidth: 440 }}>
           {/* Card */}
-          <div style={{
+          <div className="auth-card" style={{
             background: c.cardBg, border: `1px solid ${c.cardBorder}`,
             borderRadius: 20, padding: '2.25rem 2rem',
             boxShadow: c.cardShadow, transition: 'background 0.4s, border-color 0.4s, box-shadow 0.4s',
@@ -420,6 +420,10 @@ export default function AuthPage() {
         @media (min-width: 768px) {
           .auth-side-panel { display: flex !important; }
           .auth-mobile-logo { display: none !important; }
+        }
+        @media (max-width: 480px) {
+          .auth-card { padding: 1.25rem 1rem !important; border-radius: 14px !important; }
+          .auth-form-panel { padding: 1rem 0.75rem !important; }
         }
       `}</style>
     </main>

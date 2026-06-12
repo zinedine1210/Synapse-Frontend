@@ -268,17 +268,17 @@ export default function NotificationsPage() {
 
   return (
     <AuthGuard requiredFeature="notification">
+      <div className="app-shell">
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+
+      <div className={`app-main ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
       <Appbar title="Notifikasi" sidebarCollapsed={sidebarCollapsed} />
 
-      <main
-        className="notif-page"
+      <div
+        className="notif-page page-content"
         style={{
-          marginLeft: sidebarCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
-          marginTop: 'var(--appbar-height)',
-          padding: '1.5rem',
-          transition: 'margin-left 0.3s ease',
-          minHeight: 'calc(100vh - var(--appbar-height))',
+          maxWidth: 700,
+          margin: '0 auto',
         }}
       >
         <PullToRefresh onRefresh={handleRefresh}>
@@ -519,7 +519,9 @@ export default function NotificationsPage() {
             </InfiniteScroll>
           )}
         </PullToRefresh>
-      </main>
+      </div>
+      </div>
+      </div>
     </AuthGuard>
   );
 }

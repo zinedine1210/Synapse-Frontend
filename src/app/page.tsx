@@ -571,16 +571,23 @@ export default function LandingPage() {
           .landing-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .landing-footer-grid { grid-template-columns: 1fr !important; text-align: center !important; }
           .landing-device-layout { flex-direction: column !important; align-items: center !important; }
+          .landing-nav-auth-text { display: none !important; }
+          .landing-pricing-grid { grid-template-columns: 1fr !important; }
+          .landing-phone-mockup { width: 220px !important; height: 440px !important; }
+          .landing-phone-mockup > div:first-child { width: 90px !important; height: 18px !important; }
+          .landing-section { padding-left: 1rem !important; padding-right: 1rem !important; }
+          .landing-footer-bottom { flex-direction: column !important; gap: 0.5rem !important; text-align: center !important; }
         }
         @media (max-width: 480px) {
           .landing-stats-grid { grid-template-columns: 1fr !important; }
+          .landing-phone-mockup { width: 180px !important; height: 360px !important; }
         }
       `}</style>
 
       {/* ═══ NAVBAR ═══ */}
-      <nav style={{
+      <nav className="landing-navbar" style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-        padding: '0.7rem 2rem',
+        padding: '0.7rem 1.5rem',
         background: scrollY > 50 ? c.navBg : 'transparent',
         backdropFilter: scrollY > 50 ? 'blur(24px) saturate(180%)' : 'none',
         borderBottom: scrollY > 50 ? `1px solid ${c.navBorder}` : '1px solid transparent',
@@ -619,13 +626,13 @@ export default function LandingPage() {
           }}>
             {isDark ? <Sun size={14} /> : <Moon size={14} />}
           </button>
-          <Link href="/auth" style={{ padding: '0.45rem 1.1rem', borderRadius: 10, fontSize: '0.8rem', fontWeight: 600, color: c.ctaSecColor, background: 'none', border: 'none', textDecoration: 'none', transition: 'opacity 0.2s' }}>{t.navLogin}</Link>
-          <Link href="/auth" style={{ padding: '0.45rem 1.1rem', borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, color: '#060B18', background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', textDecoration: 'none', boxShadow: c.navRegShadow, transition: 'all 0.2s' }}>{t.navRegister}</Link>
+          <Link href="/auth" className="landing-nav-auth-text" style={{ padding: '0.45rem 1.1rem', borderRadius: 10, fontSize: '0.8rem', fontWeight: 600, color: c.ctaSecColor, background: 'none', border: 'none', textDecoration: 'none', transition: 'opacity 0.2s' }}>{t.navLogin}</Link>
+          <Link href="/auth" style={{ padding: '0.45rem 0.85rem', borderRadius: 10, fontSize: '0.8rem', fontWeight: 700, color: '#060B18', background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', textDecoration: 'none', boxShadow: c.navRegShadow, transition: 'all 0.2s', whiteSpace: 'nowrap' }}>{t.navRegister}</Link>
         </div>
       </nav>
 
       {/* ═══ HERO ═══ */}
-      <section ref={heroAnim.ref} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '7rem 1.5rem 4rem', position: 'relative' }}>
+      <section ref={heroAnim.ref} className="landing-section" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '7rem 1.5rem 4rem', position: 'relative' }}>
         {/* Glow orbs */}
         <div style={{ position: 'absolute', top: '-30%', left: '30%', width: 900, height: 900, borderRadius: '50%', background: c.glowOrb1, pointerEvents: 'none', filter: 'blur(40px)', animation: 'floatOrb 20s ease-in-out infinite' }} />
         <div style={{ position: 'absolute', bottom: '0%', right: '-15%', width: 600, height: 600, borderRadius: '50%', background: c.glowOrb2, pointerEvents: 'none', filter: 'blur(40px)', animation: 'floatOrb 15s ease-in-out infinite reverse' }} />
@@ -756,7 +763,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ WHY SYNAPSE ═══ */}
-      <section ref={highlightAnim.ref} style={{ padding: '5rem 1.5rem', background: c.sectionAltBg }}>
+      <section ref={highlightAnim.ref} className="landing-section" style={{ padding: '5rem 1.5rem', background: c.sectionAltBg }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{
             textAlign: 'center', marginBottom: '3.5rem',
@@ -811,7 +818,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ FEATURES ═══ */}
-      <section id="features" ref={featAnim.ref} style={{ padding: '5rem 1.5rem' }}>
+      <section id="features" ref={featAnim.ref} className="landing-section" style={{ padding: '5rem 1.5rem' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{
             textAlign: 'center', marginBottom: '2.5rem',
@@ -906,7 +913,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ HOW IT WORKS ═══ */}
-      <section id="how-it-works" ref={howAnim.ref} style={{ padding: '5rem 1.5rem', background: c.sectionAltBg }}>
+      <section id="how-it-works" ref={howAnim.ref} className="landing-section" style={{ padding: '5rem 1.5rem', background: c.sectionAltBg }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           <div style={{
             textAlign: 'center', marginBottom: '3.5rem',
@@ -1095,7 +1102,7 @@ export default function LandingPage() {
             transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s',
           }}>
             {/* Phone mockup */}
-            <div style={{
+            <div className="landing-phone-mockup" style={{
               position: 'relative',
               width: 280, height: 560,
               borderRadius: 36,
@@ -1206,7 +1213,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ TESTIMONIALS ═══ */}
-      <section id="testimonials" ref={testiAnim.ref} style={{ padding: '5rem 1.5rem', background: c.sectionAltBg }}>
+      <section id="testimonials" ref={testiAnim.ref} className="landing-section" style={{ padding: '5rem 1.5rem', background: c.sectionAltBg }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{
             textAlign: 'center', marginBottom: '3rem',
@@ -1263,7 +1270,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ PRICING ═══ */}
-      <section id="pricing" style={{ padding: '5rem 1.5rem' }}>
+      <section id="pricing" className="landing-section" style={{ padding: '5rem 1.5rem' }}>
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
             <span style={{
@@ -1282,7 +1289,7 @@ export default function LandingPage() {
             <p style={{ fontSize: '1rem', color: c.textMuted, maxWidth: 500, margin: '0 auto' }}>{t.pricingSub}</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', maxWidth: 760, margin: '0 auto' }}>
+          <div className="landing-pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', maxWidth: 760, margin: '0 auto' }}>
             {/* FREE plan */}
             <div style={{
               padding: '2rem', borderRadius: 22,
@@ -1468,7 +1475,7 @@ export default function LandingPage() {
             ))}
           </div>
           {/* Bottom */}
-          <div style={{ borderTop: c.footerBorder, paddingTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="landing-footer-bottom" style={{ borderTop: c.footerBorder, paddingTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <p style={{ fontSize: '0.72rem', color: c.textUltraFaint }}>{brand.footer.copyright}</p>
             <p style={{ fontSize: '0.72rem', color: c.textUltraFaint }}>{t.footerMadeWith} ❤️ {t.footerForStudents}</p>
           </div>

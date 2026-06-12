@@ -6,9 +6,9 @@ import { superadminService } from '@/services/superadminService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Button, Alert, Modal, useToast, DataTable, Card, SelectOption } from '@/components/ui';
+import { Button, Alert, Modal, useToast, useConfirm, DataTable, Card, SelectOption, TextInput, PasswordInput } from '@/components/ui';
 import type { Column } from '@/components/ui';
-import { Users, Shield, Loader2 } from 'lucide-react';
+import { Users, Shield, Loader2, Trash2, UserPlus } from 'lucide-react';
 
 interface UserListItem {
   id: string;
@@ -29,6 +29,7 @@ interface PricingPlan {
 export default function SuperadminUsersPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +42,15 @@ export default function SuperadminUsersPage() {
   const [assignPlanName, setAssignPlanName] = useState<string>('FREE');
   const [isAssigningPlan, setIsAssigningPlan] = useState(false);
   const [assignError, setAssignError] = useState<string | null>(null);
+
+  // Create user modal
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createEmail, setCreateEmail] = useState('');
+  const [createFullName, setCreateFullName] = useState('');
+  const [createPassword, setCreatePassword] = useState('');
+  const [createRole, setCreateRole] = useState<string>('USER');
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -84,6 +94,52 @@ export default function SuperadminUsersPage() {
       setAssignError(err instanceof Error ? err.message : 'Gagal meng-assign paket.');
     } finally {
       setIsAssigningPlan(false);
+    }
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+    setCreateError(null);
+    try {
+      await superadminService.createUser({
+        email: createEmail,
+        fullName: createFullName,
+        password: createPassword,
+        role: createRole as 'USER' | 'SUPERADMIN',
+      });
+      showToast(`User ${createEmail} berhasil dibuat!`, 'success');
+      await loadData();
+      setShowCreateModal(false);
+      setCreateEmail('');
+      setCreateFullName('');
+      setCreatePassword('');
+      setCreateRole('USER');
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Gagal membuat user.');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleDeleteUser = async (usr: UserListItem) => {
+    if (usr.role === 'SUPERADMIN') {
+      showToast('Tidak bisa menghapus akun SUPERADMIN.', 'error');
+      return;
+    }
+    const ok = await confirm({
+      title: 'Hapus Pengguna',
+      message: `Apakah Anda yakin ingin menghapus akun "${usr.fullName}" (${usr.email})? Semua data terkait akan ikut terhapus. Tindakan ini tidak bisa dibatalkan.`,
+      confirmText: 'Hapus',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await superadminService.deleteUser(usr.id);
+      showToast(`User ${usr.email} berhasil dihapus.`, 'success');
+      await loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gagal menghapus user.', 'error');
     }
   };
 
@@ -199,10 +255,23 @@ export default function SuperadminUsersPage() {
                 searchKeys={['fullName', 'email', 'plan']}
                 exportFilename="users-synapse"
                 emptyMessage="Belum ada pengguna terdaftar."
-                actions={(row) => (
-                  <Button size="sm" variant="secondary" onClick={() => handleOpenAssignModal(row)}>
-                    Ubah Paket
+                headerActions={
+                  <Button size="sm" onClick={() => { setCreateError(null); setShowCreateModal(true); }}>
+                    <UserPlus size={16} style={{ marginRight: '0.4rem' }} />
+                    Tambah User
                   </Button>
+                }
+                actions={(row) => (
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    <Button size="sm" variant="secondary" onClick={() => handleOpenAssignModal(row)}>
+                      Ubah Paket
+                    </Button>
+                    {row.role !== 'SUPERADMIN' && (
+                      <Button size="sm" variant="danger" onClick={() => handleDeleteUser(row)}>
+                        <Trash2 size={14} />
+                      </Button>
+                    )}
+                  </div>
                 )}
               />
             </div>
@@ -219,6 +288,29 @@ export default function SuperadminUsersPage() {
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
               <Button type="button" variant="ghost" onClick={() => setShowAssignModal(false)}>Batal</Button>
               <Button type="submit" isLoading={isAssigningPlan}>Simpan</Button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Create User Modal */}
+        <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Tambah User Baru">
+          <form onSubmit={handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {createError && <Alert type="error" message={createError} />}
+            <TextInput label="Nama Lengkap" value={createFullName} onChange={setCreateFullName} required />
+            <TextInput label="Email" value={createEmail} onChange={setCreateEmail} required />
+            <PasswordInput label="Password" value={createPassword} onChange={setCreatePassword} required />
+            <SelectOption
+              label="Role"
+              value={createRole}
+              onChange={setCreateRole}
+              options={[
+                { value: 'USER', label: 'USER' },
+                { value: 'SUPERADMIN', label: 'SUPERADMIN' },
+              ]}
+            />
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <Button type="button" variant="ghost" onClick={() => setShowCreateModal(false)}>Batal</Button>
+              <Button type="submit" isLoading={isCreating}>Buat User</Button>
             </div>
           </form>
         </Modal>

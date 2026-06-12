@@ -71,6 +71,17 @@ export const superadminService = {
       body: JSON.stringify({ planName }),
     }),
 
+  /** POST /api/v1/superadmin/users – Buat user baru */
+  createUser: (data: { email: string; fullName: string; password: string; role?: 'USER' | 'SUPERADMIN' }) =>
+    apiFetch<{ message: string; user: any }>('/superadmin/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  /** DELETE /api/v1/superadmin/users/:userId – Hapus user */
+  deleteUser: (userId: string) =>
+    apiFetch<{ message: string }>(`/superadmin/users/${userId}`, { method: 'DELETE' }),
+
   /** GET /api/v1/superadmin/classes – Semua kelas di sistem */
   getAllClasses: (page = 1, limit = 50) =>
     apiFetch<{ data: any[]; total: number; page: number; limit: number; totalPages: number }>(

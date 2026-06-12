@@ -24,6 +24,7 @@ interface DataTableProps<T> {
   actions?: (row: T) => React.ReactNode;
   emptyMessage?: string;
   exportFilename?: string;
+  headerActions?: React.ReactNode;
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
@@ -145,6 +146,7 @@ export function DataTable<T>({
   actions,
   emptyMessage = 'Tidak ada data.',
   exportFilename = 'export',
+  headerActions,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<string | null>(null);
@@ -251,6 +253,7 @@ export function DataTable<T>({
           <button onClick={handleExportCSV} style={exportBtnStyle} title="Export CSV">
             <Download size={14} /> Export
           </button>
+          {headerActions}
         </div>
       </div>
 

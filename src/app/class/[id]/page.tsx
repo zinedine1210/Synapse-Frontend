@@ -497,7 +497,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                 )}
 
                 {activeFeature === 'pertemuan' && (
-                  <div style={{ padding: '1.25rem' }}>
+                  <div style={{ padding: '0.75rem' }}>
                     <PertemuanTab
                       classData={classData}
                       sessions={sessions}
@@ -521,7 +521,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                 )}
 
                 {activeFeature === 'tugas' && classData && (
-                  <div style={{ padding: '1.25rem' }}>
+                  <div style={{ padding: '0.75rem' }}>
                     <TugasTab classId={classData.id} memberRole={classData.memberRole} permissions={classData.permissions} urlTaskId={urlTaskId || undefined} onTaskSelect={(taskId) => {
                       const p = new URLSearchParams(searchParams.toString());
                       if (taskId) p.set('taskId', taskId); else p.delete('taskId');
@@ -531,13 +531,13 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                 )}
 
                 {activeFeature === 'kolektif' && classData && (
-                  <div style={{ padding: '1.25rem' }}>
+                  <div style={{ padding: '0.75rem' }}>
                     <KolektifTab classId={classData.id} memberRole={classData.memberRole} permissions={classData.permissions} />
                   </div>
                 )}
 
                 {activeFeature === 'kelompok' && classData && user && (
-                  <div style={{ padding: '1.25rem' }}>
+                  <div style={{ padding: '0.75rem' }}>
                     <KelompokTab classId={classData.id} memberRole={classData.memberRole} permissions={classData.permissions} userId={user.id} classMembers={classMembers} urlGroupId={urlGroupId || undefined} onGroupSelect={(groupId) => {
                       const p = new URLSearchParams(searchParams.toString());
                       if (groupId) p.set('groupId', groupId); else p.delete('groupId');
@@ -547,13 +547,13 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                 )}
 
                 {activeFeature === 'prediksi' && classData && (
-                  <div style={{ padding: '1.25rem' }}>
+                  <div style={{ padding: '0.75rem' }}>
                     <PrediksiUjianTab classId={classData.id} memberRole={classData.memberRole} permissions={classData.permissions} />
                   </div>
                 )}
 
                 {activeFeature === 'info' && classData && (
-                  <div style={{ padding: '1.25rem', maxWidth: 700 }}>
+                  <div style={{ padding: '0.75rem', maxWidth: 700 }}>
                     {/* Class Info */}
                     <div style={{ marginBottom: '1.5rem' }}>
                       <h3 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, color: 'rgb(var(--text-primary))', marginBottom: '0.75rem' }}>{classData.name}</h3>

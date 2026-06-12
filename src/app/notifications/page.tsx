@@ -272,6 +272,7 @@ export default function NotificationsPage() {
       <Appbar title="Notifikasi" sidebarCollapsed={sidebarCollapsed} />
 
       <main
+        className="notif-page"
         style={{
           marginLeft: sidebarCollapsed ? 'var(--sidebar-collapsed-width)' : 'var(--sidebar-width)',
           marginTop: 'var(--appbar-height)',

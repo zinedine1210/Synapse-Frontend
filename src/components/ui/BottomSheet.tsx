@@ -175,7 +175,7 @@ export function BottomSheet({
           background: 'var(--modal-bg)',
           borderTopLeftRadius: 'var(--radius-xl)',
           borderTopRightRadius: 'var(--radius-xl)',
-          padding: '0.75rem 1.25rem 1.5rem',
+          padding: '0.75rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom, 0px))',
           boxShadow: '0 -4px 32px rgba(0, 0, 0, 0.3)',
           transform: `translateY(${translateY}px)`,
           transition: dragging ? 'none' : 'transform 0.25s cubic-bezier(0.4, 0, 0.2, 1)',

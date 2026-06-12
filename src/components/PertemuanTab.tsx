@@ -236,11 +236,11 @@ export function PertemuanTab({
 
   // ─── Split Layout: Session list (left) | Detail (right) ──────────────
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: selectedSession ? '200px 1fr' : '1fr', gap: 0, height: '100%', minHeight: 0 }}>
+    <div className="pertemuan-layout" style={{ display: 'grid', gridTemplateColumns: selectedSession ? '200px 1fr' : '1fr', gap: 0, height: '100%', minHeight: 0 }}>
       {/* Left: Session list */}
-      <div style={{
+      <div className="pertemuan-session-list" style={{
         borderRight: selectedSession ? '1px solid var(--border-default)' : 'none',
-        padding: '0.75rem 0.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px',
+        padding: '0.5rem 0.4rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2px',
         background: 'rgba(var(--color-primary) / 0.01)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.4rem', marginBottom: '0.4rem' }}>
@@ -297,8 +297,8 @@ export function PertemuanTab({
 
       {/* Right: Detail */}
       {selectedSession ? (
-        <div style={{ padding: '0.75rem 1rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600 }}>{selectedSession.title}</h3>
+        <div className="pertemuan-detail" style={{ padding: '0.6rem 0.75rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+          <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600, margin: 0 }}>{selectedSession.title}</h3>
 
           {/* Sub-tabs */}
           <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-default)' }}>
@@ -391,7 +391,7 @@ export function PertemuanTab({
                 </Card>
               )}
               {combinedSummary.trim() ? (
-                <Card data-digitalisasi-content style={{ padding: '1rem' }}><MarkdownRenderer content={combinedSummary} /></Card>
+                <Card className="digitalisasi-content" data-digitalisasi-content style={{ padding: '0.75rem' }}><MarkdownRenderer content={combinedSummary} /></Card>
               ) : (
                 <Card style={{ textAlign: 'center', padding: '1.5rem' }}><Sparkles size={24} style={{ color: 'rgb(var(--text-muted))', opacity: 0.3 }} /><p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginTop: '0.3rem' }}>Unggah berkas terlebih dahulu.</p></Card>
               )}

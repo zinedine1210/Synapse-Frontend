@@ -298,6 +298,7 @@ export default function QuizPage() {
                         </div>
                       ) : (
                         <div
+                          className="quiz-session-grid"
                           style={{
                             display: 'grid',
                             gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
@@ -409,7 +410,7 @@ export default function QuizPage() {
                             <h5 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white', lineHeight: 1.4 }}>
                               {idx + 1}. {q.question}
                             </h5>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', marginTop: '0.75rem' }}>
+                            <div className="quiz-options-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', marginTop: '0.75rem' }}>
                               {q.options?.map((opt: string, oIdx: number) => {
                                 const letter = opt.trim().charAt(0);
                                 const isUserSelected = userAnswer === letter;

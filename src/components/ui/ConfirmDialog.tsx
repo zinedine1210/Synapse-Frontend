@@ -85,7 +85,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="animate-scale-in"
+            className="animate-scale-in confirm-dialog"
             style={{
               background: 'var(--modal-bg)',
               border: '1px solid var(--border-strong)',

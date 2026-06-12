@@ -151,6 +151,7 @@ export default function BillingPage() {
             >
               {/* FREE PLAN */}
               <Card
+                className="billing-card"
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
@@ -219,6 +220,7 @@ export default function BillingPage() {
 
               {/* PRO PLAN */}
               <Card
+                className="billing-card"
                 style={{
                   display: 'flex',
                   flexDirection: 'column',

@@ -16,7 +16,60 @@ import { ParsePreview } from '@/components/duit-tracker/ParsePreview';
 import { FinancialHero } from '@/components/duit-tracker/FinancialHero';
 import { TransactionSheet } from '@/components/duit-tracker/TransactionSheet';
 import { useCelebration } from '@/components/shared/CelebrationOverlay';
-import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings } from 'lucide-react';
+import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X } from 'lucide-react';
+
+type PeriodPreset = 'today' | 'yesterday' | '2days' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'custom';
+
+const PERIOD_PRESETS: { key: PeriodPreset; label: string; emoji: string }[] = [
+  { key: 'today', label: 'Hari Ini', emoji: '📅' },
+  { key: 'yesterday', label: 'Kemarin', emoji: '⏪' },
+  { key: '2days', label: '2 Hari Lalu', emoji: '📆' },
+  { key: 'this_week', label: 'Minggu Ini', emoji: '🗓️' },
+  { key: 'last_week', label: 'Minggu Lalu', emoji: '📋' },
+  { key: 'this_month', label: 'Bulan Ini', emoji: '🗂️' },
+  { key: 'last_month', label: 'Bulan Lalu', emoji: '🗃️' },
+  { key: 'custom', label: 'Pilih Tanggal', emoji: '🔧' },
+];
+
+function getPeriodRange(preset: PeriodPreset): { startDate: string; endDate: string } {
+  const today = new Date();
+  const fmt = (d: Date) => d.toISOString().split('T')[0];
+  switch (preset) {
+    case 'today':
+      return { startDate: fmt(today), endDate: fmt(today) };
+    case 'yesterday': {
+      const y = new Date(today); y.setDate(y.getDate() - 1);
+      return { startDate: fmt(y), endDate: fmt(y) };
+    }
+    case '2days': {
+      const d = new Date(today); d.setDate(d.getDate() - 2);
+      return { startDate: fmt(d), endDate: fmt(d) };
+    }
+    case 'this_week': {
+      const dow = today.getDay();
+      const mon = new Date(today); mon.setDate(today.getDate() - ((dow + 6) % 7));
+      return { startDate: fmt(mon), endDate: fmt(today) };
+    }
+    case 'last_week': {
+      const dow = today.getDay();
+      const thisMon = new Date(today); thisMon.setDate(today.getDate() - ((dow + 6) % 7));
+      const lastMon = new Date(thisMon); lastMon.setDate(thisMon.getDate() - 7);
+      const lastSun = new Date(thisMon); lastSun.setDate(thisMon.getDate() - 1);
+      return { startDate: fmt(lastMon), endDate: fmt(lastSun) };
+    }
+    case 'this_month': {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1);
+      return { startDate: fmt(start), endDate: fmt(today) };
+    }
+    case 'last_month': {
+      const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const end = new Date(today.getFullYear(), today.getMonth(), 0);
+      return { startDate: fmt(start), endDate: fmt(end) };
+    }
+    default:
+      return { startDate: fmt(today), endDate: fmt(today) };
+  }
+}
 
 const EXPENSE_CATEGORIES = [
   { id: 'makanan', emoji: '�️', label: 'Makan & Minum' },
@@ -180,6 +233,11 @@ export default function DuitTrackerPage() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [typeFilter, setTypeFilter] = useState<string>('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [periodPreset, setPeriodPreset] = useState<PeriodPreset>('this_month');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTreeModal, setShowTreeModal] = useState(false);
   const [showAiInput, setShowAiInput] = useState(false);
@@ -253,8 +311,20 @@ export default function DuitTrackerPage() {
     setLoading(true);
     setError(null);
     try {
+      // Determine date range from preset or custom
+      let txParams: { month?: number; year?: number; type?: string; category?: string; startDate?: string; endDate?: string } = {};
+      if (periodPreset === 'custom' && customStart && customEnd) {
+        txParams = { startDate: customStart, endDate: customEnd, type: typeFilter || undefined, category: categoryFilter || undefined };
+      } else if (periodPreset !== 'custom') {
+        const range = getPeriodRange(periodPreset);
+        txParams = { startDate: range.startDate, endDate: range.endDate, type: typeFilter || undefined, category: categoryFilter || undefined };
+      } else {
+        // Custom but no dates yet — fallback to month/year
+        txParams = { month, year, type: typeFilter || undefined, category: categoryFilter || undefined };
+      }
+
       const [txs, sum, ts, b] = await Promise.all([
-        duitTrackerService.getTransactions({ month, year, type: typeFilter || undefined }),
+        duitTrackerService.getTransactions(txParams),
         duitTrackerService.getSummary(month, year),
         duitTrackerService.getTrees(),
         duitTrackerService.getBudgets(month, year),
@@ -265,7 +335,7 @@ export default function DuitTrackerPage() {
       setBudgets(b);
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [month, year, typeFilter]);
+  }, [month, year, typeFilter, categoryFilter, periodPreset, customStart, customEnd]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -301,18 +371,19 @@ export default function DuitTrackerPage() {
     const tx = transactions.find(t => t.id === id);
     if (!tx) return;
 
-    // Optimistic removal
-    setTransactions(prev => prev.filter(t => t.id !== id));
-
-    // Show undo toast
-    showUndoToast(`Transaksi "${tx.label || tx.category}" dihapus`, () => {
-      // Undo: re-fetch data
-      fetchData();
+    const confirmed = await confirm({
+      title: 'Hapus Transaksi?',
+      message: `"${tx.label || tx.category}" sebesar ${tx.type === 'income' ? '+' : '-'}${fmt(tx.amount)} akan dihapus secara permanen.`,
+      confirmText: 'Hapus',
+      cancelText: 'Batal',
+      variant: 'danger',
     });
+    if (!confirmed) return;
 
-    // Actually delete
+    setTransactions(prev => prev.filter(t => t.id !== id));
     try {
       await duitTrackerService.deleteTransaction(id);
+      showToast('Transaksi berhasil dihapus', 'success');
     } catch (e: any) {
       showToast(e.message, 'error');
       fetchData();
@@ -477,22 +548,106 @@ export default function DuitTrackerPage() {
 
               {/* Date filters */}
               {tab !== 'trees' && (
-                <div className="duit-date-filters" style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <div style={{ width: 160 }}>
-                    <SelectOption value={String(month)} onChange={v => setMonth(parseInt(v))} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2000, i).toLocaleDateString('id-ID', { month: 'long' }) }))} />
-                  </div>
-                  <div style={{ width: 110 }}>
-                    <SelectOption value={String(year)} onChange={v => setYear(parseInt(v))} options={[2024, 2025, 2026, 2027].map(y => ({ value: String(y), label: String(y) }))} />
-                  </div>
+                <div style={{ marginBottom: 20 }}>
+                  {/* Period presets — horizontal scrollable pills */}
                   {tab === 'transactions' && (
-                    <div className="duit-type-filters" style={{ display: 'flex', gap: 4, marginLeft: 4 }}>
-                      {[{ v: '', l: 'Semua' }, { v: 'income', l: '↑ Masuk' }, { v: 'expense', l: '↓ Keluar' }].map(f => (
-                        <button key={f.v} onClick={() => setTypeFilter(f.v)} style={{
-                          padding: '7px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 500,
-                          background: typeFilter === f.v ? 'rgb(var(--color-primary))' : 'var(--input-bg)',
-                          color: typeFilter === f.v ? '#fff' : 'inherit', transition: 'all 0.2s',
-                        }}>{f.l}</button>
-                      ))}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div className="dt-period-scroll" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+                        {PERIOD_PRESETS.map(p => (
+                          <button
+                            key={p.key}
+                            onClick={() => { setPeriodPreset(p.key); if (p.key !== 'custom') setShowFilterPanel(false); else setShowFilterPanel(true); }}
+                            className="dt-period-chip"
+                            style={{
+                              padding: '7px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+                              fontSize: 12, fontWeight: periodPreset === p.key ? 600 : 450,
+                              background: periodPreset === p.key ? 'rgb(var(--color-primary))' : 'var(--input-bg)',
+                              color: periodPreset === p.key ? '#fff' : 'rgb(var(--text-secondary))',
+                              transition: 'all 0.2s', whiteSpace: 'nowrap', flexShrink: 0,
+                              boxShadow: periodPreset === p.key ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
+                            }}
+                          >
+                            {p.emoji} {p.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Custom date range picker */}
+                      {periodPreset === 'custom' && showFilterPanel && (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <div style={{ flex: 1, minWidth: 130 }}>
+                            <DateTimePicker
+                              mode="date"
+                              value={customStart}
+                              onChange={setCustomStart}
+                              placeholder="Tanggal awal"
+                            />
+                          </div>
+                          <span style={{ fontSize: 12, color: 'rgb(var(--text-muted))', flexShrink: 0 }}>s/d</span>
+                          <div style={{ flex: 1, minWidth: 130 }}>
+                            <DateTimePicker
+                              mode="date"
+                              value={customEnd}
+                              onChange={setCustomEnd}
+                              placeholder="Tanggal akhir"
+                              min={customStart || undefined}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Type + Category filters row */}
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {/* Type filter */}
+                        {[{ v: '', l: 'Semua' }, { v: 'income', l: '↑ Masuk' }, { v: 'expense', l: '↓ Keluar' }].map(f => (
+                          <button key={f.v} onClick={() => setTypeFilter(f.v)} className="dt-filter-chip" style={{
+                            padding: '6px 12px', borderRadius: 8, border: typeFilter === f.v ? '1.5px solid rgb(var(--color-primary))' : '1px solid var(--border-default)',
+                            cursor: 'pointer', fontSize: 11.5, fontWeight: 500,
+                            background: typeFilter === f.v ? 'rgba(var(--color-primary) / 0.08)' : 'transparent',
+                            color: typeFilter === f.v ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))', transition: 'all 0.2s',
+                          }}>{f.l}</button>
+                        ))}
+                        <span style={{ width: 1, height: 18, background: 'var(--border-default)', margin: '0 2px' }} />
+                        {/* Category filter */}
+                        <div style={{ minWidth: 150 }}>
+                          <SelectOption
+                            value={categoryFilter}
+                            onChange={setCategoryFilter}
+                            placeholder="📂 Semua Kategori"
+                            options={[
+                              { value: '', label: '📂 Semua Kategori' },
+                              ...[...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES]
+                                .filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i)
+                                .map(c => ({ value: c.id, label: `${c.emoji} ${c.label}` })),
+                            ]}
+                          />
+                        </div>
+                        {/* Clear all filters */}
+                        {(typeFilter || categoryFilter) && (
+                          <button
+                            onClick={() => { setTypeFilter(''); setCategoryFilter(''); }}
+                            style={{
+                              padding: '4px 8px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                              fontSize: 11, color: 'rgb(var(--color-error))', background: 'rgba(var(--color-error) / 0.08)',
+                              display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500,
+                            }}
+                          >
+                            <X size={11} /> Reset
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Budget/Summary tabs keep the old month/year selectors */}
+                  {tab !== 'transactions' && (
+                    <div className="duit-date-filters" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div style={{ width: 160 }}>
+                        <SelectOption value={String(month)} onChange={v => setMonth(parseInt(v))} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2000, i).toLocaleDateString('id-ID', { month: 'long' }) }))} />
+                      </div>
+                      <div style={{ width: 110 }}>
+                        <SelectOption value={String(year)} onChange={v => setYear(parseInt(v))} options={[2024, 2025, 2026, 2027].map(y => ({ value: String(y), label: String(y) }))} />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -537,35 +692,35 @@ export default function DuitTrackerPage() {
                             leftLabel="🗑️ Hapus"
                             leftColor="var(--color-error)"
                           >
-                            <div style={{
-                              padding: '14px 16px', borderRadius: 14, background: 'var(--card-bg)',
+                            <div className="tx-card hover-lift" style={{
+                              padding: '12px 14px', borderRadius: 14, background: 'rgb(var(--bg-surface))',
                               border: '1px solid var(--dt-card-border)', transition: 'all 0.2s',
                               borderLeft: `4px solid ${CATEGORY_COLORS[tx.category] || CATEGORY_COLORS.lainnya}`,
-                            }} className="hover-lift">
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                                 {/* Category emoji bubble */}
                                 <div style={{
-                                  width: 40, height: 40, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                                  width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17,
                                   background: tx.type === 'income' ? 'rgba(22, 163, 74, 0.1)' : 'rgba(220, 38, 38, 0.06)',
-                                  flexShrink: 0,
+                                  flexShrink: 0, marginTop: 1,
                                 }}>
                                   {getCatEmoji(tx.category, tx.type)}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--dt-text-primary)' }}>{tx.label}</span>
-                                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'var(--dt-badge-bg)', color: 'var(--dt-text-secondary)', textTransform: 'capitalize' }}>{tx.category}</span>
+                                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                                    <span className="dt-tx-title" style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--dt-text-primary)', lineHeight: 1.35, wordBreak: 'break-word' }}>{tx.label}</span>
+                                    <span style={{ fontWeight: 700, fontSize: 14, color: tx.type === 'income' ? 'var(--dt-income)' : 'var(--dt-expense)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                      {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                                    </span>
                                   </div>
-                                  {tx.note && <div style={{ fontSize: 12, color: 'var(--dt-text-secondary)', marginTop: 2 }}>{tx.note}</div>}
-                                </div>
-                                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                                  <div style={{ fontWeight: 700, fontSize: 15, color: tx.type === 'income' ? 'var(--dt-income)' : 'var(--dt-expense)' }}>
-                                    {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                                    <span style={{ fontSize: 10, padding: '1px 7px', borderRadius: 5, background: 'var(--dt-badge-bg)', color: 'var(--dt-text-secondary)', textTransform: 'capitalize', fontWeight: 500 }}>{tx.category}</span>
+                                    {tx.note && <span style={{ fontSize: 11.5, color: 'var(--dt-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.note}</span>}
                                   </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: 2, flexShrink: 0, marginLeft: 4 }}>
-                                  <button onClick={(e) => { e.stopPropagation(); openEdit(tx); }} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.25, padding: 4, borderRadius: 6, transition: 'opacity 0.2s' }}><Edit2 size={13} /></button>
-                                  <button onClick={(e) => { e.stopPropagation(); handleDelete(tx.id); }} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.25, padding: 4, borderRadius: 6, transition: 'opacity 0.2s' }}><Trash2 size={13} /></button>
+                                <div style={{ display: 'flex', gap: 1, flexShrink: 0, marginTop: 1 }}>
+                                  <button onClick={(e) => { e.stopPropagation(); openEdit(tx); }} className="tx-action-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 5, borderRadius: 8, transition: 'all 0.2s', color: 'var(--dt-text-secondary)' }}><Edit2 size={13} /></button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleDelete(tx.id); }} className="tx-action-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 5, borderRadius: 8, transition: 'all 0.2s', color: 'var(--dt-text-secondary)' }}><Trash2 size={13} /></button>
                                 </div>
                               </div>
                               {/* Si Bawel comment */}

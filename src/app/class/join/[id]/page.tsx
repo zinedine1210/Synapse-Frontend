@@ -236,9 +236,10 @@ export default function JoinClassPage() {
             </div>
 
             {loading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', padding: '2.5rem 0' }}>
-                <Loader2 size={28} className="animate-spin" style={{ color: isDark ? '#00D4FF' : '#0088aa' }} />
-                <span style={{ fontSize: '0.85rem', color: c.textMuted }}>Memuat detail kelas...</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1.5rem 0' }}>
+                <div className="skeleton" style={{ height: 18, width: '70%', borderRadius: 8 }} />
+                <div className="skeleton" style={{ height: 14, width: '50%', borderRadius: 6 }} />
+                <div className="skeleton" style={{ height: 44, borderRadius: 12, marginTop: 12 }} />
               </div>
             ) : error ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>

@@ -53,8 +53,39 @@ export function usePushNotifications() {
         return false;
       }
 
-      // Wait for service worker to be ready
-      const registration = await navigator.serviceWorker.ready;
+      // Wait for service worker to be ready (with timeout)
+      let registration: ServiceWorkerRegistration;
+      try {
+        registration = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Service Worker not available')), 5000)
+          ),
+        ]);
+      } catch {
+        // SW not registered yet — register manually then retry
+        try {
+          registration = await navigator.serviceWorker.register('/sw.js');
+          // Wait for it to become active
+          await new Promise<void>((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('SW activation timeout')), 8000);
+            if (registration.active) { clearTimeout(timeout); resolve(); return; }
+            const sw = registration.installing || registration.waiting;
+            if (sw) {
+              sw.addEventListener('statechange', () => {
+                if (sw.state === 'activated') { clearTimeout(timeout); resolve(); }
+              });
+            } else {
+              clearTimeout(timeout);
+              reject(new Error('No SW to wait for'));
+            }
+          });
+        } catch {
+          console.warn('Could not register service worker for push');
+          setLoading(false);
+          return false;
+        }
+      }
 
       // Get VAPID public key
       const vapidKey =

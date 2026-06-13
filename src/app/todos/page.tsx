@@ -7,7 +7,7 @@ import { useFeatureAccess } from '@/lib/feature-access';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, useToast, BottomSheet, PullToRefresh, TextInput, SelectOption } from '@/components/ui';
+import { Card, Button, useToast, useConfirm, BottomSheet, PullToRefresh, TextInput, SelectOption } from '@/components/ui';
 import { todoService, PersonalTodo, TodoStats } from '@/services/todoService';
 import { Plus, Loader2, CheckSquare, Sparkles, ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import { useCelebration } from '@/components/shared/CelebrationOverlay';
@@ -71,6 +71,7 @@ export default function TodosPage() {
   const { user } = useAuth();
   const { hasFeature } = useFeatureAccess();
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const { triggerConfetti } = useCelebration();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [todos, setTodos] = useState<PersonalTodo[]>([]);
@@ -382,7 +383,13 @@ export default function TodosPage() {
   const handleDelete = async (id: string) => {
     const todo = todos.find(t => t.id === id);
     if (!todo) return;
-    const confirmed = window.confirm(`Hapus tugas "${todo.title}"?`);
+    const confirmed = await confirm({
+      title: 'Hapus Tugas?',
+      message: `"${todo.title}" akan dihapus secara permanen beserta semua subtask-nya.`,
+      confirmText: 'Hapus',
+      cancelText: 'Batal',
+      variant: 'danger',
+    });
     if (!confirmed) return;
     setTodos(prev => prev.filter(t => t.id !== id));
     try { await todoService.delete(id); showToast('Tugas dihapus', 'success'); }

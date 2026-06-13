@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { AlertTriangle, Trash2, Info, HelpCircle } from 'lucide-react';
+import { AlertTriangle, Trash2, HelpCircle, X } from 'lucide-react';
 import { Button } from './Button';
 
 interface ConfirmOptions {
@@ -72,76 +72,116 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
       {children}
       {dialog && (
         <div
+          className="confirm-overlay"
           onClick={handleCancel}
           style={{
             position: 'fixed', inset: 0, zIndex: 10000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '1rem',
-            background: 'rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(4px)',
-            WebkitBackdropFilter: 'blur(4px)',
-            animation: 'fadeIn 0.15s ease',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            padding: 0,
+            background: 'rgba(0, 0, 0, 0.55)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            animation: 'confirmOverlayIn 0.2s ease',
           }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="animate-scale-in confirm-dialog"
+            className="confirm-dialog"
             style={{
               background: 'var(--modal-bg)',
-              border: '1px solid var(--border-strong)',
-              borderRadius: 'var(--radius-xl)',
+              borderRadius: '20px 20px 0 0',
               width: '100%',
-              maxWidth: 400,
-              padding: '1.5rem',
-              boxShadow: 'var(--shadow-lg)',
+              maxWidth: 480,
+              padding: '6px 0 0',
+              boxShadow: '0 -8px 40px rgba(0,0,0,0.25)',
               display: 'flex',
               flexDirection: 'column',
-              alignItems: 'center',
-              gap: '1rem',
-              textAlign: 'center',
+              animation: 'confirmSlideUp 0.25s cubic-bezier(0.32, 0.72, 0, 1)',
+              overflow: 'hidden',
             }}
           >
-            <div style={{
-              width: 48, height: 48, borderRadius: '50%',
-              background: getIconBg(dialog.variant || 'info'),
-              color: getIconColor(dialog.variant || 'info'),
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {getIcon(dialog.variant || 'info')}
+            {/* Drag handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '6px 0 4px' }}>
+              <div style={{ width: 36, height: 4, borderRadius: 4, background: 'rgba(128,128,128,0.25)' }} />
             </div>
 
-            {dialog.title && (
-              <h3 style={{ fontSize: 'var(--font-lg)', fontWeight: 700, margin: 0, color: 'rgb(var(--text-primary))' }}>
-                {dialog.title}
-              </h3>
-            )}
+            <div style={{ padding: '12px 24px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center' }}>
+              {/* Icon with animated ring */}
+              <div style={{ position: 'relative', width: 56, height: 56 }}>
+                <div style={{
+                  position: 'absolute', inset: 0, borderRadius: '50%',
+                  background: getIconBg(dialog.variant || 'info'),
+                  animation: 'confirmIconPulse 2s ease-in-out infinite',
+                }} />
+                <div style={{
+                  position: 'relative', width: 56, height: 56, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: getIconColor(dialog.variant || 'info'),
+                }}>
+                  {getIcon(dialog.variant || 'info')}
+                </div>
+              </div>
 
-            <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', margin: 0, lineHeight: 1.6 }}>
-              {dialog.message}
-            </p>
+              {dialog.title && (
+                <h3 style={{
+                  fontSize: '1.1rem', fontWeight: 700, margin: 0,
+                  color: 'rgb(var(--text-primary))',
+                  letterSpacing: '-0.01em',
+                }}>
+                  {dialog.title}
+                </h3>
+              )}
 
-            <div style={{ display: 'flex', gap: '0.75rem', width: '100%', marginTop: '0.5rem' }}>
-              <Button
-                variant="ghost"
-                onClick={handleCancel}
-                style={{ flex: 1 }}
-              >
-                {dialog.cancelText || 'Batal'}
-              </Button>
-              <Button
-                onClick={handleConfirm}
-                style={{
-                  flex: 1,
-                  background: dialog.variant === 'danger'
-                    ? 'rgb(var(--color-error))'
-                    : dialog.variant === 'warning'
-                      ? 'rgb(var(--color-warning))'
-                      : 'rgb(var(--color-primary))',
-                  color: '#fff',
-                }}
-              >
-                {dialog.confirmText || 'Ya, Lanjutkan'}
-              </Button>
+              <p style={{
+                fontSize: '0.85rem', color: 'rgb(var(--text-secondary))',
+                margin: 0, lineHeight: 1.6, maxWidth: 320,
+              }}>
+                {dialog.message}
+              </p>
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', marginTop: 8 }}>
+                <button
+                  onClick={handleConfirm}
+                  className="confirm-action-btn"
+                  style={{
+                    width: '100%',
+                    padding: '13px 20px',
+                    borderRadius: 14,
+                    border: 'none',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    color: '#fff',
+                    background: dialog.variant === 'danger'
+                      ? 'rgb(var(--color-error))'
+                      : dialog.variant === 'warning'
+                        ? 'rgb(var(--color-warning))'
+                        : 'rgb(var(--color-primary))',
+                  }}
+                >
+                  {dialog.confirmText || 'Ya, Lanjutkan'}
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="confirm-cancel-btn"
+                  style={{
+                    width: '100%',
+                    padding: '13px 20px',
+                    borderRadius: 14,
+                    border: '1px solid var(--border-default)',
+                    fontSize: '0.9rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    color: 'rgb(var(--text-secondary))',
+                    background: 'transparent',
+                  }}
+                >
+                  {dialog.cancelText || 'Batal'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

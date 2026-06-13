@@ -58,8 +58,12 @@ export default function SuperadminPage() {
           <Appbar title="Analitik Sistem" userName={user?.fullName} userId={user?.id} sidebarCollapsed={sidebarCollapsed} />
 
           {loading ? (
-            <div style={{ minHeight: 'calc(100vh - var(--appbar-height))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Loader2 className="animate-spin" size={36} style={{ color: 'rgb(var(--color-primary))' }} />
+            <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div className="skeleton" style={{ height: 24, width: '50%', borderRadius: 8 }} />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                {[1,2,3,4].map(n => <div key={n} className="skeleton" style={{ height: 100, borderRadius: 14 }} />)}
+              </div>
+              <div className="skeleton" style={{ height: 200, borderRadius: 14 }} />
             </div>
           ) : (
             <div className="page-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>

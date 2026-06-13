@@ -41,10 +41,10 @@
 
 /* ─── Light Theme ────────────────────────────────────────────────────── */
 [data-theme="light"] {
-  --color-primary: 0 150 200;
-  --color-primary-dark: 0 120 170;
-  --color-secondary: 0 180 120;
-  --color-accent: 80 80 220;
+  --color-primary: 0 130 180;
+  --color-primary-dark: 0 100 150;
+  --color-secondary: 0 155 100;
+  --color-accent: 70 70 200;
 
   --bg-base: 248 249 252;
   --bg-surface: 255 255 255;
@@ -52,21 +52,21 @@
   --bg-overlay: 235 237 243;
 
   --text-primary: 18 20 32;
-  --text-secondary: 90 95 115;
-  --text-muted: 140 145 160;
+  --text-secondary: 60 65 85;
+  --text-muted: 100 105 125;
 
-  --border-subtle: rgba(0 0 0 / 0.04);
-  --border-default: rgba(0 0 0 / 0.08);
-  --border-strong: rgba(0 0 0 / 0.14);
+  --border-subtle: rgba(0 0 0 / 0.06);
+  --border-default: rgba(0 0 0 / 0.10);
+  --border-strong: rgba(0 0 0 / 0.18);
 
   --shadow-sm: 0 1px 3px rgba(0 0 0 / 0.06);
   --shadow-md: 0 4px 16px rgba(0 0 0 / 0.08);
   --shadow-lg: 0 8px 32px rgba(0 0 0 / 0.1);
-  --shadow-glow-primary: 0 0 24px rgba(0 150 200 / 0.12);
-  --shadow-glow-secondary: 0 0 24px rgba(0 180 120 / 0.1);
+  --shadow-glow-primary: 0 0 24px rgba(0 130 180 / 0.12);
+  --shadow-glow-secondary: 0 0 24px rgba(0 155 100 / 0.1);
 
   --input-bg: rgba(0 0 0 / 0.03);
-  --input-border: rgba(0 0 0 / 0.1);
+  --input-border: rgba(0 0 0 / 0.12);
   --modal-bg: rgba(255 255 255 / 0.98);
 
   color-scheme: light;
@@ -74,13 +74,13 @@
 
 /* ─── Duit Tracker Light Mode Tokens ─────────────────────────────────── */
 [data-theme="light"] .duit-tracker {
-  --dt-income: #16a34a;
-  --dt-expense: #dc2626;
-  --dt-card-border: #e5e7eb;
-  --dt-badge-bg: #f3f4f6;
+  --dt-income: #0d8a3e;
+  --dt-expense: #c41a1a;
+  --dt-card-border: #d6d9e0;
+  --dt-badge-bg: #ebedf2;
   --dt-text-primary: #111827;
-  --dt-text-secondary: #4b5563;
-  --dt-chart-grid: #d1d5db;
+  --dt-text-secondary: #374151;
+  --dt-chart-grid: #bfc4ce;
 }
 
 /* ─── Duit Tracker Dark Mode Tokens (defaults) ───────────────────────── */
@@ -115,7 +115,8 @@
 
 /* Light mode: soften hero gradient for readability */
 [data-theme="light"] .duit-tracker .duit-hero {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(135deg, #006090 0%, #5b21b6 100%) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 /* Light mode: make type-filter active buttons more readable */
@@ -136,6 +137,30 @@
 /* Light mode: bawel comment box contrast */
 [data-theme="light"] .duit-tracker .duit-trees-grid > div {
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+}
+
+/* ─── Light Mode Global Readability Fixes ────────────────────────────── */
+[data-theme="light"] [style*="opacity: 0.3"],
+[data-theme="light"] [style*="opacity:0.3"] {
+  opacity: 0.55 !important;
+}
+[data-theme="light"] [style*="opacity: 0.35"],
+[data-theme="light"] [style*="opacity:0.35"] {
+  opacity: 0.6 !important;
+}
+[data-theme="light"] [style*="opacity: 0.4"],
+[data-theme="light"] [style*="opacity:0.4"] {
+  opacity: 0.65 !important;
+}
+[data-theme="light"] [style*="opacity: 0.45"],
+[data-theme="light"] [style*="opacity:0.45"] {
+  opacity: 0.65 !important;
+}
+
+/* Light mode: card borders more visible */
+[data-theme="light"] .card,
+[data-theme="light"] [class*="card"] {
+  border-color: rgba(0, 0, 0, 0.08);
 }
 
 /* ─── Shared Tokens ──────────────────────────────────────────────────── */
@@ -394,13 +419,13 @@ a:hover { opacity: 0.8; }
 @media (max-width: 768px) {
   .app-main {
     margin-left: 0;
-    padding-top: calc(var(--appbar-height) + 48px);
+    padding-top: calc(var(--appbar-height) + 12px);
     overflow-x: hidden;
     max-width: 100vw;
     width: 100%;
   }
   .page-content {
-    padding: 1rem;
+    padding: 0.75rem 1rem;
     overflow-x: hidden;
     max-width: 100%;
     width: 100%;
@@ -1970,4 +1995,307 @@ body.hide-bottom-nav .quick-action-fab {
 @keyframes fabOverlayIn {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SPLASH SCREEN
+   ═══════════════════════════════════════════════════════════ */
+
+.splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #060b18;
+  overflow: hidden;
+}
+
+[data-theme="light"] .splash-screen {
+  background: #f0f2f5;
+}
+
+/* Floating gradient orbs */
+.splash-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+  animation: splashOrb 6s ease-in-out infinite alternate;
+}
+
+.splash-orb-1 {
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, #00D4FF 0%, transparent 70%);
+  top: -60px;
+  right: -40px;
+  animation-delay: 0s;
+}
+
+.splash-orb-2 {
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, #7c3aed 0%, transparent 70%);
+  bottom: -40px;
+  left: -30px;
+  animation-delay: -2s;
+}
+
+.splash-orb-3 {
+  width: 160px;
+  height: 160px;
+  background: radial-gradient(circle, #00F5A0 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: -4s;
+  opacity: 0.2;
+}
+
+[data-theme="light"] .splash-orb {
+  opacity: 0.25;
+}
+
+@keyframes splashOrb {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(20px, -20px) scale(1.1); }
+  100% { transform: translate(-10px, 10px) scale(0.95); }
+}
+
+.splash-orb-3 {
+  animation-name: splashOrb3;
+}
+
+@keyframes splashOrb3 {
+  0% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-40%, -60%) scale(1.15); }
+  100% { transform: translate(-55%, -45%) scale(0.9); }
+}
+
+/* Subtle grid pattern */
+.splash-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
+}
+
+[data-theme="light"] .splash-grid {
+  background-image:
+    linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px);
+}
+
+/* Center content */
+.splash-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  animation: splashFadeIn 0.8s ease-out;
+}
+
+@keyframes splashFadeIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Logo */
+.splash-logo-wrap {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.splash-logo-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: conic-gradient(from 0deg, #00D4FF, #7c3aed, #00F5A0, #00D4FF) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: splashRingSpin 3s linear infinite;
+}
+
+@keyframes splashRingSpin {
+  to { transform: rotate(360deg); }
+}
+
+.splash-logo {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.05);
+  border-radius: 50%;
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="light"] .splash-logo {
+  background: rgba(0,0,0,0.04);
+}
+
+/* Title */
+.splash-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #00D4FF, #00F5A0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+  animation: splashPulse 2s ease-in-out infinite;
+}
+
+@keyframes splashPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+.splash-tagline {
+  font-size: 0.85rem;
+  color: rgba(255,255,255,0.45);
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+[data-theme="light"] .splash-tagline {
+  color: rgba(0,0,0,0.4);
+}
+
+/* Loading bar */
+.splash-loader {
+  margin-top: 24px;
+  width: 140px;
+}
+
+.splash-loader-track {
+  height: 3px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+
+[data-theme="light"] .splash-loader-track {
+  background: rgba(0,0,0,0.06);
+}
+
+.splash-loader-bar {
+  height: 100%;
+  width: 40%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #00D4FF, #00F5A0);
+  animation: splashLoaderSlide 1.4s ease-in-out infinite;
+}
+
+@keyframes splashLoaderSlide {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(200%); }
+  100% { transform: translateX(-100%); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CONFIRM DIALOG
+   ═══════════════════════════════════════════════════════════ */
+
+@keyframes confirmOverlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes confirmSlideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes confirmIconPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.08); opacity: 0.8; }
+}
+
+/* Desktop: center the modal instead of bottom sheet */
+@media (min-width: 640px) {
+  .confirm-overlay {
+    align-items: center !important;
+    padding: 1rem !important;
+  }
+  .confirm-dialog {
+    border-radius: 20px !important;
+    max-width: 400px !important;
+    animation: confirmScaleIn 0.2s cubic-bezier(0.32, 0.72, 0, 1) !important;
+  }
+}
+
+@keyframes confirmScaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.confirm-action-btn:active {
+  transform: scale(0.98);
+  filter: brightness(0.9);
+}
+
+.confirm-cancel-btn:active {
+  transform: scale(0.98);
+  background: rgba(128,128,128,0.08) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TRANSACTION CARD
+   ═══════════════════════════════════════════════════════════ */
+
+.tx-action-btn:hover {
+  opacity: 0.6 !important;
+  background: rgba(128,128,128,0.1) !important;
+}
+
+/* Light mode: ensure tx card text contrast */
+[data-theme="light"] .tx-card {
+  background: #ffffff !important;
+  border-color: #dfe2e8 !important;
+}
+
+[data-theme="light"] .tx-card span[style*="dt-text-primary"] {
+  color: #111827 !important;
+}
+
+[data-theme="light"] .tx-action-btn {
+  color: #374151 !important;
+}
+
+/* Light mode: transaction title color override */
+[data-theme="light"] .dt-tx-title {
+  color: #1f2937 !important;
+}
+
+/* Period filter scroll hide scrollbar */
+.dt-period-scroll::-webkit-scrollbar { display: none; }
+
+/* Light mode: filter chips and category select */
+[data-theme="light"] .dt-filter-chip {
+  color: #374151;
+}
+
+[data-theme="light"] .dt-category-select {
+  color: #374151;
+}
+
+[data-theme="light"] .dt-category-select option {
+  background: #fff;
+  color: #111827;
 }

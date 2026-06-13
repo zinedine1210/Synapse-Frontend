@@ -366,10 +366,12 @@ export default function SettingsPage() {
 
             {/* Tab Content */}
             {loading ? (
-              <Card style={{ padding: '2rem', textAlign: 'center' }}>
-                <Loader2 size={24} style={{ animation: 'spin 1s linear infinite', color: 'rgb(var(--color-primary))' }} />
-                <p style={{ marginTop: '0.5rem', color: 'rgb(var(--text-muted))', fontSize: 'var(--font-sm)' }}>Memuat pengaturan...</p>
-              </Card>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="skeleton" style={{ height: 20, width: '40%', borderRadius: 8 }} />
+                <div className="skeleton" style={{ height: 100, borderRadius: 14 }} />
+                <div className="skeleton" style={{ height: 100, borderRadius: 14 }} />
+                <div className="skeleton" style={{ height: 60, borderRadius: 14 }} />
+              </div>
             ) : (
               <>
                 {activeTab === 'profile' && (

@@ -39,8 +39,10 @@ export default function SuperadminQnaPage() {
           <Appbar title="Monitor Q&A" userName={user?.fullName} userId={user?.id} sidebarCollapsed={sidebarCollapsed} />
 
           {loading ? (
-            <div style={{ minHeight: 'calc(100vh - var(--appbar-height))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Loader2 className="animate-spin" size={36} style={{ color: 'rgb(var(--color-primary))' }} />
+            <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="skeleton" style={{ height: 22, width: '45%', borderRadius: 8 }} />
+              <div className="skeleton" style={{ height: 120, borderRadius: 14 }} />
+              <div className="skeleton" style={{ height: 200, borderRadius: 14 }} />
             </div>
           ) : (
             <div className="page-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>

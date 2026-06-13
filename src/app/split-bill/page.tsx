@@ -409,7 +409,9 @@ export default function SplitBillPage() {
                   </div>
 
                   {loading ? (
-                    <div style={{ textAlign: 'center', padding: 60 }}><Loader2 size={28} className="sb-spin" style={{ color: 'rgb(var(--color-primary))' }} /></div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '20px 0' }}>
+                      {[1, 2, 3].map(n => <div key={n} className="skeleton" style={{ height: 72, borderRadius: 14 }} />)}
+                    </div>
                   ) : bills.length === 0 ? (
                     <div className="sb-empty">
                       <span className="sb-empty__icon">🧾</span>

@@ -10,6 +10,7 @@ import { CommandPalette } from './CommandPalette';
 import { OnboardingFlow } from './OnboardingFlow';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { TourGuide, type TourStep } from './TourGuide';
+import { SplashScreen } from './SplashScreen';
 
 const TOUR_STEPS: TourStep[] = [
   { targetSelector: '[data-tour="dashboard"]', title: 'Dashboard', description: 'Pusat kendali kuliahmu. Lihat kelas, jadwal, dan ringkasan AI di satu tempat.', position: 'bottom' },
@@ -82,9 +83,7 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
       (user.role === 'SUPERADMIN' && !pathname.startsWith('/superadmin') && !pathname.startsWith('/settings')) ||
       (requiredRole && user.role !== requiredRole) ||
       (requiredFeature && user.pricingPlan && !user.pricingPlan.features.includes(requiredFeature))) {
-    return (
-      <div style={{ minHeight: '100vh', background: 'rgb(var(--bg-base, 6 11 24))' }} />
-    );
+    return <SplashScreen />;
   }
 
   return (

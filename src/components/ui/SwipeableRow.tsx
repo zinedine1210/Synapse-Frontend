@@ -83,7 +83,7 @@ export function SwipeableRow({
           transform: `translateX(${offset}px)`,
           transition: swiping ? 'none' : 'transform 0.3s ease-out',
           position: 'relative', zIndex: 1,
-          background: 'var(--card-bg)',
+          background: 'rgb(var(--bg-surface))',
         }}
       >
         {children}

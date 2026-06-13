@@ -63,12 +63,14 @@ export const duitTrackerService = {
   createTransaction: (data: Partial<Transaction>) =>
     apiFetch<Transaction>('/duit-tracker/transactions', { method: 'POST', body: JSON.stringify(data) }),
 
-  getTransactions: (params?: { month?: number; year?: number; category?: string; type?: string }) => {
+  getTransactions: (params?: { month?: number; year?: number; category?: string; type?: string; startDate?: string; endDate?: string }) => {
     const q = new URLSearchParams();
     if (params?.month) q.set('month', String(params.month));
     if (params?.year) q.set('year', String(params.year));
     if (params?.category) q.set('category', params.category);
     if (params?.type) q.set('type', params.type);
+    if (params?.startDate) q.set('startDate', params.startDate);
+    if (params?.endDate) q.set('endDate', params.endDate);
     return apiFetch<Transaction[]>(`/duit-tracker/transactions?${q.toString()}`);
   },
 

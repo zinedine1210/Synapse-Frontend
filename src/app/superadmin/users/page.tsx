@@ -214,8 +214,12 @@ export default function SuperadminUsersPage() {
           <Appbar title="Manajemen Pengguna" userName={user?.fullName} userId={user?.id} sidebarCollapsed={sidebarCollapsed} />
 
           {loading ? (
-            <div style={{ minHeight: 'calc(100vh - var(--appbar-height))', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Loader2 className="animate-spin" size={48} style={{ color: 'rgb(var(--color-primary))' }} />
+            <div className="page-content" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="skeleton" style={{ height: 22, width: '50%', borderRadius: 8 }} />
+              <div className="skeleton" style={{ height: 44, borderRadius: 10 }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {[1,2,3,4,5].map(n => <div key={n} className="skeleton" style={{ height: 56, borderRadius: 12 }} />)}
+              </div>
             </div>
           ) : (
             <div className="page-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>

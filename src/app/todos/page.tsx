@@ -71,7 +71,7 @@ export default function TodosPage() {
   const { user } = useAuth();
   const { hasFeature } = useFeatureAccess();
   const { showToast } = useToast();
-  const { showUndoToast, triggerConfetti } = useCelebration();
+  const { triggerConfetti } = useCelebration();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [todos, setTodos] = useState<PersonalTodo[]>([]);
   const [stats, setStats] = useState<TodoStats | null>(null);
@@ -382,9 +382,10 @@ export default function TodosPage() {
   const handleDelete = async (id: string) => {
     const todo = todos.find(t => t.id === id);
     if (!todo) return;
+    const confirmed = window.confirm(`Hapus tugas "${todo.title}"?`);
+    if (!confirmed) return;
     setTodos(prev => prev.filter(t => t.id !== id));
-    showUndoToast(`"${todo.title}" dihapus`, async () => { fetchData(); });
-    try { await todoService.delete(id); }
+    try { await todoService.delete(id); showToast('Tugas dihapus', 'success'); }
     catch (e: any) { showToast(e.message, 'error'); fetchData(); }
   };
 
@@ -664,23 +665,7 @@ export default function TodosPage() {
               />
             </BottomSheet>
 
-            {/* Floating add button (mobile convenience) */}
-            <button
-              onClick={() => openAdd()}
-              aria-label="Tambah tugas"
-              className="todo-fab"
-              style={{
-                position: 'fixed',
-                right: 18,
-                bottom: 'calc(var(--bottom-nav-height, 60px) + 16px)',
-                width: 54, height: 54, borderRadius: '50%', border: 'none', cursor: 'pointer', zIndex: 50,
-                background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
-                color: 'rgb(var(--bg-base))', boxShadow: '0 8px 24px rgba(var(--color-primary), 0.4)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <Plus size={24} />
-            </button>
+
           </div>
         </div>
       </div>
@@ -688,14 +673,6 @@ export default function TodosPage() {
       <style jsx>{`
         .todo-cat-scroll::-webkit-scrollbar { height: 0; }
         .todo-cat-scroll { scrollbar-width: none; }
-        .todo-fab { transition: transform 0.2s, box-shadow 0.2s; }
-        .todo-fab:hover { transform: translateY(-2px) scale(1.04); }
-        /* Show the FAB only where the bottom nav lives (mobile) to avoid duplicate add affordances */
-        @media (min-width: 900px) { .todo-fab { display: none; } }
-        @media (prefers-reduced-motion: reduce) {
-          .todo-fab { transition: none; }
-          .todo-fab:hover { transform: none; }
-        }
       `}</style>
     </AuthGuard>
   );

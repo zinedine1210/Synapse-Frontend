@@ -1339,15 +1339,27 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                         {/* Avatar: only show on last message of consecutive group */}
                         {!isOwn && (
                           <div style={{ width: 30, height: 30, flexShrink: 0, visibility: isLastInGroup ? 'visible' : 'hidden' }}>
-                            <div style={{
-                              width: 30, height: 30, borderRadius: '50%',
-                              background: `linear-gradient(135deg, ${avatarC1}, ${avatarC2})`,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: '0.7rem', fontWeight: 700, color: '#fff',
-                              boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
-                            }}>
-                              {post.authorName.charAt(0).toUpperCase()}
-                            </div>
+                            {post.authorAvatar ? (
+                              <img
+                                src={post.authorAvatar}
+                                alt={post.authorName}
+                                style={{
+                                  width: 30, height: 30, borderRadius: '50%',
+                                  objectFit: 'cover',
+                                  boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+                                }}
+                              />
+                            ) : (
+                              <div style={{
+                                width: 30, height: 30, borderRadius: '50%',
+                                background: `linear-gradient(135deg, ${avatarC1}, ${avatarC2})`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '0.7rem', fontWeight: 700, color: '#fff',
+                                boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+                              }}>
+                                {post.authorName.charAt(0).toUpperCase()}
+                              </div>
+                            )}
                           </div>
                         )}
 

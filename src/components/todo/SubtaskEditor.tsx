@@ -68,7 +68,7 @@ export function SubtaskEditor({ value, onChange }: SubtaskEditorProps) {
       )}
 
       <div style={{ display: 'flex', gap: 6 }}>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1 }} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}>
           <TextInput placeholder="Tambah langkah / sub-task..." value={title} onChange={setTitle} />
         </div>
         <button

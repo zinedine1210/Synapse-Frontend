@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Bell, User, Check, CheckCheck, X, Search } from 'lucide-react';
+import { Bell, Check, CheckCheck, X, Search } from 'lucide-react';
 import { notificationService, Notification } from '@/services/notificationService';
 import { useAuth } from '@/lib/AuthContext';
 import { openCommandPalette } from './CommandPalette';
@@ -307,20 +307,37 @@ export function Appbar({
             borderRadius: 'var(--radius-sm)',
           }}
         >
-          <div
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 'var(--radius-sm)',
-              background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            <User size={13} color="white" />
-          </div>
+          {authUser?.avatarUrl ? (
+            <img
+              src={authUser.avatarUrl}
+              alt={resolvedUserName}
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 'var(--radius-sm)',
+                objectFit: 'cover',
+                flexShrink: 0,
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 'var(--radius-sm)',
+                background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                fontSize: 11,
+                fontWeight: 700,
+                color: 'white',
+              }}
+            >
+              {resolvedUserName.charAt(0).toUpperCase()}
+            </div>
+          )}
           <span className="appbar-username" style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))', paddingRight: '0.35rem' }}>
             {resolvedUserName}
           </span>

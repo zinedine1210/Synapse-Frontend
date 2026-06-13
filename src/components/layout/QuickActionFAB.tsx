@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import { Button, Modal, useToast, SelectOption, TextInput } from '@/components/ui';
 import { duitTrackerService } from '@/services/duitTrackerService';
 import { useFeatureAccess } from '@/lib/feature-access';
-import { Plus, X, Camera, Wallet, CheckSquare, HelpCircle, Loader2, Sparkles, Check, ImageIcon } from 'lucide-react';
+import { Plus, X, Camera, Loader2, Check, ImageIcon } from 'lucide-react';
 
 const FAB_ITEMS = [
-  { key: 'scan', icon: Camera, label: 'Scan Struk', color: 'var(--color-warning)', requiredFeature: 'receipt_scanner' },
-  { key: 'catat', icon: Wallet, label: 'Catat Cepat', color: 'var(--color-primary)', requiredFeature: 'duit_tracker' },
-  { key: 'todo', icon: CheckSquare, label: 'Todo Cepat', color: 'var(--color-success)', requiredFeature: 'todo_list' },
-  { key: 'tanya', icon: HelpCircle, label: 'Tanya', color: 'var(--color-secondary)', requiredFeature: 'qna_public' },
+  { key: 'scan', label: 'Scan Struk', color: 'var(--color-warning)', requiredFeature: 'receipt_scanner' },
+  { key: 'catat', label: 'Catat Cepat', color: 'var(--color-primary)', requiredFeature: 'duit_tracker' },
+  { key: 'todo', label: 'Todo Cepat', color: 'var(--color-success)', requiredFeature: 'todo_list' },
+  { key: 'tanya', label: 'Tanya', color: 'var(--color-secondary)', requiredFeature: 'qna_public' },
 ] as const;
 
 type ActionType = typeof FAB_ITEMS[number]['key'] | null;
@@ -215,51 +215,34 @@ export function QuickActionFAB() {
         </div>
       </Modal>
 
-      <div className="fab-container" style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1000 }}>
+      {/* Overlay to close */}
+      {expanded && <div className="fab-overlay" onClick={() => setExpanded(false)} />}
+
+      <div className="fab-container" data-expanded={expanded}>
         {/* Menu items */}
-        {expanded && (
-          <div style={{ position: 'absolute', bottom: 56, right: 0, display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'flex-end' }}>
-            {filteredFabItems.map((item, i) => (
-              <button
-                key={item.key}
-                onClick={() => handleAction(item.key)}
-                className="fab-menu-item"
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 14px', borderRadius: 'var(--radius-full)',
-                  background: 'rgb(var(--bg-elevated))',
-                  border: '1px solid var(--border-default)',
-                  cursor: 'pointer', boxShadow: 'var(--shadow-md)',
-                  animationDelay: `${i * 0.05}s`,
-                  whiteSpace: 'nowrap', fontSize: 'var(--font-sm)', fontWeight: 600,
-                  color: 'rgb(var(--text-primary))',
-                }}
-              >
-                <item.icon size={16} style={{ color: `rgb(${item.color})` }} />
-                {item.label}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className={`fab-menu ${expanded ? 'fab-menu--open' : ''}`}>
+          {filteredFabItems.map((item, i) => (
+            <button
+              key={item.key}
+              onClick={() => handleAction(item.key)}
+              className="fab-menu-item"
+              style={{ transitionDelay: expanded ? `${i * 40}ms` : '0ms' }}
+            >
+              <span className="fab-menu-dot" style={{ background: item.color }} />
+              {item.label}
+            </button>
+          ))}
+        </div>
 
         {/* FAB button */}
         <button
+          className="fab-btn"
           onClick={() => setExpanded(!expanded)}
-          style={{
-            width: 52, height: 52, borderRadius: '50%',
-            background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
-            border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 4px 20px rgba(var(--color-primary) / 0.3)',
-            transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            transform: expanded ? 'rotate(45deg)' : 'rotate(0)',
-          }}
+          aria-label={expanded ? 'Tutup menu' : 'Buka menu cepat'}
         >
-          {expanded ? <X size={22} color="white" /> : <Plus size={22} color="white" />}
+          {expanded ? <X size={14} color="white" strokeWidth={2.5} /> : <Plus size={14} color="white" strokeWidth={2.5} />}
         </button>
       </div>
-
-      {/* Overlay to close */}
-      {expanded && <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setExpanded(false)} />}
 
       {/* Mini modal for quick actions */}
       <Modal isOpen={!!activeAction} onClose={() => { setActiveAction(null); setScanResult(null); }} title={modalTitle} size={activeAction === 'scan' ? 'md' : 'sm'}>
@@ -303,7 +286,7 @@ export function QuickActionFAB() {
               autoFocus
             />
             <Button onClick={handleSubmit} disabled={submitting || !input.trim()} style={{ width: '100%' }}>
-              {submitting ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : <><Sparkles size={15} /> Simpan</>}
+              {submitting ? <Loader2 size={15} style={{ animation: 'spin 1s linear infinite' }} /> : 'Simpan'}
             </Button>
           </div>
         )}

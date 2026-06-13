@@ -692,40 +692,67 @@ export default function DashboardPage() {
 
                 <div style={{ overflow: 'hidden', maxHeight: showClasses ? 2000 : 0, transition: 'max-height 0.4s ease-in-out' }}>
                   <div style={{ paddingTop: 12 }}>
-                    {/* Schedule Upload */}
+                    {/* AI KRS Importer - Revamped */}
                     {hasFeature('schedule_parser') && (
-                      <div className="schedule-parser-card" style={{
-                        padding: '16px',
-                        borderRadius: 16,
-                        background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.08) 0%, rgba(var(--color-primary), 0.02) 100%)',
-                        border: '1px solid rgba(var(--color-primary), 0.15)',
+                      <div className="krs-importer-card" style={{
+                        padding: '20px',
+                        borderRadius: 18,
+                        background: 'linear-gradient(145deg, rgba(99, 102, 241, 0.06) 0%, rgba(168, 85, 247, 0.04) 50%, rgba(236, 72, 153, 0.03) 100%)',
+                        border: '1px solid rgba(99, 102, 241, 0.12)',
                         marginBottom: 16,
-                        boxShadow: '0 4px 12px rgba(var(--color-primary), 0.03)'
+                        position: 'relative',
+                        overflow: 'hidden',
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                          <div style={{
-                            padding: 8,
-                            borderRadius: 10,
-                            background: 'rgba(var(--color-primary), 0.12)',
-                            color: 'rgb(var(--color-primary))',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}>
-                            <Sparkles size={18} />
+                        {/* Background decoration */}
+                        <div style={{
+                          position: 'absolute', top: -20, right: -20, width: 100, height: 100,
+                          borderRadius: '50%', background: 'rgba(99, 102, 241, 0.05)',
+                          filter: 'blur(20px)', pointerEvents: 'none',
+                        }} />
+                        <div style={{
+                          position: 'absolute', bottom: -15, left: -15, width: 80, height: 80,
+                          borderRadius: '50%', background: 'rgba(168, 85, 247, 0.04)',
+                          filter: 'blur(16px)', pointerEvents: 'none',
+                        }} />
+
+                        <div style={{ position: 'relative', zIndex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                            <div style={{
+                              width: 42, height: 42, borderRadius: 12,
+                              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.12))',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: 20,
+                            }}>
+                              📋
+                            </div>
+                            <div>
+                              <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0, letterSpacing: -0.3 }}>AI KRS Importer</h4>
+                              <p style={{ fontSize: 11.5, opacity: 0.55, margin: '2px 0 0' }}>Foto KRS-mu, langsung jadi kelas otomatis</p>
+                            </div>
                           </div>
-                          <div>
-                            <h4 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>AI KRS Importer</h4>
-                            <p style={{ fontSize: 11, opacity: 0.6, margin: 0 }}>Urai foto KRS untuk dibuatkan kelas kuliah otomatis</p>
+
+                          <div style={{
+                            display: 'flex', gap: 8, flexWrap: 'wrap',
+                          }}>
+                            <AIPhotoInput
+                              mode="schedule"
+                              onExtracted={(result) => {
+                                setParsedCourses(result);
+                              }}
+                              label="Upload KRS"
+                            />
+                          </div>
+
+                          <div style={{
+                            marginTop: 12, display: 'flex', gap: 12, fontSize: 10.5, opacity: 0.45,
+                          }}>
+                            <span>✨ Gemini AI</span>
+                            <span>•</span>
+                            <span>Foto / Screenshot KRS</span>
+                            <span>•</span>
+                            <span>Auto-create kelas</span>
                           </div>
                         </div>
-                        <AIPhotoInput
-                          mode="schedule"
-                          onExtracted={(result) => {
-                            setParsedCourses(result);
-                          }}
-                          label="Upload KRS"
-                        />
                       </div>
                     )}
 

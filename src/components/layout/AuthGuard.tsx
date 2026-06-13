@@ -3,7 +3,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
-import { Loader2 } from 'lucide-react';
 import { QuickActionFAB } from './QuickActionFAB';
 import { BottomNav } from './BottomNav';
 import { MobileNavSheet } from './MobileNavSheet';
@@ -84,10 +83,7 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
       (requiredRole && user.role !== requiredRole) ||
       (requiredFeature && user.pricingPlan && !user.pricingPlan.features.includes(requiredFeature))) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgb(6, 11, 24)', color: 'rgba(0, 212, 255, 0.8)', gap: '1rem' }}>
-        <Loader2 className="animate-spin" size={48} />
-        <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'rgba(160, 160, 200, 0.8)' }}>Memuat sesi belajar...</span>
-      </div>
+      <div style={{ minHeight: '100vh', background: 'rgb(var(--bg-base, 6 11 24))' }} />
     );
   }
 

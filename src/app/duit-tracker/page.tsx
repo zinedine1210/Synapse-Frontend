@@ -19,8 +19,7 @@ import { useCelebration } from '@/components/shared/CelebrationOverlay';
 import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings } from 'lucide-react';
 
 const EXPENSE_CATEGORIES = [
-  { id: 'makanan', emoji: '🍛', label: 'Makanan' },
-  { id: 'minuman', emoji: '☕', label: 'Minuman' },
+  { id: 'makanan', emoji: '�️', label: 'Makan & Minum' },
   { id: 'transportasi', emoji: '🚗', label: 'Transport' },
   { id: 'belanja', emoji: '🛒', label: 'Belanja' },
   { id: 'hiburan', emoji: '🎮', label: 'Hiburan' },
@@ -43,7 +42,7 @@ const INCOME_CATEGORIES = [
 /** Category color map for accent strip on transaction cards */
 const CATEGORY_COLORS: Record<string, string> = {
   makanan: '#f59e0b',
-  minuman: '#8b5cf6',
+  minuman: '#f59e0b',
   transportasi: '#3b82f6',
   belanja: '#ec4899',
   hiburan: '#10b981',

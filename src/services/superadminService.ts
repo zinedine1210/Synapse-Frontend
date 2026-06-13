@@ -16,7 +16,7 @@ export const superadminService = {
   /** PATCH /api/v1/superadmin/plan-config/:plan – Update kuota batasan paket */
   updatePlanConfig: (
     plan: string,
-    data: { maxUploadPerMonth: number; maxFileSizeMb: number; aiRequestLimit: number }
+    data: { maxUploadPerMonth: number; maxFileSizeMb: number; aiRequestLimit: number; aiBriefingLimit?: number; aiWeeklyRoastLimit?: number }
   ) =>
     apiFetch<any>(`/superadmin/plan-config/${plan}`, {
       method: 'PATCH',
@@ -30,6 +30,8 @@ export const superadminService = {
     maxUploadPerMonth: number;
     maxFileSizeMb: number;
     aiRequestLimit: number;
+    aiBriefingLimit?: number;
+    aiWeeklyRoastLimit?: number;
     features: string[];
     price: number;
     durationDays?: number;
@@ -48,6 +50,8 @@ export const superadminService = {
       maxUploadPerMonth?: number;
       maxFileSizeMb?: number;
       aiRequestLimit?: number;
+      aiBriefingLimit?: number;
+      aiWeeklyRoastLimit?: number;
       features?: string[];
       price?: number;
       durationDays?: number;

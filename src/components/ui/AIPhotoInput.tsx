@@ -2,7 +2,6 @@
 
 import React, { useRef, useState } from 'react';
 import { Camera, Loader2, Sparkles, Image as ImageIcon } from 'lucide-react';
-import { Button } from './Button';
 import { useToast } from './Toast';
 import { apiFetch } from '@/lib/api';
 
@@ -77,13 +76,13 @@ export function AIPhotoInput({ onExtracted, mode, className = '', label = 'Gunak
   };
 
   return (
-    <div className={`flex flex-wrap gap-2 items-center ${className}`}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }} className={className}>
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
         accept="image/*"
-        className="hidden"
+        style={{ display: 'none' }}
         id={`ai-photo-file-input-${mode}`}
       />
       <input
@@ -92,39 +91,59 @@ export function AIPhotoInput({ onExtracted, mode, className = '', label = 'Gunak
         onChange={handleFileChange}
         accept="image/*"
         capture="environment"
-        className="hidden"
+        style={{ display: 'none' }}
         id={`ai-photo-camera-input-${mode}`}
       />
       
-      <Button
+      <button
         type="button"
-        variant="outline"
         onClick={() => cameraInputRef.current?.click()}
         disabled={isLoading}
-        className="flex items-center gap-2 border border-indigo-200 hover:border-indigo-400 bg-indigo-50/30 hover:bg-indigo-50 transition-all duration-300 text-indigo-700 font-medium py-2 px-3.5 rounded-xl shadow-sm hover:shadow-md active:scale-95"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '10px 16px', borderRadius: 12,
+          background: 'rgba(99, 102, 241, 0.08)',
+          border: '1px solid rgba(99, 102, 241, 0.2)',
+          color: 'rgb(99, 102, 241)',
+          fontSize: 13, fontWeight: 600,
+          cursor: isLoading ? 'not-allowed' : 'pointer',
+          opacity: isLoading ? 0.6 : 1,
+          transition: 'all 0.2s',
+          fontFamily: 'inherit',
+        }}
       >
         {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+          <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
         ) : (
-          <Camera className="h-4 w-4 text-indigo-500" />
+          <Camera size={16} />
         )}
-        <span>{isLoading ? 'Menganalisis...' : 'Ambil Foto'}</span>
-      </Button>
+        <span>{isLoading ? 'Menganalisis...' : '📸 Ambil Foto'}</span>
+      </button>
 
-      <Button
+      <button
         type="button"
-        variant="outline"
         onClick={() => fileInputRef.current?.click()}
         disabled={isLoading}
-        className="flex items-center gap-2 border border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/30 hover:bg-indigo-50 transition-all duration-300 text-indigo-700 font-medium py-2 px-3.5 rounded-xl shadow-sm hover:shadow-md active:scale-95"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          padding: '10px 16px', borderRadius: 12,
+          background: 'rgba(168, 85, 247, 0.06)',
+          border: '1px dashed rgba(168, 85, 247, 0.25)',
+          color: 'rgb(168, 85, 247)',
+          fontSize: 13, fontWeight: 600,
+          cursor: isLoading ? 'not-allowed' : 'pointer',
+          opacity: isLoading ? 0.6 : 1,
+          transition: 'all 0.2s',
+          fontFamily: 'inherit',
+        }}
       >
         {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+          <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
         ) : (
-          <ImageIcon className="h-4 w-4 text-indigo-500" />
+          <ImageIcon size={16} />
         )}
-        <span>{isLoading ? 'Menganalisis...' : 'Pilih File'}</span>
-      </Button>
+        <span>{isLoading ? 'Menganalisis...' : '🖼️ Pilih File'}</span>
+      </button>
     </div>
   );
 }

@@ -118,7 +118,7 @@ export default function UserProfilePage() {
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('avatar', file);
+      formData.append('file', file);
 
       const result = await apiUpload<{ avatarUrl: string }>('/user/profile/avatar', formData);
 

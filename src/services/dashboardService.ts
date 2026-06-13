@@ -116,7 +116,8 @@ export const dashboardService = {
   getSummary: () => apiFetch<DashboardSummary>('/dashboard/summary'),
   getSummaryV2: () => apiFetch<SummaryV2Response>('/dashboard/summary-v2'),
   getTodaysBriefing: () => apiFetch<TodaysBriefingResponse>('/dashboard/todays-briefing'),
-  getAiBriefing: () => apiFetch<AiBriefingResponse>('/dashboard/ai-briefing'),
+  getAiBriefing: () => apiFetch<AiBriefingResponse | { exists: false }>('/dashboard/ai-briefing'),
+  generateAiBriefing: () => apiFetch<AiBriefingResponse>('/dashboard/ai-briefing', { method: 'POST' }),
   getClassComparison: () => apiFetch<ClassComparisonResponse>('/dashboard/class-comparison'),
   getTrendingQna: () => apiFetch<TrendingQuestion[]>('/dashboard/trending-qna'),
 };

@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import { BottomSheet, Button, CurrencyInput, TextInput, DateTimePicker, useToast } from '@/components/ui';
 import { duitTrackerService, Transaction } from '@/services/duitTrackerService';
-import { Loader2, Sparkles, Camera, Send } from 'lucide-react';
+import { Loader2, Sparkles, Camera, Send, Image } from 'lucide-react';
 
 export interface TxForm {
   amount: string;
@@ -51,6 +51,7 @@ export function TransactionSheet({
 }: TransactionSheetProps) {
   const { showToast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [quickText, setQuickText] = useState('');
   const [quickLoading, setQuickLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -273,15 +274,33 @@ export function TransactionSheet({
                 onChange={handleReceipt}
                 style={{ display: 'none' }}
               />
+              <input
+                ref={cameraRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleReceipt}
+                style={{ display: 'none' }}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => cameraRef.current?.click()}
+                disabled={scanning}
+                style={{ borderRadius: 12, padding: '12px 16px', flexShrink: 0 }}
+                title="Ambil Foto Struk"
+              >
+                {scanning ? <Loader2 className="spin" size={16} /> : <Camera size={16} />}
+              </Button>
               <Button
                 type="button"
                 variant="secondary"
                 onClick={() => fileRef.current?.click()}
                 disabled={scanning}
                 style={{ borderRadius: 12, padding: '12px 16px', flexShrink: 0 }}
-                title="Scan struk belanja"
+                title="Pilih File Struk"
               >
-                {scanning ? <Loader2 className="spin" size={16} /> : <Camera size={16} />}
+                {scanning ? <Loader2 className="spin" size={16} /> : <Image size={16} />}
               </Button>
             </>
           )}

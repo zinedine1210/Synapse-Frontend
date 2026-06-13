@@ -7,8 +7,8 @@ import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, useToast, useConfirm, TextInput, TagInput, TimePicker, SelectOption } from '@/components/ui';
-import { apiFetch } from '@/lib/api';
-import { supabase } from '@/lib/supabase';
+import { apiFetch, apiUpload } from '@/lib/api';
+
 import { usePushNotifications } from '@/lib/usePushNotifications';
 import {
   Settings, User, Bell, Palette, Database, Shield,
@@ -158,38 +158,23 @@ export default function SettingsPage() {
     if (!file) return;
 
     // Validate file
-    if (!file.type.startsWith('image/')) {
-      showToast('File harus berupa gambar.', 'error');
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      showToast('Format harus JPG, PNG, atau WebP.', 'error');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('Ukuran file maksimal 5MB.', 'error');
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Ukuran file maksimal 2MB.', 'error');
       return;
     }
 
     setAvatarUploading(true);
     try {
-      const ext = file.name.split('.').pop() || 'jpg';
-      const fileName = `avatars/${user!.id}-${Date.now()}.${ext}`;
+      const formData = new FormData();
+      formData.append('file', file);
 
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, { contentType: file.type, upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      const newUrl = urlData.publicUrl;
-      setAvatarUrl(newUrl);
-
-      // Save to backend
-      await apiFetch('/settings/profile', {
-        method: 'PATCH',
-        body: JSON.stringify({ avatarUrl: newUrl }),
-      });
+      const result = await apiUpload<{ avatarUrl: string }>('/user/profile/avatar', formData);
+      setAvatarUrl(result.avatarUrl);
 
       await refetchProfile();
       showToast('Avatar berhasil diubah.', 'success');
@@ -554,7 +539,7 @@ function ProfileTab({
           <div>
             <p style={{ fontSize: 'var(--font-sm)', fontWeight: 500 }}>Foto Profil</p>
             <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>
-              JPG, PNG, atau WebP. Maksimal 5MB.
+              JPG, PNG, atau WebP. Maksimal 2MB.
             </p>
           </div>
           <input

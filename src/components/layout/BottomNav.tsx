@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Wallet, CheckSquare, HelpCircle, MoreHorizontal } from 'lucide-react';
+import { LayoutDashboard, Wallet, CheckSquare, BookOpen, MoreHorizontal } from 'lucide-react';
 import { useFeatureAccess } from '@/lib/feature-access';
 
 /**
@@ -39,7 +39,7 @@ const TABS: BottomNavTab[] = [
   { key: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { key: 'duit-tracker', label: 'Duit', path: '/duit-tracker', icon: Wallet, requiredFeature: 'duit_tracker' },
   { key: 'todos', label: 'Todo', path: '/todos', icon: CheckSquare, requiredFeature: 'todo_list' },
-  { key: 'qna', label: 'Q&A', path: '/qna', icon: HelpCircle, requiredFeature: 'qna_public' },
+  { key: 'classes', label: 'Kelas', path: '/classes', icon: BookOpen, requiredFeature: 'class' },
   { key: 'more', label: 'More', path: '#more', icon: MoreHorizontal },
 ];
 

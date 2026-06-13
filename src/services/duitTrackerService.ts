@@ -78,6 +78,9 @@ export const duitTrackerService = {
   updateTransaction: (id: string, data: Partial<Transaction>) =>
     apiFetch<Transaction>(`/duit-tracker/transactions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
+  generateComment: (id: string) =>
+    apiFetch<Transaction>(`/duit-tracker/transactions/${id}/comment`, { method: 'POST' }),
+
   getSummary: (month: number, year: number) =>
     apiFetch<Summary>(`/duit-tracker/summary?month=${month}&year=${year}`),
 

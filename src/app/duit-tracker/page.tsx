@@ -200,10 +200,46 @@ export default function DuitTrackerPage() {
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
   const [quickInputText, setQuickInputText] = useState('');
   const [quickInputSubmitting, setQuickInputSubmitting] = useState(false);
+  const [commentLoading, setCommentLoading] = useState<Record<string, boolean>>({});
+  const [roastLoading, setRoastLoading] = useState(false);
+
+  const handleGenerateComment = async (txId: string) => {
+    setCommentLoading(prev => ({ ...prev, [txId]: true }));
+    try {
+      const updatedTx = await duitTrackerService.generateComment(txId);
+      setTransactions(prev => prev.map(tx => tx.id === txId ? updatedTx : tx));
+      showToast('Komentar Si Bawel berhasil dibuat! 🗣️', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal membuat komentar.', 'error');
+    } finally {
+      setCommentLoading(prev => ({ ...prev, [txId]: false }));
+    }
+  };
+
+  const handleGenerateWeeklyRoast = async () => {
+    setRoastLoading(true);
+    try {
+      const roast = await siBawelService.getWeeklyRoast();
+      setWeeklyRoast(roast);
+      localStorage.setItem('synapse_weekly_roast', JSON.stringify(roast));
+      showToast('Weekly Roast berhasil dibuat! 🔥', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Gagal menghasilkan Weekly Roast.', 'error');
+    } finally {
+      setRoastLoading(false);
+    }
+  };
 
   useEffect(() => {
     siBawelService.getSetting().then(setBawelSetting).catch(() => {});
-    siBawelService.getWeeklyRoast().then(setWeeklyRoast).catch(() => {});
+    const cachedRoast = localStorage.getItem('synapse_weekly_roast');
+    if (cachedRoast) {
+      try {
+        setWeeklyRoast(JSON.parse(cachedRoast));
+      } catch {
+        localStorage.removeItem('synapse_weekly_roast');
+      }
+    }
   }, []);
 
   const handleBawelToggle = async (field: string, value: any) => {
@@ -534,7 +570,7 @@ export default function DuitTrackerPage() {
                                 </div>
                               </div>
                               {/* Si Bawel comment */}
-                              {tx.bawelComment && (
+                              {tx.bawelComment ? (
                                 <div style={{
                                   marginTop: 8, fontSize: 12, lineHeight: 1.5, padding: '8px 12px', borderRadius: 10,
                                   background: tx.bawelLevel === 'warning' ? 'rgba(245, 158, 11, 0.06)' : tx.bawelLevel === 'praise' ? 'rgba(16, 185, 129, 0.06)' : 'var(--input-bg)',
@@ -543,6 +579,34 @@ export default function DuitTrackerPage() {
                                 }}>
                                   <span style={{ flexShrink: 0 }}>🗣️</span>
                                   <span style={{ opacity: 0.7 }}>{tx.bawelComment}</span>
+                                </div>
+                              ) : (
+                                <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-start' }}>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleGenerateComment(tx.id)}
+                                    disabled={commentLoading[tx.id]}
+                                    style={{
+                                      fontSize: '11px',
+                                      padding: '4px 10px',
+                                      borderRadius: '8px',
+                                      borderColor: 'rgba(var(--color-primary), 0.3)',
+                                      background: 'rgba(var(--color-primary), 0.02)',
+                                      color: 'rgb(var(--color-primary))',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    {commentLoading[tx.id] ? (
+                                      <Loader2 size={10} className="spin" />
+                                    ) : (
+                                      <span>🗣️</span>
+                                    )}
+                                    <span>Tanya Si Bawel</span>
+                                  </Button>
                                 </div>
                               )}
                             </div>
@@ -558,29 +622,80 @@ export default function DuitTrackerPage() {
               {tab === 'summary' && summary && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {/* Weekly Roast */}
-                  {weeklyRoast && hasFeature('si_bawel') && (
-                    <div style={{
-                      padding: '20px 22px', borderRadius: 16,
-                      background: 'linear-gradient(135deg, rgba(255, 100, 0, 0.04) 0%, rgba(255, 50, 0, 0.02) 100%)',
-                      border: '1px solid rgba(255, 100, 0, 0.12)',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                        <span style={{ fontSize: 22 }}>🔥</span>
-                        <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Weekly Roast</h3>
-                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <span style={{ fontSize: 14, fontWeight: 700 }}>{weeklyRoast.score}/10</span>
-                          <div style={{ width: 60, height: 6, borderRadius: 3, background: 'rgba(255,100,0,0.1)', overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${weeklyRoast.score * 10}%`, borderRadius: 3, background: 'linear-gradient(90deg, #ff6b35, #f7c948)', transition: 'width 0.5s' }} />
+                  {/* Weekly Roast */}
+                  {hasFeature('si_bawel') && (
+                    weeklyRoast ? (
+                      <div style={{
+                        padding: '20px 22px', borderRadius: 16,
+                        background: 'linear-gradient(135deg, rgba(255, 100, 0, 0.04) 0%, rgba(255, 50, 0, 0.02) 100%)',
+                        border: '1px solid rgba(255, 100, 0, 0.12)',
+                        marginBottom: 16,
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                          <span style={{ fontSize: 22 }}>🔥</span>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Weekly Roast</h3>
+                          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 14, fontWeight: 700 }}>{weeklyRoast.score}/10</span>
+                            <div style={{ width: 60, height: 6, borderRadius: 3, background: 'rgba(255,100,0,0.1)', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${weeklyRoast.score * 10}%`, borderRadius: 3, background: 'linear-gradient(90deg, #ff6b35, #f7c948)', transition: 'width 0.5s' }} />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <p style={{ fontSize: 14, lineHeight: 1.7, margin: '0 0 12px', fontStyle: 'italic', opacity: 0.85 }}>&ldquo;{weeklyRoast.roast}&rdquo;</p>
-                      {weeklyRoast.tip && (
-                        <div style={{ fontSize: 13, padding: '10px 14px', borderRadius: 10, background: 'rgba(var(--color-primary), 0.05)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-                          <span>💡</span> <span style={{ opacity: 0.7 }}>{weeklyRoast.tip}</span>
+                        <p style={{ fontSize: 14, lineHeight: 1.7, margin: '0 0 12px', fontStyle: 'italic', opacity: 0.85 }}>&ldquo;{weeklyRoast.roast}&rdquo;</p>
+                        {weeklyRoast.tip && (
+                          <div style={{ fontSize: 13, padding: '10px 14px', borderRadius: 10, background: 'rgba(var(--color-primary), 0.05)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                            <span>💡</span> <span style={{ opacity: 0.7 }}>{weeklyRoast.tip}</span>
+                          </div>
+                        )}
+                        <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleGenerateWeeklyRoast}
+                            disabled={roastLoading}
+                            style={{ fontSize: 12, padding: '6px 12px', borderRadius: 10, cursor: 'pointer' }}
+                          >
+                            {roastLoading ? <Loader2 size={12} className="spin" /> : 'Roast Ulang 🔥'}
+                          </Button>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div style={{
+                        padding: '24px', borderRadius: 16,
+                        background: 'linear-gradient(135deg, rgba(255, 100, 0, 0.08) 0%, rgba(255, 50, 0, 0.02) 100%)',
+                        border: '1px solid rgba(255, 100, 0, 0.15)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        gap: 16,
+                        marginBottom: 16,
+                      }}>
+                        <span style={{ fontSize: 32 }}>🔥</span>
+                        <div>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>Minta Weekly Roast</h3>
+                          <p style={{ fontSize: 13, opacity: 0.7, maxWidth: 440, margin: 0, lineHeight: 1.5 }}>
+                            Ingin tahu seberapa boros kamu minggu ini? Biarkan Si Bawel me-roast kebiasaan belanjamu dengan humor pedas!
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          onClick={handleGenerateWeeklyRoast}
+                          disabled={roastLoading}
+                          style={{
+                            background: 'linear-gradient(135deg, #ff6b35 0%, #ff4f00 100%)',
+                            border: 'none',
+                            color: '#fff',
+                            fontWeight: 600,
+                            borderRadius: 12,
+                            padding: '10px 20px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {roastLoading ? <Loader2 size={14} className="spin" /> : 'Minta Roast 🔥'}
+                        </Button>
+                      </div>
+                    )
                   )}
 
                   {/* Category Breakdown */}

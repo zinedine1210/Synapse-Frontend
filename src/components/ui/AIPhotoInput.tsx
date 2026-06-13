@@ -15,6 +15,7 @@ interface AIPhotoInputProps {
 
 export function AIPhotoInput({ onExtracted, mode, className = '', label = 'Gunakan AI Photo' }: AIPhotoInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
 
@@ -62,6 +63,7 @@ export function AIPhotoInput({ onExtracted, mode, className = '', label = 'Gunak
     } finally {
       setIsLoading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+      if (cameraInputRef.current) cameraInputRef.current.value = '';
     }
   };
 
@@ -75,30 +77,53 @@ export function AIPhotoInput({ onExtracted, mode, className = '', label = 'Gunak
   };
 
   return (
-    <div className={`inline-block ${className}`}>
+    <div className={`flex flex-wrap gap-2 items-center ${className}`}>
       <input
         type="file"
         ref={fileInputRef}
         onChange={handleFileChange}
         accept="image/*"
         className="hidden"
-        id={`ai-photo-input-${mode}`}
+        id={`ai-photo-file-input-${mode}`}
+      />
+      <input
+        type="file"
+        ref={cameraInputRef}
+        onChange={handleFileChange}
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        id={`ai-photo-camera-input-${mode}`}
       />
       
       <Button
         type="button"
         variant="outline"
-        onClick={() => fileInputRef.current?.click()}
+        onClick={() => cameraInputRef.current?.click()}
         disabled={isLoading}
-        className="flex items-center gap-2 border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 text-indigo-700 font-medium py-2 px-3 rounded-xl shadow-sm hover:shadow-md active:scale-95"
+        className="flex items-center gap-2 border border-indigo-200 hover:border-indigo-400 bg-indigo-50/30 hover:bg-indigo-50 transition-all duration-300 text-indigo-700 font-medium py-2 px-3.5 rounded-xl shadow-sm hover:shadow-md active:scale-95"
       >
         {isLoading ? (
           <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
         ) : (
-          <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />
+          <Camera className="h-4 w-4 text-indigo-500" />
         )}
-        <span>{isLoading ? 'Menganalisis...' : label}</span>
-        <Camera className="h-4 w-4 opacity-70" />
+        <span>{isLoading ? 'Menganalisis...' : 'Ambil Foto'}</span>
+      </Button>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => fileInputRef.current?.click()}
+        disabled={isLoading}
+        className="flex items-center gap-2 border border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/30 hover:bg-indigo-50 transition-all duration-300 text-indigo-700 font-medium py-2 px-3.5 rounded-xl shadow-sm hover:shadow-md active:scale-95"
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />
+        ) : (
+          <ImageIcon className="h-4 w-4 text-indigo-500" />
+        )}
+        <span>{isLoading ? 'Menganalisis...' : 'Pilih File'}</span>
       </Button>
     </div>
   );

@@ -13,7 +13,7 @@ import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { useFeatureAccess } from '@/lib/feature-access';
-import { Card, Button, Alert, Modal, useToast, useConfirm, PullToRefresh, AnimatedNumber, TextInput, TextArea } from '@/components/ui';
+import { Card, Button, Alert, Modal, useToast, useConfirm, PullToRefresh, AnimatedNumber, TextInput, TextArea, AIPhotoInput } from '@/components/ui';
 import { TodaysBriefing, BriefingData } from '@/components/dashboard/TodaysBriefing';
 import { AiBriefingCard, AiBriefingSkeleton } from '@/components/dashboard/AiBriefingCard';
 import { ContextualBubbles } from '@/components/dashboard/ContextualBubbles';
@@ -60,7 +60,7 @@ export default function DashboardPage() {
   const [summaryLoading, setSummaryLoading] = useState(true);
   const [briefing, setBriefing] = useState<TodaysBriefingResponse | null>(null);
   const [briefingLoading, setBriefingLoading] = useState(true);
-  const [aiBriefing, setAiBriefing] = useState<AiBriefingResponse | null>(null);
+  const [aiBriefing, setAiBriefing] = useState<AiBriefingResponse | { exists: false } | null>(null);
   const [aiBriefingLoading, setAiBriefingLoading] = useState(true);
   const [aiBriefingFailed, setAiBriefingFailed] = useState(false);
   const [aiBriefingRefreshing, setAiBriefingRefreshing] = useState(false);
@@ -144,15 +144,30 @@ export default function DashboardPage() {
   const handleRefreshAiBriefing = useCallback(async () => {
     setAiBriefingRefreshing(true);
     try {
-      const res = await dashboardService.getAiBriefing();
+      const res = await dashboardService.generateAiBriefing();
       setAiBriefing(res);
       setAiBriefingFailed(false);
-    } catch {
-      showToast('Gagal memuat ulang briefing.', 'error');
+      showToast('Briefing AI berhasil diperbarui! ✨', 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Gagal memuat ulang briefing.', 'error');
     } finally {
       setAiBriefingRefreshing(false);
     }
   }, [showToast]);
+
+  const handleGenerateAiBriefing = async () => {
+    setAiBriefingLoading(true);
+    try {
+      const res = await dashboardService.generateAiBriefing();
+      setAiBriefing(res);
+      setAiBriefingFailed(false);
+      showToast('Briefing AI berhasil dibuat! ✨', 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Gagal membuat briefing.', 'error');
+    } finally {
+      setAiBriefingLoading(false);
+    }
+  };
 
   // Build briefing data from API response or fallback to summary data
   const briefingData: BriefingData | null = briefing
@@ -273,7 +288,7 @@ export default function DashboardPage() {
                 .catch(() => {});
             }}>
             {/* ═══════ VERTICAL FEED LAYOUT ═══════ */}
-            <div className="dashboard-feed" style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', padding: '0 4px' }}>
+            <div className="dashboard-feed" style={{ maxWidth: 720, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', padding: '0 4px', boxSizing: 'border-box' }}>
 
               {/* ═══════ SECTION 1: GREETING CARD (full-width, prominent) ═══════ */}
               <div className="dashboard-greeting" style={{
@@ -307,12 +322,44 @@ export default function DashboardPage() {
               {hasFeature('daily_briefing') && (
                 aiBriefingLoading ? (
                   <AiBriefingSkeleton />
-                ) : aiBriefing ? (
+                ) : (aiBriefing && (aiBriefing as any).exists !== false) ? (
                   <AiBriefingCard
-                    briefing={aiBriefing}
+                    briefing={aiBriefing as AiBriefingResponse}
                     onRefresh={handleRefreshAiBriefing}
                     isRefreshing={aiBriefingRefreshing}
                   />
+                ) : (aiBriefing && (aiBriefing as any).exists === false) ? (
+                  <div className="ai-briefing-cta" style={{
+                    position: 'relative',
+                    overflow: 'hidden',
+                    borderRadius: '20px',
+                    marginBottom: '24px',
+                    padding: '24px',
+                    background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.08) 0%, rgba(var(--color-accent-purple), 0.05) 100%)',
+                    border: '1px solid rgba(var(--color-primary), 0.15)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    gap: '16px'
+                  }}>
+                    <SiBawelAvatar size="dashboard" />
+                    <div>
+                      <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>Tanya Si Bawel Hari Ini 🗣️</h3>
+                      <p style={{ fontSize: '13px', opacity: 0.7, maxWidth: '480px', margin: '0 auto', lineHeight: '1.5' }}>
+                        Dapatkan briefing personal tentang kelas kuliah hari ini, tugas yang harus diselesaikan, status budget, dan tips belajar spesial untukmu!
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleGenerateAiBriefing}
+                      disabled={aiBriefingLoading}
+                      className="flex items-center gap-2 border border-indigo-200 hover:border-indigo-400 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 text-indigo-700 font-medium py-2 px-4 rounded-xl shadow-md hover:shadow-lg active:scale-95"
+                    >
+                      <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />
+                      <span>Buat Briefing AI</span>
+                    </Button>
+                  </div>
                 ) : aiBriefingFailed && briefingData ? (
                   /* Fallback to the rule-based briefing if the AI request failed */
                   <TodaysBriefing data={briefingData} isLoading={briefingLoading && summaryLoading} />
@@ -646,13 +693,41 @@ export default function DashboardPage() {
                 <div style={{ overflow: 'hidden', maxHeight: showClasses ? 2000 : 0, transition: 'max-height 0.4s ease-in-out' }}>
                   <div style={{ paddingTop: 12 }}>
                     {/* Schedule Upload */}
-                    {hasFeature('schedule_parser') && <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 10, border: '1px dashed var(--border-default)', marginBottom: 14, cursor: 'pointer', transition: 'border-color 0.2s' }}>
-                      <div style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, opacity: 0.7 }}>
-                        <Sparkles size={14} /> Upload foto KRS → AI buatkan kelas
+                    {hasFeature('schedule_parser') && (
+                      <div className="schedule-parser-card" style={{
+                        padding: '16px',
+                        borderRadius: 16,
+                        background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.08) 0%, rgba(var(--color-primary), 0.02) 100%)',
+                        border: '1px solid rgba(var(--color-primary), 0.15)',
+                        marginBottom: 16,
+                        boxShadow: '0 4px 12px rgba(var(--color-primary), 0.03)'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                          <div style={{
+                            padding: 8,
+                            borderRadius: 10,
+                            background: 'rgba(var(--color-primary), 0.12)',
+                            color: 'rgb(var(--color-primary))',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            <Sparkles size={18} />
+                          </div>
+                          <div>
+                            <h4 style={{ fontSize: 14, fontWeight: 600, margin: 0 }}>AI KRS Importer</h4>
+                            <p style={{ fontSize: 11, opacity: 0.6, margin: 0 }}>Urai foto KRS untuk dibuatkan kelas kuliah otomatis</p>
+                          </div>
+                        </div>
+                        <AIPhotoInput
+                          mode="schedule"
+                          onExtracted={(result) => {
+                            setParsedCourses(result);
+                          }}
+                          label="Upload KRS"
+                        />
                       </div>
-                      {isParsing ? <Loader2 className="spin" size={16} /> : <Upload size={16} style={{ opacity: 0.5 }} />}
-                      <input type="file" accept="image/*" onChange={handleScheduleUpload} style={{ display: 'none' }} disabled={isParsing} />
-                    </label>}
+                    )}
 
                     {parseError && <Alert type="error" message={parseError} />}
 

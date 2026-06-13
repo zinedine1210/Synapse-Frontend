@@ -249,6 +249,7 @@ export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefing
           border-radius: var(--radius-xl, 20px);
           margin-bottom: 24px;
           padding: 1px;
+          max-width: 100%;
           background: linear-gradient(
             135deg,
             rgba(var(--color-primary), 0.5) 0%,
@@ -268,6 +269,7 @@ export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefing
           );
           backdrop-filter: blur(18px);
           -webkit-backdrop-filter: blur(18px);
+          overflow: hidden;
         }
         .ai-briefing-orb {
           position: absolute;
@@ -305,11 +307,15 @@ export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefing
           font-weight: 600;
           opacity: 0.7;
           margin-bottom: 2px;
+          word-break: break-word;
+          overflow-wrap: break-word;
         }
         .ai-briefing-headline {
           font-size: 18px;
           font-weight: 800;
           line-height: 1.3;
+          word-break: break-word;
+          overflow-wrap: break-word;
           background: linear-gradient(
             90deg,
             rgb(var(--color-primary)),
@@ -378,6 +384,8 @@ export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefing
           font-size: 13px;
           font-weight: 700;
           margin-bottom: 6px;
+          word-break: break-word;
+          overflow-wrap: break-word;
         }
         .ai-briefing-section-icon {
           font-size: 15px;
@@ -397,6 +405,9 @@ export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefing
           line-height: 1.5;
           padding-left: 16px;
           opacity: 0.9;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          white-space: normal;
         }
         .ai-briefing-list-item::before {
           content: '';
@@ -443,6 +454,9 @@ export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefing
         .ai-briefing-item-text {
           flex: 1;
           min-width: 0;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          white-space: normal;
         }
         .ai-briefing-item-chevron {
           flex-shrink: 0;
@@ -463,6 +477,9 @@ export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefing
           padding: 12px 14px;
           border-radius: var(--radius-md, 10px);
           border: 1px solid var(--border-default);
+          overflow: hidden;
+          word-break: break-word;
+          overflow-wrap: break-word;
         }
         .ai-briefing-block--suggestions {
           background: rgba(var(--color-accent-purple), 0.07);
@@ -491,10 +508,15 @@ export function AiBriefingCard({ briefing, onRefresh, isRefreshing }: AiBriefing
           font-style: italic;
           line-height: 1.5;
           opacity: 0.9;
+          word-break: break-word;
+          overflow-wrap: break-word;
+          white-space: normal;
         }
         @media (max-width: 767.98px) {
-          .ai-briefing-inner { padding: 18px 16px; }
-          .ai-briefing-headline { font-size: 16px; }
+          .ai-briefing-inner { padding: 16px 14px; }
+          .ai-briefing-headline { font-size: 15px; }
+          .ai-briefing-header { gap: 10px; }
+          .ai-briefing-card { max-width: 100%; width: 100%; box-sizing: border-box; }
         }
         @media (prefers-reduced-motion: reduce) {
           .ai-briefing-spin { animation: none; }

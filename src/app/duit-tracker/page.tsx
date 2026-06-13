@@ -237,7 +237,8 @@ export default function DuitTrackerPage() {
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>('this_month');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  // Applied custom range — only updates when user clicks "Cari"
+  const [appliedRange, setAppliedRange] = useState<{ start: string; end: string } | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTreeModal, setShowTreeModal] = useState(false);
   const [showAiInput, setShowAiInput] = useState(false);
@@ -311,15 +312,15 @@ export default function DuitTrackerPage() {
     setLoading(true);
     setError(null);
     try {
-      // Determine date range from preset or custom
+      // Determine date range from preset or applied custom range
       let txParams: { month?: number; year?: number; type?: string; category?: string; startDate?: string; endDate?: string } = {};
-      if (periodPreset === 'custom' && customStart && customEnd) {
-        txParams = { startDate: customStart, endDate: customEnd, type: typeFilter || undefined, category: categoryFilter || undefined };
+      if (periodPreset === 'custom' && appliedRange) {
+        txParams = { startDate: appliedRange.start, endDate: appliedRange.end, type: typeFilter || undefined, category: categoryFilter || undefined };
       } else if (periodPreset !== 'custom') {
         const range = getPeriodRange(periodPreset);
         txParams = { startDate: range.startDate, endDate: range.endDate, type: typeFilter || undefined, category: categoryFilter || undefined };
       } else {
-        // Custom but no dates yet — fallback to month/year
+        // Custom but no applied range yet — fallback to this month
         txParams = { month, year, type: typeFilter || undefined, category: categoryFilter || undefined };
       }
 
@@ -335,7 +336,7 @@ export default function DuitTrackerPage() {
       setBudgets(b);
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
-  }, [month, year, typeFilter, categoryFilter, periodPreset, customStart, customEnd]);
+  }, [month, year, typeFilter, categoryFilter, periodPreset, appliedRange]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -549,67 +550,67 @@ export default function DuitTrackerPage() {
               {/* Date filters */}
               {tab !== 'trees' && (
                 <div style={{ marginBottom: 20 }}>
-                  {/* Period presets — horizontal scrollable pills */}
                   {tab === 'transactions' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <div className="dt-period-scroll" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
-                        {PERIOD_PRESETS.map(p => (
-                          <button
-                            key={p.key}
-                            onClick={() => { setPeriodPreset(p.key); if (p.key !== 'custom') setShowFilterPanel(false); else setShowFilterPanel(true); }}
-                            className="dt-period-chip"
-                            style={{
-                              padding: '7px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                              fontSize: 12, fontWeight: periodPreset === p.key ? 600 : 450,
-                              background: periodPreset === p.key ? 'rgb(var(--color-primary))' : 'var(--input-bg)',
-                              color: periodPreset === p.key ? '#fff' : 'rgb(var(--text-secondary))',
-                              transition: 'all 0.2s', whiteSpace: 'nowrap', flexShrink: 0,
-                              boxShadow: periodPreset === p.key ? '0 2px 8px rgba(0,0,0,0.12)' : 'none',
-                            }}
-                          >
-                            {p.emoji} {p.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Custom date range picker */}
-                      {periodPreset === 'custom' && showFilterPanel && (
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <div style={{ flex: 1, minWidth: 130 }}>
-                            <DateTimePicker
-                              mode="date"
-                              value={customStart}
-                              onChange={setCustomStart}
-                              placeholder="Tanggal awal"
-                            />
-                          </div>
-                          <span style={{ fontSize: 12, color: 'rgb(var(--text-muted))', flexShrink: 0 }}>s/d</span>
-                          <div style={{ flex: 1, minWidth: 130 }}>
-                            <DateTimePicker
-                              mode="date"
-                              value={customEnd}
-                              onChange={setCustomEnd}
-                              placeholder="Tanggal akhir"
-                              min={customStart || undefined}
-                            />
-                          </div>
+                      {/* Row 1: Period dropdown + Type chips */}
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ minWidth: 160 }}>
+                          <SelectOption
+                            value={periodPreset}
+                            onChange={(v) => { setPeriodPreset(v as PeriodPreset); if (v !== 'custom') setAppliedRange(null); }}
+                            options={PERIOD_PRESETS.map(p => ({ value: p.key, label: `${p.emoji} ${p.label}` }))}
+                            placeholder="Pilih Periode"
+                          />
                         </div>
-                      )}
-
-                      {/* Type + Category filters row */}
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                        {/* Type filter */}
+                        {/* Type filter chips */}
                         {[{ v: '', l: 'Semua' }, { v: 'income', l: '↑ Masuk' }, { v: 'expense', l: '↓ Keluar' }].map(f => (
                           <button key={f.v} onClick={() => setTypeFilter(f.v)} className="dt-filter-chip" style={{
-                            padding: '6px 12px', borderRadius: 8, border: typeFilter === f.v ? '1.5px solid rgb(var(--color-primary))' : '1px solid var(--border-default)',
-                            cursor: 'pointer', fontSize: 11.5, fontWeight: 500,
+                            padding: '7px 12px', borderRadius: 8, border: typeFilter === f.v ? '1.5px solid rgb(var(--color-primary))' : '1px solid var(--border-default)',
+                            cursor: 'pointer', fontSize: 12, fontWeight: 500,
                             background: typeFilter === f.v ? 'rgba(var(--color-primary) / 0.08)' : 'transparent',
                             color: typeFilter === f.v ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))', transition: 'all 0.2s',
                           }}>{f.l}</button>
                         ))}
-                        <span style={{ width: 1, height: 18, background: 'var(--border-default)', margin: '0 2px' }} />
-                        {/* Category filter */}
-                        <div style={{ minWidth: 150 }}>
+                      </div>
+
+                      {/* Row 2: Custom date range (only when custom is selected) */}
+                      {periodPreset === 'custom' && (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <div style={{ flex: 1, minWidth: 120 }}>
+                            <DateTimePicker
+                              mode="date"
+                              value={customStart}
+                              onChange={setCustomStart}
+                              placeholder="Dari tanggal"
+                            />
+                          </div>
+                          <span style={{ fontSize: 12, color: 'rgb(var(--text-muted))', flexShrink: 0 }}>—</span>
+                          <div style={{ flex: 1, minWidth: 120 }}>
+                            <DateTimePicker
+                              mode="date"
+                              value={customEnd}
+                              onChange={setCustomEnd}
+                              placeholder="Sampai tanggal"
+                              min={customStart || undefined}
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              if (!customStart || !customEnd) { showToast('Pilih tanggal awal dan akhir', 'error'); return; }
+                              setAppliedRange({ start: customStart, end: customEnd });
+                            }}
+                            disabled={!customStart || !customEnd}
+                            style={{ flexShrink: 0, borderRadius: 10 }}
+                          >
+                            🔍 Cari
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Row 3: Category filter */}
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ minWidth: 160 }}>
                           <SelectOption
                             value={categoryFilter}
                             onChange={setCategoryFilter}
@@ -623,16 +624,16 @@ export default function DuitTrackerPage() {
                           />
                         </div>
                         {/* Clear all filters */}
-                        {(typeFilter || categoryFilter) && (
+                        {(typeFilter || categoryFilter || appliedRange) && (
                           <button
-                            onClick={() => { setTypeFilter(''); setCategoryFilter(''); }}
+                            onClick={() => { setTypeFilter(''); setCategoryFilter(''); setPeriodPreset('this_month'); setAppliedRange(null); setCustomStart(''); setCustomEnd(''); }}
                             style={{
-                              padding: '4px 8px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                              fontSize: 11, color: 'rgb(var(--color-error))', background: 'rgba(var(--color-error) / 0.08)',
+                              padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                              fontSize: 11.5, color: 'rgb(var(--color-error))', background: 'rgba(var(--color-error) / 0.08)',
                               display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500,
                             }}
                           >
-                            <X size={11} /> Reset
+                            <X size={12} /> Reset Filter
                           </button>
                         )}
                       </div>

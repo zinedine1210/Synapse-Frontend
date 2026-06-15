@@ -1062,9 +1062,14 @@ export default function DuitTrackerPage() {
               editingTx={editingTx}
               submitting={submitting}
               onSubmit={handleAddTransaction}
-              onBulkCreate={handleBulkCreate}
               expenseCategories={EXPENSE_CATEGORIES}
               incomeCategories={INCOME_CATEGORIES}
+            />
+
+            <ReceiptScannerModal
+              isOpen={showScannerModal}
+              onClose={() => setShowScannerModal(false)}
+              onBulkCreate={handleBulkCreate}
             />
 
             {/* AI Input */}
@@ -1192,24 +1197,6 @@ export default function DuitTrackerPage() {
                 </div>
               </div>
             </Modal>
-
-            <TransactionSheet
-              isOpen={showAddModal}
-              onClose={() => setShowAddModal(false)}
-              form={form}
-              setForm={setForm}
-              editingTx={editingTx}
-              submitting={submitting}
-              onSubmit={handleAddTransaction}
-              expenseCategories={EXPENSE_CATEGORIES}
-              incomeCategories={INCOME_CATEGORIES}
-            />
-
-            <ReceiptScannerModal
-              isOpen={showScannerModal}
-              onClose={() => setShowScannerModal(false)}
-              onBulkCreate={handleBulkCreate}
-            />
 
             </PullToRefresh>
           </div>

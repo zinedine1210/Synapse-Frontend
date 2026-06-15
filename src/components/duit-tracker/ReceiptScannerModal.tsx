@@ -34,11 +34,11 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      showToast('Format berkas harus berupa gambar.', 'error');
+      showToast('Eh itu bukan gambar bestie, upload foto ya! 📷', 'error');
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      showToast('Ukuran gambar maksimal 5MB.', 'error');
+      showToast('Kegedean nih fotonya, maks 5MB ya! 📏', 'error');
       return;
     }
     setScanning(true);
@@ -65,10 +65,10 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
         setScannedItems(mapped);
         showToast(`${mapped.length} item terdeteksi dari struk! 📸`, 'success');
       } else {
-        showToast('Tidak bisa membaca struk. Coba foto lebih jelas.', 'error');
+        showToast('Duh gak kebaca nih, coba foto ulang yang lebih jelas ya! 🔍', 'error');
       }
     } catch (err: any) {
-      showToast(err.message || 'Gagal memindai struk.', 'error');
+      showToast(err.message || 'Yah gagal scan nih, coba lagi ya~', 'error');
     } finally {
       setScanning(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -79,7 +79,7 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
   const handleSaveBulk = async () => {
     const selected = scannedItems.filter(it => it.checked);
     if (selected.length === 0) {
-      showToast('Pilih minimal 1 item untuk disimpan.', 'error');
+      showToast('Pilih dulu minimal 1 item dong! ☝️', 'error');
       return;
     }
     setSavingBulk(true);
@@ -89,7 +89,7 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
       showToast(`${selected.length} transaksi berhasil disimpan! ✅`, 'success');
       onClose(); // Close modal after successful bulk create
     } catch (err: any) {
-      showToast(err.message || 'Gagal menyimpan transaksi.', 'error');
+      showToast(err.message || 'Duh gagal nyimpen nih, coba lagi ya~', 'error');
     } finally {
       setSavingBulk(false);
     }
@@ -98,7 +98,7 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
   const handleClose = () => {
     if (scanning || savingBulk) return; // Prevent closing while processing
     if (scannedItems.length > 0) {
-      if (!window.confirm('Yakin ingin menutup? Hasil scan akan hilang.')) return;
+      if (!window.confirm('Yakin nih mau nutup? Hasil scan-nya bakal ilang loh~')) return;
     }
     setScannedItems([]);
     onClose();
@@ -114,9 +114,9 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
               <Receipt size={32} />
             </div>
             <div>
-              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Pindai Struk Belanjamu</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Scan Struk Belanjaanmu 📸</h3>
               <p style={{ fontSize: 13, color: 'rgb(var(--text-secondary))', maxWidth: 280, margin: '0 auto' }}>
-                AI akan membaca daftar belanjaanmu dan memisahkannya menjadi transaksi individual.
+                Tinggal foto struk, AI langsung breakdown jadi transaksi satu-satu. Auto rapi!
               </p>
             </div>
             <div style={{ display: 'flex', gap: 12, width: '100%', marginTop: 8 }}>
@@ -137,8 +137,8 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
           <div style={{ padding: '40px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
             <Loader2 className="spin" size={40} style={{ color: 'rgb(var(--color-primary))' }} />
             <div>
-              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Sedang Menganalisis...</h3>
-              <p style={{ fontSize: 13, color: 'rgb(var(--text-secondary))' }}>Memindai struk dengan AI. Tunggu sebentar ya!</p>
+              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Lagi Dibaca AI nih... 🧠</h3>
+              <p style={{ fontSize: 13, color: 'rgb(var(--text-secondary))' }}>Bentar ya, AI lagi ngitung belanjaanmu~</p>
             </div>
           </div>
         )}

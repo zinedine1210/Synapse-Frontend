@@ -134,7 +134,7 @@ export function TransactionSheet({
               boxShadow: !isIncome ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
             }}
           >
-            ↓ Pengeluaran
+            ↓ Keluar
           </button>
           <button
             type="button"
@@ -146,14 +146,14 @@ export function TransactionSheet({
               boxShadow: isIncome ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
             }}
           >
-            ↑ Pemasukan
+            ↑ Masuk
           </button>
         </div>
 
         {/* Large amount input */}
         <div className="tx-sheet__amount" style={{ borderColor: accent }}>
           <span className="tx-sheet__amount-label" style={{ color: accent }}>
-            {isIncome ? 'Jumlah masuk' : 'Jumlah keluar'}
+            {isIncome ? 'Duit masuk 🤑' : 'Duit keluar 💸'}
           </span>
           <CurrencyInput
             value={form.amount}
@@ -165,8 +165,8 @@ export function TransactionSheet({
 
         {/* Label */}
         <TextInput
-          label="Keterangan"
-          placeholder="Kopi, makan siang, gajian..."
+          label="Buat apa nih?"
+          placeholder="Kopi, warteg, grab, gajian..."
           value={form.label}
           onChange={(v) => setForm({ ...form, label: v })}
           required
@@ -203,8 +203,8 @@ export function TransactionSheet({
         <div className="tx-sheet__row">
           <div style={{ flex: 1, minWidth: 0 }}>
             <TextInput
-              label="Catatan (opsional)"
-              placeholder="Detail tambahan..."
+              label="Note (opsional)"
+              placeholder="Tambahin detail kalo perlu~"
               value={form.note}
               onChange={(v) => setForm({ ...form, note: v })}
             />
@@ -231,9 +231,9 @@ export function TransactionSheet({
             {submitting ? (
               <Loader2 className="spin" size={16} />
             ) : editingTx ? (
-              'Simpan Perubahan'
+              'Update Transaksi ✏️'
             ) : (
-              '💾 Simpan Transaksi'
+              'Gas Simpan! 💾'
             )}
           </Button>
         </div>

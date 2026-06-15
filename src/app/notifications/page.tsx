@@ -254,7 +254,7 @@ export default function NotificationsPage() {
     setUnreadCount(0);
     try {
       await notificationService.markAllAsRead();
-      showToast('Semua notifikasi ditandai dibaca', 'success');
+      showToast('Semua notif udah dibaca! ✅', 'success');
     } catch {
       // Reload on failure
       fetchNotifications(1, activeCategory, false);
@@ -302,7 +302,7 @@ export default function NotificationsPage() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <div>
               <h2 style={{ margin: 0, fontSize: 'var(--font-lg)', fontWeight: 700, color: 'rgb(var(--text-primary))' }}>
-                Pusat Notifikasi
+                Pusat Notif
               </h2>
               {unreadCount > 0 && (
                 <p style={{ margin: '0.25rem 0 0', fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))' }}>
@@ -376,7 +376,7 @@ export default function NotificationsPage() {
             }}>
               <div style={{ flex: 1, minWidth: 180 }}>
                 <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', margin: 0 }}>
-                  📱 Aktifkan notifikasi HP agar tidak ketinggalan info penting!
+                  📱 Nyalain notif HP biar gak ketinggalan info penting!
                 </p>
                 {push.error && (
                   <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--color-danger))', margin: '4px 0 0', lineHeight: 1.4 }}>
@@ -393,7 +393,7 @@ export default function NotificationsPage() {
                     if (result.ok) {
                       showToast('Push notification aktif! 🎉', 'success');
                     } else {
-                      showToast(result.error || 'Gagal mengaktifkan push notification.', 'error');
+                      showToast('Gagal nyalain push notif nih.', 'error');
                     }
                   }}
                   style={{
@@ -419,7 +419,7 @@ export default function NotificationsPage() {
               marginBottom: '0.75rem',
             }}>
               <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', margin: 0 }}>
-                🔇 Notifikasi diblokir. Buka pengaturan browser → Izin → Notifikasi → izinkan untuk situs ini, lalu refresh halaman.
+                🔇 Notif diblokir nih. Buka settings browser → Izin → Notifikasi → izinin situs ini, terus refresh ya!
               </p>
             </div>
           )}
@@ -435,7 +435,7 @@ export default function NotificationsPage() {
             <Card style={{ padding: '3rem', textAlign: 'center' }}>
               <Inbox size={48} style={{ color: 'rgb(var(--text-muted))', opacity: 0.3, margin: '0 auto 1rem' }} />
               <p style={{ fontSize: 'var(--font-md)', color: 'rgb(var(--text-muted))', margin: 0 }}>
-                Tidak ada notifikasi
+                Belum ada notif nih
               </p>
               <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginTop: '0.25rem' }}>
                 {activeCategory !== 'all'

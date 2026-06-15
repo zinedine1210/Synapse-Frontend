@@ -391,7 +391,7 @@ export default function InsightPage() {
                 </div>
                 <div>
                   <h1 className="insight-title">Insight</h1>
-                  <p className="insight-subtitle">Analitik keuangan &amp; produktivitasmu</p>
+                  <p className="insight-subtitle">Cek statistik duit &amp; produktivitas kamu di sini! 📊</p>
                 </div>
               </div>
 

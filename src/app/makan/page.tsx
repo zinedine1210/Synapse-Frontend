@@ -136,7 +136,7 @@ export default function MakanApaPage() {
       const updated = await foodService.updatePreference(data);
       setPref(updated);
       setShowPrefModal(false);
-      showToast('Preferensi disimpan!', 'success');
+      showToast('Preferensi udah ke-save! ✨', 'success');
     } catch (e: any) {
       showToast(e.message, 'error');
     }
@@ -148,17 +148,17 @@ export default function MakanApaPage() {
       try {
         await foodService.removeFavorite(existing.id);
         mutateFavorites(prev => (prev || []).filter(f => f.id !== existing.id));
-        showToast('Dihapus dari favorit.', 'info');
+        showToast('Bye bye dari favorit~ 👋', 'info');
       } catch {
-        showToast('Gagal menghapus favorit.', 'error');
+        showToast('Yah gagal hapus favorit nih.', 'error');
       }
     } else {
       try {
         const fav = await foodService.addFavorite(recipe.name, JSON.stringify(recipe));
         mutateFavorites(prev => [fav, ...(prev || [])]);
-        showToast('Ditambahkan ke favorit! ❤️', 'success');
+        showToast('Masuk list favorit! ❤️', 'success');
       } catch {
-        showToast('Gagal menyimpan favorit.', 'error');
+        showToast('Gagal simpen favorit nih.', 'error');
       }
     }
   };
@@ -167,9 +167,9 @@ export default function MakanApaPage() {
     try {
       await foodService.removeFavorite(id);
       mutateFavorites(prev => (prev || []).filter(f => f.id !== id));
-      showToast('Dihapus dari favorit.', 'info');
+      showToast('Bye bye dari favorit~ 👋', 'info');
     } catch {
-      showToast('Gagal menghapus favorit.', 'error');
+      showToast('Gagal hapus favorit nih.', 'error');
     }
   };
 
@@ -277,7 +277,7 @@ export default function MakanApaPage() {
                 </span>
               )}
               <p style={{ fontSize: '9px', color: 'rgb(var(--text-muted))', margin: 0, marginTop: 2 }}>
-                {isFridge ? 'Resep Kulkas' : 'Rekomendasi Menu'}
+                {isFridge ? 'Dari Kulkas' : 'Rekomendasi AI'}
               </p>
             </div>
             <ChevronDown
@@ -694,10 +694,10 @@ export default function MakanApaPage() {
                       </div>
                       <div>
                         <h4 style={{ fontWeight: 800, fontSize: 'var(--font-md)', color: 'rgb(var(--text-primary))', marginBottom: 6 }}>
-                          Sedang Menganalisis Gambar...
+                          Lagi Dibaca AI nih... 🧠
                         </h4>
                         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', maxWidth: 520, margin: '0 auto', lineHeight: 1.45 }}>
-                          Gemini AI sedang membaca foto {mode === 'fridge' ? 'isi kulkas' : 'menu restoran'} Anda untuk menyusun rekomendasi terbaik sesuai selera & sisa budget makanmu. Mohon tunggu sekitar 5-10 detik. ✨
+                          AI lagi ngecek foto {mode === 'fridge' ? 'isi kulkas' : 'menu restoran'} kamu buat nyusun rekomendasi paling match sama selera & budget. Bentar ya, 5-10 detik doang~ ✨
                         </p>
                       </div>
                     </Card>
@@ -821,7 +821,7 @@ export default function MakanApaPage() {
                   ) : favorites.length === 0 ? (
                     <Card style={{ padding: '2.5rem 2rem', textAlign: 'center' }}>
                       <Heart size={40} style={{ color: 'rgb(var(--text-muted))', marginBottom: 12 }} />
-                      <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))' }}>Belum ada resep favorit. Simpan resep dari hasil rekomendasi dengan menekan ikon hati ❤️</p>
+                      <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))' }}>Belum ada favorit nih. Tap ❤️ di resep buat nyimpen!</p>
                     </Card>
                   ) : (
                     <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -869,7 +869,7 @@ export default function MakanApaPage() {
                   ) : history.length === 0 ? (
                     <Card style={{ padding: '2.5rem 2rem', textAlign: 'center' }}>
                       <History size={40} style={{ color: 'rgb(var(--text-muted))', marginBottom: 12 }} />
-                      <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))' }}>Belum ada riwayat rekomendasi. Upload foto untuk mulai!</p>
+                      <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))' }}>Belum pernah coba rekomendasi. Upload foto & gas cobain! 📸</p>
                     </Card>
                   ) : (
                     <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

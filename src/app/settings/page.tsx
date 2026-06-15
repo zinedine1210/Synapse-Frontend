@@ -306,7 +306,7 @@ export default function SettingsPage() {
                 Pengaturan
               </h2>
               <p style={{ color: 'rgb(var(--text-muted))', fontSize: 'var(--font-sm)', marginTop: '0.25rem' }}>
-                Kelola profil, notifikasi, tampilan, dan preferensi akun Anda.
+                Atur profil, notif, tampilan & vibe app kamu di sini~ ✨
               </p>
             </div>
 
@@ -564,7 +564,7 @@ function ProfileTab({
           Info Kampus & Diri
         </h3>
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1.25rem' }}>
-          Isi ini biar Synapse makin kenal kamu dan bisa kasih rekomendasi yang lebih personal!
+          Isi biar Synapse makin kenal kamu & rekomendasi makin spot on! 🎯
         </p>
 
         {onboardingLoading ? (
@@ -677,7 +677,7 @@ function NotificationsTab({
           Preferensi Notifikasi
         </h3>
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>
-          Pilih notifikasi yang ingin kamu terima.
+          Pilih notif mana aja yang mau nyala, biar gak keganggu tapi tetep update!
         </p>
 
         {/* Push Notifications Toggle */}
@@ -764,7 +764,7 @@ function NotificationsTab({
           Quiet Hours
         </h3>
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>
-          Notifikasi akan ditahan dan dikirim setelah jam ini berakhir.
+          Notif bakal ditahan dulu pas jam segini, biar gak ganggu tidur/me time kamu~ 🌙
         </p>
 
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -806,7 +806,7 @@ function NotificationsTab({
           <div>
             <h4 style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>Pengaturan Si Bawel</h4>
             <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>
-              Atur kepribadian dan frekuensi Si Bawel di Duit Tracker.
+              Atur vibe & intensitas Si Bawel di Duit Tracker kamu.
             </p>
           </div>
           <a
@@ -857,7 +857,7 @@ function AppearanceTab({
           Tema
         </h3>
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>
-          Pilih tampilan yang kamu sukai.
+          Pilih tampilan yang paling lo vibe.
         </p>
 
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -1008,7 +1008,7 @@ function DataTab() {
           Ekspor Data
         </h3>
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>
-          Download semua data transaksi dan todo kamu dalam format CSV. Limit: 1x per jam.
+          Download semua data transaksi & todo kamu jadi CSV. Limit: 1x per jam ya!
         </p>
         <Button
           variant="secondary"
@@ -1028,7 +1028,7 @@ function DataTab() {
           Hapus Akun
         </h3>
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>
-          Hapus akun berarti semua data kamu bakal hilang permanen setelah 30 hari. Gak bisa di-undo ya!
+          Hapus akun = semua data ilang permanen setelah 30 hari. No turning back, pikirin baik-baik! 🙅
         </p>
         <Button
           variant="danger"

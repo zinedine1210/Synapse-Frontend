@@ -337,7 +337,7 @@ export default function AuthPage() {
                 background: c.badgeBg, border: `1px solid ${c.badgeBorder}`,
                 fontSize: '0.72rem', color: c.badgeColor, fontWeight: 600,
               }}>
-                <Sparkles size={12} /> {isLogin ? 'Selamat datang kembali' : 'Gabung sekarang yuk'}
+                <Sparkles size={12} /> {isLogin ? 'Eh, balik lagi nih!' : 'Yuk gabung sekarang!'}
               </div>
 
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: c.text, margin: '0 0 0.35rem' }}>
@@ -345,7 +345,7 @@ export default function AuthPage() {
                 <span style={{ background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{brand.name}</span>
               </h2>
               <p style={{ fontSize: '0.85rem', color: c.textMuted, margin: 0 }}>
-                {isLogin ? 'Login dulu biar bisa lanjut belajar' : 'Bikin akun baru dan mulai belajar lebih cerdas'}
+                {isLogin ? 'Gas login dulu biar bisa lanjut! 🚀' : 'Bikin akun & mulai belajar lebih smart 🧠'}
               </p>
             </div>
 
@@ -392,7 +392,7 @@ export default function AuthPage() {
                 {loading ? (
                   <><Loader2 size={16} className="animate-spin" /> Memproses...</>
                 ) : (
-                  <>{isLogin ? 'Masuk' : 'Daftar'} <ArrowRight size={15} /></>
+                  <>{isLogin ? 'Gas Masuk' : 'Gas Daftar'} <ArrowRight size={15} /></>
                 )}
               </button>
             </form>

@@ -451,10 +451,10 @@ export default function TodosPage() {
   };
 
   const motivational = todayProgress.percent >= 100 && todayProgress.total > 0
-    ? 'All done buat hari ini! GG! 🎉'
+    ? 'Mantap semua kelar! GG banget! 🎉'
     : todayProgress.remaining > 0
-      ? `${todayProgress.remaining} task lagi yang nunggu diselesaiin`
-      : 'Belum ada task buat hari ini ✨';
+      ? `${todayProgress.remaining} task lagi, dikit lagii gas!`
+      : 'Masih kosong nih, isi dong! ✨';
 
   return (
     <AuthGuard requiredFeature="todo_list">
@@ -485,7 +485,7 @@ export default function TodosPage() {
                       <p style={{ fontSize: 12, fontWeight: 600, color: 'rgb(var(--text-muted))', margin: 0 }}>
                         {greeting()}{user?.fullName ? `, ${user.fullName.split(' ')[0]}` : ''} 👋
                       </p>
-                      <h1 style={{ fontSize: 22, fontWeight: 800, margin: '2px 0 6px', letterSpacing: -0.4 }}>To-Do List</h1>
+                      <h1 style={{ fontSize: 22, fontWeight: 800, margin: '2px 0 6px', letterSpacing: -0.4 }}>Todo Kamu</h1>
                       <p style={{ fontSize: 13, color: 'rgb(var(--text-secondary))', margin: 0 }}>{motivational}</p>
                       {streak > 0 && (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 8, padding: '4px 10px', borderRadius: 999, background: 'rgba(var(--color-warning), 0.15)', color: 'rgb(var(--color-warning))', fontSize: 12, fontWeight: 700 }}>
@@ -630,9 +630,9 @@ export default function TodosPage() {
                 ) : groups.length === 0 ? (
                   <Card style={{ textAlign: 'center', padding: 40 }}>
                     <CheckSquare size={44} style={{ opacity: 0.18, marginBottom: 14 }} />
-                    <p style={{ opacity: 0.7, fontSize: 15, marginBottom: 4, fontWeight: 600 }}>Belum ada task nih</p>
+                    <p style={{ opacity: 0.7, fontSize: 15, marginBottom: 4, fontWeight: 600 }}>Kosong nih tasknya</p>
                     <p style={{ opacity: 0.45, fontSize: 13, marginBottom: 16 }}>Ketik di kolom cepat di atas atau bikin task baru yuk!</p>
-                    <Button onClick={() => openAdd()} style={{ margin: '0 auto' }}><Plus size={16} /> Bikin Task</Button>
+                    <Button onClick={() => openAdd()} style={{ margin: '0 auto' }}><Plus size={16} /> Gas Bikin!</Button>
                   </Card>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>

@@ -534,7 +534,7 @@ export default function DuitTrackerPage() {
               <div className="duit-tracker-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
                   <h1 style={{ fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>💰 Duit Tracker</h1>
-                  <p style={{ fontSize: 13, color: 'var(--dt-text-secondary)', marginTop: 2 }}>Lacak keuanganmu dengan cerdas</p>
+                  <p style={{ fontSize: 13, color: 'var(--dt-text-secondary)', marginTop: 2 }}>Pantau cuan & bocornya duitmu, biar makin melek finansial 💪</p>
                 </div>
                 <div className="duit-tracker-header-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   {hasFeature('si_bawel') && (
@@ -542,10 +542,7 @@ export default function DuitTrackerPage() {
                       <Settings size={14} /> 🗣️
                     </button>
                   )}
-                  {hasFeature('duit_tracker_quick_input') && (
-                    <Button onClick={() => setShowAiInput(true)} variant="secondary" size="sm"><Sparkles size={14} /> AI Input</Button>
-                  )}
-                  <Button onClick={() => setShowScannerModal(true)} variant="secondary" size="sm" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-default)', color: 'inherit' }}><Camera size={14} /> Scan Struk</Button>
+                  <Button onClick={() => setShowAiInput(true)} variant="secondary" size="sm"><Sparkles size={14} /> AI Input</Button>
                   <Button onClick={() => { setEditingTx(null); setForm({ amount: '', type: 'expense', category: 'lainnya', label: '', note: '', date: '' }); setShowAddModal(true); }} size="sm"><Plus size={14} /> Tambah</Button>
                 </div>
               </div>
@@ -708,8 +705,8 @@ export default function DuitTrackerPage() {
                   {transactions.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: 48 }}>
                       <Wallet size={48} style={{ opacity: 0.15, marginBottom: 12 }} />
-                      <p style={{ opacity: 0.6, fontSize: 15, fontWeight: 500 }}>Belum ada transaksi bulan ini</p>
-                      <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Klik &ldquo;AI Input&rdquo; atau &ldquo;Tambah&rdquo; untuk mulai</p>
+                      <p style={{ opacity: 0.6, fontSize: 15, fontWeight: 500 }}>Belum ada transaksi bulan ini nih</p>
+                      <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Gas catat lewat &ldquo;AI Input&rdquo; atau &ldquo;Tambah&rdquo; biar gak lupa! 📝</p>
                     </div>
                   ) : Object.entries(txByDate).map(([dateLabel, txs]) => (
                     <div key={dateLabel}>
@@ -891,8 +888,8 @@ export default function DuitTrackerPage() {
 
                   {/* Category Breakdown */}
                   <Card style={{ padding: '20px 22px' }}>
-                    <h3 style={{ marginBottom: 18, fontSize: 16, fontWeight: 700 }}>Pengeluaran per Kategori</h3>
-                    {summary.categoryReport.length === 0 ? <p style={{ opacity: 0.5, fontSize: 14 }}>Belum ada data.</p> : (
+                    <h3 style={{ marginBottom: 18, fontSize: 16, fontWeight: 700 }}>Duit Keluar per Kategori</h3>
+                    {summary.categoryReport.length === 0 ? <p style={{ opacity: 0.5, fontSize: 14 }}>Belum ada data nih, catat transaksi dulu ya~</p> : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                         {summary.categoryReport.sort((a, b) => b.spent - a.spent).map(cr => {
                           const catInfo = EXPENSE_CATEGORIES.find(c => c.id === cr.category);
@@ -949,8 +946,8 @@ export default function DuitTrackerPage() {
                   {budgets.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: 48 }}>
                       <Target size={48} style={{ opacity: 0.15, marginBottom: 12 }} />
-                      <p style={{ opacity: 0.6, fontSize: 15, fontWeight: 500 }}>Belum ada budget</p>
-                      <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Atur budget per kategori agar pengeluaran terkontrol</p>
+                      <p style={{ opacity: 0.6, fontSize: 15, fontWeight: 500 }}>Belum ada budget nih</p>
+                      <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Set budget per kategori biar spending-mu gak kebablasan! 💰</p>
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1003,8 +1000,8 @@ export default function DuitTrackerPage() {
                   {trees.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: 48 }}>
                       <span style={{ fontSize: 56, display: 'block', marginBottom: 12 }}>🌱</span>
-                      <p style={{ opacity: 0.6, fontSize: 15, fontWeight: 500 }}>Belum ada pohon tabungan</p>
-                      <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Buat pohon untuk menabung dengan cara menyenangkan!</p>
+                      <p style={{ opacity: 0.6, fontSize: 15, fontWeight: 500 }}>Belum ada pohon tabungan nih</p>
+                      <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Tanem pohon buat nabung sambil have fun! 🌱</p>
                     </div>
                   ) : (
                     <div className="duit-trees-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
@@ -1074,7 +1071,36 @@ export default function DuitTrackerPage() {
 
             {/* AI Input */}
             <Modal isOpen={showAiInput} onClose={() => setShowAiInput(false)} title="✨ Input Cerdas">
-              <p style={{ marginBottom: 12, fontSize: 13, opacity: 0.6 }}>Ketik transaksi dalam bahasa natural. AI akan otomatis parsing jumlah, kategori, dan tipe.</p>
+              {/* Scan Struk option */}
+              <div
+                onClick={() => { setShowAiInput(false); setShowScannerModal(true); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
+                  borderRadius: 12, cursor: 'pointer', marginBottom: 16,
+                  background: 'rgba(var(--color-warning) / 0.06)',
+                  border: '1.5px dashed rgba(var(--color-warning) / 0.4)',
+                  transition: 'background 0.15s ease, border-color 0.15s ease',
+                }}
+              >
+                <div style={{
+                  width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(var(--color-warning) / 0.12)', flexShrink: 0,
+                }}>
+                  <Camera size={18} style={{ color: 'rgb(var(--color-warning))' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontWeight: 700, fontSize: 14, display: 'block' }}>📸 Scan Struk</span>
+                  <span style={{ fontSize: 12, color: 'rgb(var(--text-muted))' }}>Foto struk belanja, AI otomatis catat semua item</span>
+                </div>
+              </div>
+
+              <div style={{ position: 'relative', margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ flex: 1, height: 1, background: 'var(--border-default)' }} />
+                <span style={{ fontSize: 11, color: 'rgb(var(--text-muted))', fontWeight: 600 }}>atau ketik manual</span>
+                <span style={{ flex: 1, height: 1, background: 'var(--border-default)' }} />
+              </div>
+
+              <p style={{ marginBottom: 12, fontSize: 13, opacity: 0.6 }}>Ketik aja kayak ngobrol biasa, AI langsung ngerti mau catat apa! 🧠</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                 {['kopi 25rb', 'makan warteg 15rb', 'gaji 5.5 juta', 'grab 12k'].map(ex => (
                   <button key={ex} type="button" onClick={() => setAiText(ex)} style={{
@@ -1141,7 +1167,7 @@ export default function DuitTrackerPage() {
             {/* Budget Modal */}
             <Modal isOpen={showBudgetModal} onClose={() => setShowBudgetModal(false)} title="🎯 Atur Budget Kategori">
               <form onSubmit={handleSetBudget} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <p style={{ fontSize: 13, opacity: 0.5, margin: 0 }}>Set budget bulanan. Kamu akan dapat peringatan saat mendekati batas.</p>
+                <p style={{ fontSize: 13, opacity: 0.5, margin: 0 }}>Set budget bulanan biar dapet warning kalo udah mau over limit! ⚠️</p>
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, display: 'block', opacity: 0.6 }}>Kategori</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -1171,7 +1197,7 @@ export default function DuitTrackerPage() {
             {/* Si Bawel Settings */}
             <Modal isOpen={showBawelSettings} onClose={() => setShowBawelSettings(false)} title="🗣️ Pengaturan Si Bawel">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                <p style={{ fontSize: 13, opacity: 0.5, margin: 0 }}>Si Bawel adalah AI keuangan yang otomatis berkomentar pada setiap transaksimu.</p>
+                <p style={{ fontSize: 13, opacity: 0.5, margin: 0 }}>Si Bawel bakal auto komen soal transaksi kamu — kadang nyebelin tapi berguna! 😜</p>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 12, background: 'var(--input-bg)' }}>
                   <span style={{ fontSize: 14, fontWeight: 600 }}>Aktifkan Si Bawel</span>
                   <button onClick={() => handleBawelToggle('isEnabled', !bawelSetting?.isEnabled)} style={{ width: 50, height: 28, borderRadius: 14, border: 'none', cursor: 'pointer', background: bawelSetting?.isEnabled ? 'rgb(var(--color-primary))' : 'var(--border-default)', position: 'relative', transition: 'background 0.3s' }}>

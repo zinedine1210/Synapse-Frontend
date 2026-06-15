@@ -53,7 +53,7 @@ export default function FiturTidakTersediaPage() {
             marginBottom: '0.75rem',
           }}
         >
-          Fitur Tidak Tersedia
+          Yah, Fitur Ini Belum Kebuka 🔒
         </h1>
 
         {/* Description */}
@@ -65,11 +65,11 @@ export default function FiturTidakTersediaPage() {
             marginBottom: '2rem',
           }}
         >
-          Fitur ini belum tersedia di paket{' '}
+          Fitur ini belum available di paket{' '}
           <strong style={{ color: 'rgb(var(--text-secondary))' }}>
             {user?.plan ?? 'FREE'}
           </strong>{' '}
-          kamu. Upgrade ke paket PRO untuk membuka semua fitur premium Synapse.
+          kamu. Gas upgrade ke PRO buat unlock semua fitur keren Synapse! 🚀
         </p>
 
         {/* Upgrade CTA */}
@@ -86,7 +86,7 @@ export default function FiturTidakTersediaPage() {
               marginBottom: '0.75rem',
             }}
           >
-            Upgrade ke PRO
+            Gas Upgrade PRO ✨
           </Button>
         </Link>
 
@@ -97,7 +97,7 @@ export default function FiturTidakTersediaPage() {
             leftIcon={<ArrowLeft size={14} />}
             style={{ width: '100%', justifyContent: 'center' }}
           >
-            Kembali ke Dashboard
+            Balik ke Dashboard
           </Button>
         </Link>
       </Card>

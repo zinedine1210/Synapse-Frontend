@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { Bell, Check, CheckCheck, X, Search } from 'lucide-react';
 import { notificationService, Notification } from '@/services/notificationService';
@@ -59,26 +59,13 @@ export function Appbar({
     };
   }, [resolvedUserId]);
 
-  // Fetch notifications when panel opens
-  const fetchNotifications = useCallback(async () => {
-    if (loaded) return;
-    try {
-      const data = await notificationService.getNotifications();
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
-      setLoaded(true);
-    } catch { }
-  }, [loaded]);
-
-  useEffect(() => {
-    if (showPanel && !loaded) fetchNotifications();
-  }, [showPanel, loaded, fetchNotifications]);
-
-  // Fetch initial unread count
+  // Eagerly fetch notifications on mount so they're ready when panel opens
   useEffect(() => {
     if (!resolvedUserId) return;
     notificationService.getNotifications().then((data) => {
+      setNotifications(data.notifications);
       setUnreadCount(data.unreadCount);
+      setLoaded(true);
     }).catch(() => {});
   }, [resolvedUserId]);
 

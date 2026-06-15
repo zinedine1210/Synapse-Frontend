@@ -6,9 +6,9 @@
  */
 export const brand = {
   name: 'Synapse',
-  tagline: 'Hubungkan pikiran, kuasai ilmu.',
+  tagline: 'Belajar makin gampang, hidup makin teratur. ⚡',
   description:
-    'Platform produktivitas berbasis AI untuk anak muda — rangkuman cerdas, kuis adaptif, dan manajemen kelas dalam satu dasbor.',
+    'Platform produktivitas berbasis AI buat anak muda — rangkuman cerdas, kuis adaptif, & manajemen kelas dalam satu app.',
   logoText: 'SN', // Singkatan untuk fallback logo text
   logoPath: '/logo.png', // Path logo di folder public/
   version: '1.0.0',

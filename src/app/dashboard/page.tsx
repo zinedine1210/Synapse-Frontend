@@ -39,10 +39,10 @@ interface ParsedCourse {
 
 function getGreeting(name: string) {
   const hour = new Date().getHours();
-  if (hour >= 5 && hour < 11) return { text: `Selamat pagi, ${name}!`, emoji: '☀️', sub: 'Semangat memulai hari!' };
-  if (hour >= 11 && hour < 15) return { text: `Selamat siang, ${name}!`, emoji: '🌤️', sub: 'Jangan lupa istirahat ya' };
-  if (hour >= 15 && hour < 18) return { text: `Selamat sore, ${name}!`, emoji: '🌅', sub: 'Masih produktif nih' };
-  return { text: `Selamat malam, ${name}!`, emoji: '🌙', sub: 'Waktunya wrap-up' };
+  if (hour >= 5 && hour < 11) return { text: `Pagi ${name}! `, emoji: '☀️', sub: 'Gas produktif hari ini! 💪' };
+  if (hour >= 11 && hour < 15) return { text: `Sianggg ${name}!`, emoji: '🌤️', sub: 'Jangan skip makan siang ya~' };
+  if (hour >= 15 && hour < 18) return { text: `Sore ${name}!`, emoji: '🌅', sub: 'Masih on fire nih 🔥' };
+  return { text: `Malam ${name}!`, emoji: '🌙', sub: 'Wrap-up dulu, jangan lembur terus~' };
 }
 
 const fmt = (n: number) => `Rp${n.toLocaleString('id-ID')}`;
@@ -307,9 +307,9 @@ export default function DashboardPage() {
                   }}>
                     <SiBawelAvatar size="dashboard" />
                     <div>
-                      <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>Tanya Si Bawel Hari Ini 🗣️</h3>
+                      <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '6px' }}>Mau di-brief Si Bawel? 🗣️</h3>
                       <p style={{ fontSize: '13px', opacity: 0.7, maxWidth: '480px', margin: '0 auto', lineHeight: '1.5' }}>
-                        Dapatkan briefing personal tentang kelas kuliah hari ini, tugas yang harus diselesaikan, status budget, dan tips belajar spesial untukmu!
+                        Cek jadwal kuliah, tugas deadline, sisa duit, sampe tips belajar — semua dirangkum AI buat lo!
                       </p>
                     </div>
                     <Button
@@ -319,7 +319,7 @@ export default function DashboardPage() {
                       className="flex items-center gap-2 border border-indigo-200 hover:border-indigo-400 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 text-indigo-700 font-medium py-2 px-4 rounded-xl shadow-md hover:shadow-lg active:scale-95"
                     >
                       <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />
-                      <span>Bikin Briefing AI 🚀</span>
+                      <span>Gas Briefing AI 🚀</span>
                     </Button>
                   </div>
                 ) : aiBriefingFailed && briefingData ? (

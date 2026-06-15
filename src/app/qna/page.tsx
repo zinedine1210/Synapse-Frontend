@@ -341,7 +341,7 @@ export default function QnaPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
                   <div>
                     <h1 style={{ fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>❓ Q&A</h1>
-                    <p style={{ fontSize: 13, opacity: 0.45, marginTop: 2 }}>Tanya, jawab, bantu sesama pengguna</p>
+                    <p style={{ fontSize: 13, opacity: 0.45, marginTop: 2 }}>Tanya, jawab, bantu sesama — saling carry! 🤝</p>
                   </div>
                   <Button onClick={openAsk} size="sm" style={{ borderRadius: 12, flexShrink: 0 }}><Plus size={14} /> Tanya</Button>
                 </div>
@@ -387,7 +387,7 @@ export default function QnaPage() {
                   <div style={{ textAlign: 'center', padding: 48 }}>
                     <HelpCircle size={48} style={{ opacity: 0.15, marginBottom: 12 }} />
                     <p style={{ opacity: 0.6, fontSize: 15, fontWeight: 500 }}>
-                      {tab === 'mine' ? 'Kamu belum punya pertanyaan' : 'Belum ada pertanyaan'}
+                      {tab === 'mine' ? 'Belum ada pertanyaan dari kamu nih' : 'Belum ada pertanyaan, jadi yang pertama! 🚀'}
                     </p>
                     <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>
                       {tab === 'mine' ? 'Ajukan pertanyaan pertamamu dan raih +5 XP!' : 'Jadi yang pertama bertanya!'}

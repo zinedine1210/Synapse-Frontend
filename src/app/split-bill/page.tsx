@@ -1166,15 +1166,59 @@ export default function SplitBillPage() {
 
         /* Mobile */
         @media (max-width: 640px) {
+          .sb-root { padding: 0 4px; }
+          .sb-header { flex-direction: column; gap: 10px; }
           .sb-header__actions { width: 100%; }
-          .sb-header__actions :global(button) { flex: 1; justify-content: center; }
-          .sb-item-row { grid-template-columns: 1fr 70px 34px; grid-template-areas: 'name name name' 'price qty remove'; gap: 8px; }
+          .sb-header__actions :global(button) { flex: 1; justify-content: center; font-size: var(--font-xs); padding: 8px 6px; }
+
+          .sb-item-row {
+            grid-template-columns: 1fr 36px;
+            grid-template-areas:
+              'name remove'
+              'price qty';
+            gap: 6px;
+          }
           .sb-item-row__name { grid-area: name; }
-          .sb-item-row :global(.currency-input-container) { grid-area: price; }
-          .sb-item-row__qty { grid-area: qty; }
-          .sb-item-row .sb-remove { grid-area: remove; }
-          .sb-hero__row { flex-direction: column; }
+          .sb-item-row :global(.currency-input-container),
+          .sb-item-row :global(input[type="text"]):not(.sb-item-row__name) { grid-area: price; min-width: 0; }
+          .sb-item-row__qty { grid-area: qty; min-width: 50px; }
+          .sb-item-row .sb-remove { grid-area: remove; justify-self: end; }
+
+          .sb-party-row { flex-wrap: wrap; }
+          .sb-pct-input { width: 64px; }
+          .sb-pct-input :global(input) { width: 64px; font-size: var(--font-sm); }
+
+          .sb-block { padding: 12px 12px; }
+          .sb-hero { padding: 14px; }
+          .sb-hero__row { flex-direction: column; gap: 8px; }
           .sb-hero__total { text-align: left; }
+          .sb-hero__name { font-size: var(--font-lg); }
+          .sb-hero__total strong { font-size: var(--font-lg); }
+
+          .sb-detect { padding: 12px 14px; }
+          .sb-detect__head { flex-wrap: wrap; gap: 10px; }
+          .sb-detect__cta { width: 100%; justify-content: center; padding: 10px; margin-top: 4px; }
+          .sb-detect__copy span { font-size: 11px; }
+
+          .sb-scan { padding: 12px 14px; gap: 10px; }
+          .sb-scan__icon { width: 38px; height: 38px; min-width: 38px; }
+
+          .sb-bill { padding: 12px 14px 12px 16px; gap: 10px; }
+          .sb-bill__amount { font-size: var(--font-base); }
+          .sb-bill__meta { gap: 8px; font-size: 11px; }
+
+          .sb-person { padding: 10px 12px 10px 14px; gap: 8px; }
+          .sb-person__actions { gap: 4px; }
+          .sb-act { width: 34px; height: 34px; }
+
+          .sb-segment { gap: 6px; }
+          .sb-segment__btn { padding: 10px 10px; }
+          .sb-segment__btn span { font-size: var(--font-sm); }
+
+          .sb-assign__chip { padding: 5px 8px; font-size: 11px; }
+          .sb-detail-item { padding: 10px 12px; }
+
+          .sb-history { padding: 10px 12px 10px 14px; gap: 8px; }
         }
 
         @media (prefers-reduced-motion: reduce) {

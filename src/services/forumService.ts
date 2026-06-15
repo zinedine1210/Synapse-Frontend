@@ -82,11 +82,13 @@ export interface ForumDiscussion {
 }
 
 export const forumService = {
-  getClassPosts: (classId: string, discussionId?: string | null) => {
-    const params = new URLSearchParams();
-    if (discussionId) params.set('discussionId', discussionId);
-    const qs = params.toString();
-    return apiFetch<ForumPost[]>(`/forum/class/${classId}${qs ? `?${qs}` : ''}`);
+  getClassPosts: (classId: string, discussionId?: string | null, params?: { page?: number; limit?: number }) => {
+    const q = new URLSearchParams();
+    if (discussionId) q.set('discussionId', discussionId);
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    const qs = q.toString();
+    return apiFetch<{ data: ForumPost[]; total: number; page: number; limit: number; totalPages: number }>(`/forum/class/${classId}${qs ? `?${qs}` : ''}`);
   },
 
   createPost: (classId: string, data: {

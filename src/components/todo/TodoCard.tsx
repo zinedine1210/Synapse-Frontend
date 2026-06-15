@@ -28,6 +28,7 @@ interface TodoCardProps {
   onDelete: () => void;
   onAddSubtask: (title: string) => Promise<void>;
   onToggleSubtask: (subId: string, isDone: boolean) => Promise<void>;
+  onDeleteSubtask?: (subId: string) => Promise<void>;
 }
 
 /**
@@ -36,7 +37,7 @@ interface TodoCardProps {
  * swipe gestures (right = done, left = delete) and inline subtask expansion.
  */
 export function TodoCard({
-  todo, catInfo, isExpanded, onToggleExpand, onToggle, onEdit, onDelete, onAddSubtask, onToggleSubtask,
+  todo, catInfo, isExpanded, onToggleExpand, onToggle, onEdit, onDelete, onAddSubtask, onToggleSubtask, onDeleteSubtask,
 }: TodoCardProps) {
   const done = todo.status === 'done';
   const priority = PRIORITY_META[todo.priority] || PRIORITY_META.medium;
@@ -180,6 +181,7 @@ export function TodoCard({
               todoId={todo.id}
               onAdd={onAddSubtask}
               onToggle={onToggleSubtask}
+              onDelete={onDeleteSubtask}
             />
           </div>
         )}

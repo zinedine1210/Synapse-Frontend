@@ -247,7 +247,7 @@ export default function AuthPage() {
             <span style={{ background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>lebih cerdas.</span>
           </h2>
           <p style={{ fontSize: '0.95rem', color: c.textMuted, lineHeight: 1.65, marginBottom: '2.5rem' }}>
-            Platform akademik berbasis AI untuk mahasiswa — rangkum materi, kuis adaptif, prediksi ujian, dan kelola kelas dalam satu platform.
+            Platform produktivitas berbasis AI untuk anak muda — rangkum materi, kuis adaptif, prediksi ujian, dan kelola kelas dalam satu platform.
           </p>
 
           {/* Feature grid */}

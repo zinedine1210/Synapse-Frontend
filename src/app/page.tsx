@@ -21,7 +21,7 @@ const T = {
   id: {
     badge: 'Platform Akademik Berbasis AI #1 di Indonesia',
     heroTitle1: 'Revolusi Cara',
-    heroTitle2: 'Mahasiswa Belajar',
+    heroTitle2: 'Anak Muda Belajar',
     heroTitle3: 'dengan AI',
     heroDesc: 'Rangkum materi dalam hitungan detik, latihan kuis adaptif, prediksi soal ujian, forum diskusi real-time, dan kelola kelas — semua dalam satu platform cerdas.',
     ctaPrimary: 'Mulai Gratis Sekarang',
@@ -56,19 +56,19 @@ const T = {
     highlights: [
       { title: 'AI yang Benar-Benar Membantu', desc: 'Bukan sekadar chatbot. AI kami memahami materi kuliahmu, membuat rangkuman terstruktur, dan menyesuaikan latihan soal dengan kelemahanmu.', icon: 'brain' },
       { title: 'Kolaborasi Tim Tanpa Batas', desc: 'Forum diskusi per topik, kelompok belajar, kas kolektif, pembagian tugas otomatis — semua terintegrasi tanpa perlu WhatsApp terpisah.', icon: 'users' },
-      { title: 'Terstruktur & Rapi', desc: '16 sesi pertemuan per kelas, materi terorganisir, tugas terlacak, dan progress jelas. Tidak ada lagi file berantakan di Google Drive.', icon: 'folder' },
+      { title: 'Terstruktur & Rapi', desc: 'Sesi pertemuan fleksibel per kelas, materi terorganisir, tugas terlacak, dan progress jelas. Tidak ada lagi file berantakan di Google Drive.', icon: 'folder' },
     ],
 
     // Features
     featBadge: 'Fitur Lengkap',
     featTitle1: 'Semua yang Kamu Butuhkan',
     featTitle2: 'untuk Sukses di Kampus',
-    featSub: 'Fitur-fitur yang dirancang khusus untuk kehidupan akademik mahasiswa Indonesia.',
+    featSub: 'Fitur-fitur yang dirancang khusus untuk produktivitas anak muda Indonesia.',
     features: [
       { title: 'AI Summarizer', desc: 'Upload PDF atau gambar materi kuliah, dan AI akan membuat rangkuman cerdas dengan poin-poin utama dalam hitungan detik. Hemat berjam-jam waktu belajar.', tag: 'AI' },
       { title: 'Kuis Adaptif', desc: 'AI menganalisis kelemahanmu dari hasil kuis sebelumnya dan membuat soal yang tepat sasaran. Semakin sering latihan, semakin pintar AI-nya.', tag: 'AI' },
       { title: 'Prediksi Ujian', desc: 'Berdasarkan seluruh materi yang sudah diupload, AI memprediksi soal-soal yang kemungkinan besar keluar di ujian. Persiapan jadi terarah.', tag: 'AI' },
-      { title: '16 Sesi Pertemuan', desc: 'Struktur perkuliahan lengkap dengan 16 pertemuan. Setiap sesi bisa berisi materi, tugas, kuis, dan catatan. Semua terorganisir rapi.', tag: 'Kelas' },
+      { title: 'Sesi Pertemuan', desc: 'Struktur perkuliahan fleksibel — buat sesi pertemuan sesuai kebutuhan. Setiap sesi bisa berisi materi, tugas, kuis, dan catatan. Semua terorganisir rapi.', tag: 'Kelas' },
       { title: 'Forum Diskusi Real-time', desc: 'Ruang diskusi per kelas dengan pembahasan terpisah, voting, rich text editor, indikator pesan belum dibaca, dan pencarian. Seperti Slack untuk kuliah.', tag: 'Sosial' },
       { title: 'Canvas Kolaboratif', desc: 'Setiap pembahasan di forum punya canvas — catatan bersama yang bisa diedit siapa saja dengan rich text editor. Cocok untuk notulensi rapat kelompok.', tag: 'Sosial' },
       { title: 'Kelompok Belajar', desc: 'Buat kelompok belajar dalam kelas, bagi tugas per kelompok, dan lihat anggota masing-masing kelompok. Tugas kelompok hanya terlihat oleh kelompok terkait.', tag: 'Tim' },
@@ -95,24 +95,24 @@ const T = {
     videoBadge: 'Lihat Aksi',
     videoTitle1: 'Saksikan Synapse',
     videoTitle2: 'Beraksi',
-    videoSub: 'Lihat bagaimana mahasiswa menggunakan Synapse untuk meringkas materi, latihan kuis, dan kolaborasi — semuanya dalam hitungan menit.',
+    videoSub: 'Lihat bagaimana pengguna Synapse meringkas materi, latihan kuis, dan kolaborasi — semuanya dalam hitungan menit.',
     videoPlayBtn: 'Tonton Demo',
 
     // Showcase section
     showcaseBadge: 'Tampilan Aplikasi',
     showcaseTitle1: 'Dirancang untuk',
-    showcaseTitle2: 'Mahasiswa Modern',
+    showcaseTitle2: 'Generasi Modern',
     showcaseSub: 'Interface yang bersih, responsif, dan mendukung dark mode. Semua fitur bisa diakses dalam hitungan klik.',
     showcaseItems: [
       { title: 'Dashboard Kelas', desc: 'Lihat semua kelasmu, deadline mendekat, dan aktivitas terbaru dalam satu halaman.' },
-      { title: 'Pertemuan Terstruktur', desc: '16 sesi pertemuan dengan materi, tugas, dan kuis yang terorganisir rapi.' },
+      { title: 'Pertemuan Terstruktur', desc: 'Sesi pertemuan fleksibel dengan materi, tugas, dan kuis yang terorganisir rapi.' },
       { title: 'Forum Interaktif', desc: 'Diskusi real-time dengan pembahasan terpisah, voting, dan indikator pesan baru.' },
       { title: 'AI Rangkuman', desc: 'Rangkuman otomatis dari materi kuliah, siap review atau export ke PDF.' },
     ],
 
     // Testimonials
     testiBadge: 'Testimoni',
-    testiTitle1: 'Dicintai Mahasiswa',
+    testiTitle1: 'Dicintai Pengguna',
     testiTitle2: 'di Seluruh Indonesia',
     testiSub: 'Lihat apa kata mereka yang sudah merasakan kemudahan belajar dengan Synapse.',
     testimonials: [
@@ -120,7 +120,7 @@ const T = {
       { name: 'Andi Pratama', major: 'Teknik Informatika — ITB', text: 'Fitur kuis adaptif-nya luar biasa. AI-nya tau persis mana yang aku kurang paham dan terus kasih soal di topik itu sampai aku benar-benar mengerti. Nilai UTS naik drastis!', avatar: 'A', rating: 5 },
       { name: 'Maya Lestari', major: 'Akuntansi — Binus University', text: 'Forum diskusinya lengkap banget — bisa bikin thread terpisah per topik, ada voting, bahkan canvas buat notulen. Gak perlu lagi buat grup WhatsApp untuk setiap mata kuliah.', avatar: 'M', rating: 5 },
       { name: 'Dimas Arya', major: 'Hukum — Universitas Gadjah Mada', text: 'Prediksi ujian-nya surprisingly accurate. 7 dari 10 soal yang diprediksi AI beneran keluar di UAS. Ini game changer buat persiapan ujian!', avatar: 'D', rating: 5 },
-      { name: 'Sari Dewi', major: 'Kedokteran — Unair', text: 'Sebagai mahasiswa kedokteran, materi kami sangat banyak. Synapse bikin review materi jadi structured dan efisien. Fitur kelompoknya juga membantu buat PBL.', avatar: 'S', rating: 5 },
+      { name: 'Sari Dewi', major: 'Kedokteran — Unair', text: 'Materi kuliah kami sangat banyak. Synapse bikin review materi jadi structured dan efisien. Fitur kelompoknya juga membantu buat PBL.', avatar: 'S', rating: 5 },
       { name: 'Rizky Fauzan', major: 'Sistem Informasi — UGM', text: 'Kas kolektif-nya berguna banget buat kelola uang kas kelas. Transparan, semua bisa lihat, dan gak perlu spreadsheet terpisah lagi. Manajemen tugas-nya juga oke.', avatar: 'F', rating: 5 },
     ],
 
@@ -140,7 +140,7 @@ const T = {
     // CTA
     ctaTitle1: 'Siap Revolusi',
     ctaTitle2: 'Cara Belajarmu?',
-    ctaDesc: 'Bergabung dengan ribuan mahasiswa yang sudah merasakan kemudahan belajar dengan AI. Gratis, tanpa batas waktu, tanpa kartu kredit.',
+    ctaDesc: 'Bergabung dengan ribuan anak muda yang sudah merasakan kemudahan belajar dengan AI. Gratis, tanpa batas waktu, tanpa kartu kredit.',
     ctaBtn: 'Mulai Gratis Sekarang',
     ctaNote: 'Gratis selamanya • Setup dalam 30 detik • Tanpa kartu kredit',
     ctaFeatures: ['AI Summarizer & Kuis', 'Forum Diskusi Real-time', 'Prediksi Soal Ujian', 'Manajemen Tugas & Kelompok'],
@@ -159,7 +159,7 @@ const T = {
     pricingPro: 'Pro',
     pricingProPrice: 'Rp 29.900',
     pricingProPeriod: '/bulan',
-    pricingProDesc: 'Fitur lengkap tanpa batas untuk mahasiswa serius.',
+    pricingProDesc: 'Fitur lengkap tanpa batas untuk kamu yang serius.',
     pricingProFeatures: ['AI Summarizer Unlimited', 'Kuis Adaptif Unlimited', 'Prediksi Soal Ujian', 'Export PDF B5', 'Duit Tracker + Si Bawel', 'To-Do List + AI Parsing', 'Q&A Forum + Reputasi', 'Gamifikasi & XP', 'Priority Support'],
     pricingProCta: 'Upgrade ke Pro',
     pricingProBadge: 'Populer',
@@ -171,9 +171,9 @@ const T = {
     footerSupportLinks: ['FAQ', 'Hubungi Kami', 'Dokumentasi'],
     footerLegal: 'Legal',
     footerLegalLinks: ['Privasi', 'Ketentuan', 'Keamanan'],
-    footerTagline: 'Platform akademik berbasis AI untuk mahasiswa Indonesia.',
+    footerTagline: 'Platform produktivitas berbasis AI untuk anak muda Indonesia.',
     footerMadeWith: 'Dibuat dengan',
-    footerForStudents: 'untuk mahasiswa Indonesia',
+    footerForStudents: 'untuk anak muda Indonesia',
   },
   en: {
     badge: '#1 AI-Powered Academic Platform in Indonesia',
@@ -211,18 +211,18 @@ const T = {
     highlights: [
       { title: 'AI That Actually Helps', desc: 'Not just a chatbot. Our AI understands your course materials, creates structured summaries, and adapts quizzes to your weaknesses.', icon: 'brain' },
       { title: 'Seamless Team Collaboration', desc: 'Topic-based forums, study groups, collective funds, auto task assignments — all integrated without needing separate WhatsApp groups.', icon: 'users' },
-      { title: 'Structured & Organized', desc: '16 sessions per class, organized materials, tracked assignments, and clear progress. No more scattered files in Google Drive.', icon: 'folder' },
+      { title: 'Structured & Organized', desc: 'Flexible sessions per class, organized materials, tracked assignments, and clear progress. No more scattered files in Google Drive.', icon: 'folder' },
     ],
 
     featBadge: 'Full Features',
     featTitle1: 'Everything You Need',
     featTitle2: 'to Succeed in College',
-    featSub: 'Features designed specifically for the academic life of Indonesian students.',
+    featSub: 'Features designed specifically for productivity of young Indonesians.',
     features: [
       { title: 'AI Summarizer', desc: 'Upload PDF or image course materials, and AI creates smart summaries with key points in seconds. Save hours of study time.', tag: 'AI' },
       { title: 'Adaptive Quiz', desc: 'AI analyzes your weaknesses from previous quiz results and creates targeted questions. The more you practice, the smarter the AI gets.', tag: 'AI' },
       { title: 'Exam Prediction', desc: 'Based on all uploaded materials, AI predicts questions most likely to appear on exams. Preparation becomes focused.', tag: 'AI' },
-      { title: '16 Class Sessions', desc: 'Complete course structure with 16 sessions. Each session can contain materials, tasks, quizzes, and notes. Everything organized neatly.', tag: 'Class' },
+      { title: 'Class Sessions', desc: 'Flexible course structure — create sessions as needed. Each session can contain materials, tasks, quizzes, and notes. Everything organized neatly.', tag: 'Class' },
       { title: 'Real-time Discussion Forum', desc: 'Discussion per class with separate threads, voting, rich text editor, unread indicators, and search. Like Slack for college.', tag: 'Social' },
       { title: 'Collaborative Canvas', desc: 'Each forum discussion has a canvas — shared notes editable by anyone with a rich text editor. Perfect for meeting notes.', tag: 'Social' },
       { title: 'Study Groups', desc: 'Create study groups in class, assign tasks per group, and view members. Group tasks are only visible to the relevant group.', tag: 'Team' },
@@ -248,22 +248,22 @@ const T = {
     videoBadge: 'See It In Action',
     videoTitle1: 'Watch Synapse',
     videoTitle2: 'In Action',
-    videoSub: 'See how students use Synapse to summarize materials, practice quizzes, and collaborate — all within minutes.',
+    videoSub: 'See how Synapse users summarize materials, practice quizzes, and collaborate — all within minutes.',
     videoPlayBtn: 'Watch Demo',
 
     showcaseBadge: 'App Preview',
     showcaseTitle1: 'Designed for',
-    showcaseTitle2: 'Modern Students',
+    showcaseTitle2: 'Modern Learners',
     showcaseSub: 'Clean interface, responsive, and dark mode support. All features accessible in a few clicks.',
     showcaseItems: [
       { title: 'Class Dashboard', desc: 'See all your classes, approaching deadlines, and recent activity in one page.' },
-      { title: 'Structured Sessions', desc: '16 sessions with organized materials, tasks, and quizzes.' },
+      { title: 'Structured Sessions', desc: 'Flexible sessions with organized materials, tasks, and quizzes.' },
       { title: 'Interactive Forum', desc: 'Real-time discussions with separate threads, voting, and new message indicators.' },
       { title: 'AI Summaries', desc: 'Auto-generated summaries from course materials, ready to review or export to PDF.' },
     ],
 
     testiBadge: 'Testimonials',
-    testiTitle1: 'Loved by Students',
+    testiTitle1: 'Loved by Users',
     testiTitle2: 'Across Indonesia',
     testiSub: 'See what they have to say about learning with Synapse.',
     testimonials: [
@@ -271,7 +271,7 @@ const T = {
       { name: 'Andi Pratama', major: 'Computer Science — ITB', text: 'The adaptive quiz feature is incredible. The AI knows exactly which topics I struggle with and keeps quizzing me on them until I truly understand. My midterm scores improved dramatically!', avatar: 'A', rating: 5 },
       { name: 'Maya Lestari', major: 'Accounting — Binus University', text: 'The discussion forum is super complete — separate threads per topic, voting, even a canvas for meeting notes. No need to create WhatsApp groups for every course anymore.', avatar: 'M', rating: 5 },
       { name: 'Dimas Arya', major: 'Law — Gadjah Mada University', text: 'The exam prediction is surprisingly accurate. 7 out of 10 predicted questions actually appeared on my final exam. This is a game changer for exam prep!', avatar: 'D', rating: 5 },
-      { name: 'Sari Dewi', major: 'Medicine — Airlangga University', text: 'As a medical student, our materials are enormous. Synapse makes reviewing structured and efficient. The group feature also helps a lot for PBL sessions.', avatar: 'S', rating: 5 },
+      { name: 'Sari Dewi', major: 'Medicine — Airlangga University', text: 'Our course materials are enormous. Synapse makes reviewing structured and efficient. The group feature also helps a lot for PBL sessions.', avatar: 'S', rating: 5 },
       { name: 'Rizky Fauzan', major: 'Information Systems — UGM', text: 'The collective funds feature is super useful for managing class treasury. Transparent, everyone can see, no separate spreadsheets needed. Task management is also great.', avatar: 'F', rating: 5 },
     ],
 
@@ -289,7 +289,7 @@ const T = {
 
     ctaTitle1: 'Ready to Revolutionize',
     ctaTitle2: 'Your Learning?',
-    ctaDesc: 'Join thousands of students who already experience the ease of learning with AI. Free, no time limits, no credit card.',
+    ctaDesc: 'Join thousands of young learners who already experience the ease of learning with AI. Free, no time limits, no credit card.',
     ctaBtn: 'Start Free Now',
     ctaNote: 'Free forever • 30s setup • No credit card',
     ctaFeatures: ['AI Summarizer & Quiz', 'Real-time Forum', 'Exam Prediction', 'Task & Group Management'],
@@ -308,7 +308,7 @@ const T = {
     pricingPro: 'Pro',
     pricingProPrice: 'Rp 29,900',
     pricingProPeriod: '/month',
-    pricingProDesc: 'Unlimited features for serious students.',
+    pricingProDesc: 'Unlimited features for serious learners.',
     pricingProFeatures: ['Unlimited AI Summarizer', 'Unlimited Adaptive Quiz', 'Exam Prediction', 'Export PDF B5', 'Duit Tracker + Si Bawel', 'To-Do List + AI Parsing', 'Q&A Forum + Reputation', 'Gamification & XP', 'Priority Support'],
     pricingProCta: 'Upgrade to Pro',
     pricingProBadge: 'Popular',
@@ -319,9 +319,9 @@ const T = {
     footerSupportLinks: ['FAQ', 'Contact Us', 'Documentation'],
     footerLegal: 'Legal',
     footerLegalLinks: ['Privacy', 'Terms', 'Security'],
-    footerTagline: 'AI-powered academic platform for Indonesian students.',
+    footerTagline: 'AI-powered productivity platform for young Indonesians.',
     footerMadeWith: 'Made with',
-    footerForStudents: 'for Indonesian students',
+    footerForStudents: 'for young Indonesians',
   },
 };
 
@@ -574,7 +574,7 @@ export default function LandingPage() {
           .landing-nav-auth-text { display: none !important; }
           .landing-pricing-grid { grid-template-columns: 1fr !important; }
           .landing-phone-mockup { width: 220px !important; height: 440px !important; }
-          .landing-phone-mockup > div:first-child { width: 90px !important; height: 18px !important; }
+          .landing-phone-mockup [data-notch] { width: 90px !important; height: 18px !important; }
           .landing-section { padding-left: 1rem !important; padding-right: 1rem !important; }
           .landing-footer-bottom { flex-direction: column !important; gap: 0.5rem !important; text-align: center !important; }
         }
@@ -1114,7 +1114,7 @@ export default function LandingPage() {
               overflow: 'hidden',
             }}>
               {/* Phone notch */}
-              <div style={{
+              <div data-notch style={{
                 position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
                 width: 120, height: 24, borderRadius: '0 0 14px 14px',
                 background: isDark ? '#2d2d44' : '#d4d4d4', zIndex: 2,

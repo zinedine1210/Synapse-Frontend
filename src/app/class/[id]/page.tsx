@@ -570,6 +570,30 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                           <Button size="sm" variant="ghost" leftIcon={<Share2 size={13} />} onClick={handleShareClass}>Bagikan</Button>
                         </div>
                       )}
+                      {classData.memberRole === 'OWNER' && (
+                        <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-default)' }}>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            leftIcon={<Trash2 size={13} />}
+                            onClick={async () => {
+                              const ok = await confirm({ title: 'Hapus Kelas?', message: `Kelas "${classData.name}" dan semua data di dalamnya akan dihapus secara permanen.`, confirmText: 'Hapus Kelas', cancelText: 'Batal', variant: 'danger' });
+                              if (!ok) return;
+                              try {
+                                await classService.deleteClass(classData.id);
+                                showToast('Kelas berhasil dihapus.', 'success');
+                                router.push('/dashboard');
+                              } catch (e: any) {
+                                showToast(e.message || 'Gagal menghapus kelas.', 'error');
+                              }
+                            }}
+                            style={{ opacity: 0.7 }}
+                          >
+                            Hapus Kelas
+                          </Button>
+                          <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginTop: '0.35rem' }}>Tindakan ini tidak dapat dibatalkan.</p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Roles management (Owner only) */}

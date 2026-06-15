@@ -23,7 +23,7 @@ export function Appbar({
   sidebarCollapsed = false,
 }: AppbarProps) {
   const { user: authUser } = useAuth();
-  const resolvedUserName = userName || authUser?.fullName || 'Mahasiswa';
+  const resolvedUserName = userName || authUser?.fullName || 'Sobat';
   const resolvedUserId = userId || authUser?.id;
   const [showPanel, setShowPanel] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);

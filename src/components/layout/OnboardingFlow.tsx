@@ -16,7 +16,7 @@ interface OnboardingFlowProps {
   onComplete: () => void;
 }
 
-const JOB_OPTIONS = ['Mahasiswa Full-time', 'Mahasiswa + Magang', 'Mahasiswa + Part-time', 'Mahasiswa + Freelance', 'Mahasiswa + Organisasi', 'Lainnya'];
+const JOB_OPTIONS = ['Mahasiswa Full-time', 'Mahasiswa + Magang', 'Mahasiswa + Part-time', 'Pekerja', 'Freelancer', 'Lainnya'];
 const REASON_OPTIONS = ['Atur keuangan', 'Manajemen tugas kuliah', 'Catat jadwal & to-do', 'Semua fitur di satu tempat', 'Rekomendasi teman', 'Coba-coba aja'];
 const HOBBY_SUGGESTIONS = ['Membaca', 'Olahraga', 'Gaming', 'Musik', 'Memasak', 'Fotografi', 'Traveling', 'Coding', 'Menggambar', 'Menulis'];
 

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useFeatureAccess } from '@/lib/feature-access';
+import { useInfiniteScroll } from '@/lib/useInfiniteScroll';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
@@ -223,7 +224,6 @@ export default function DuitTrackerPage() {
   const { showUndoToast } = useCelebration();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tab, setTab] = useState<'transactions' | 'summary' | 'trees' | 'budget'>('transactions');
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [trees, setTrees] = useState<SavingTree[]>([]);
   const [budgets, setBudgets] = useState<CategoryBudget[]>([]);
@@ -237,8 +237,64 @@ export default function DuitTrackerPage() {
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>('this_month');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  // Applied custom range — only updates when user clicks "Cari"
   const [appliedRange, setAppliedRange] = useState<{ start: string; end: string } | null>(null);
+
+  // Build tx query params (memoized so fetcher reference is stable)
+  const txQueryParams = useMemo(() => {
+    let params: { month?: number; year?: number; type?: string; category?: string; startDate?: string; endDate?: string } = {};
+    if (periodPreset === 'custom' && appliedRange) {
+      params = { startDate: appliedRange.start, endDate: appliedRange.end };
+    } else if (periodPreset !== 'custom') {
+      const range = getPeriodRange(periodPreset);
+      params = { startDate: range.startDate, endDate: range.endDate };
+    } else {
+      params = { month, year };
+    }
+    if (typeFilter) params.type = typeFilter;
+    if (categoryFilter) params.category = categoryFilter;
+    return params;
+  }, [periodPreset, appliedRange, month, year, typeFilter, categoryFilter]);
+
+  // Infinite scroll for transactions
+  const txFetcher = useCallback(async (page: number) => {
+    return duitTrackerService.getTransactions({ ...txQueryParams, page, limit: 30 });
+  }, [txQueryParams]);
+
+  const {
+    items: transactions,
+    loading: txLoading,
+    initialLoading: txInitialLoading,
+    hasMore: txHasMore,
+    sentinelRef: txSentinelRef,
+    refresh: refreshTx,
+    removeItem: removeTx,
+    updateItem: updateTx,
+    setItems: setTransactions,
+  } = useInfiniteScroll<Transaction>({ fetcher: txFetcher });
+
+  // Fetch non-transaction data (summary, trees, budgets)
+  const fetchSideData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [sum, ts, b] = await Promise.all([
+        duitTrackerService.getSummary(month, year),
+        duitTrackerService.getTrees(),
+        duitTrackerService.getBudgets(month, year),
+      ]);
+      setSummary(sum);
+      setTrees(ts);
+      setBudgets(b);
+    } catch (e: any) { setError(e.message); }
+    finally { setLoading(false); }
+  }, [month, year]);
+
+  useEffect(() => { fetchSideData(); }, [fetchSideData]);
+
+  const fetchData = useCallback(async () => {
+    refreshTx();
+    fetchSideData();
+  }, [refreshTx, fetchSideData]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTreeModal, setShowTreeModal] = useState(false);
   const [showAiInput, setShowAiInput] = useState(false);
@@ -265,7 +321,7 @@ export default function DuitTrackerPage() {
     setCommentLoading(prev => ({ ...prev, [txId]: true }));
     try {
       const updatedTx = await duitTrackerService.generateComment(txId);
-      setTransactions(prev => prev.map(tx => tx.id === txId ? updatedTx : tx));
+      updateTx(tx => tx.id === txId, () => updatedTx);
       showToast('Komentar Si Bawel berhasil dibuat! 🗣️', 'success');
     } catch (err: any) {
       showToast(err.message || 'Gagal membuat komentar.', 'error');
@@ -308,38 +364,6 @@ export default function DuitTrackerPage() {
     } catch { showToast('Gagal update setting.', 'error'); }
   };
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Determine date range from preset or applied custom range
-      let txParams: { month?: number; year?: number; type?: string; category?: string; startDate?: string; endDate?: string } = {};
-      if (periodPreset === 'custom' && appliedRange) {
-        txParams = { startDate: appliedRange.start, endDate: appliedRange.end, type: typeFilter || undefined, category: categoryFilter || undefined };
-      } else if (periodPreset !== 'custom') {
-        const range = getPeriodRange(periodPreset);
-        txParams = { startDate: range.startDate, endDate: range.endDate, type: typeFilter || undefined, category: categoryFilter || undefined };
-      } else {
-        // Custom but no applied range yet — fallback to this month
-        txParams = { month, year, type: typeFilter || undefined, category: categoryFilter || undefined };
-      }
-
-      const [txs, sum, ts, b] = await Promise.all([
-        duitTrackerService.getTransactions(txParams),
-        duitTrackerService.getSummary(month, year),
-        duitTrackerService.getTrees(),
-        duitTrackerService.getBudgets(month, year),
-      ]);
-      setTransactions(txs);
-      setSummary(sum);
-      setTrees(ts);
-      setBudgets(b);
-    } catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
-  }, [month, year, typeFilter, categoryFilter, periodPreset, appliedRange]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
   const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseCurrency(form.amount);
@@ -381,13 +405,13 @@ export default function DuitTrackerPage() {
     });
     if (!confirmed) return;
 
-    setTransactions(prev => prev.filter(t => t.id !== id));
+    removeTx(t => t.id === id);
     try {
       await duitTrackerService.deleteTransaction(id);
       showToast('Transaksi berhasil dihapus', 'success');
     } catch (e: any) {
       showToast(e.message, 'error');
-      fetchData();
+      refreshTx();
     }
   };
 
@@ -667,7 +691,7 @@ export default function DuitTrackerPage() {
                 </>
               )}
 
-              {loading ? (
+              {loading && !transactions.length ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {[1, 2, 3].map(n => <div key={n} className="skeleton" style={{ height: 80, borderRadius: 14 }} />)}
                 </div>
@@ -770,6 +794,13 @@ export default function DuitTrackerPage() {
                       </div>
                     </div>
                   ))}
+                  {/* Infinite scroll sentinel */}
+                  <div ref={txSentinelRef} />
+                  {txLoading && transactions.length > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}>
+                      <Loader2 size={20} className="spin" style={{ opacity: 0.5 }} />
+                    </div>
+                  )}
                 </div>
               )}
 

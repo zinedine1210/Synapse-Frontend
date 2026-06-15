@@ -22,7 +22,7 @@ export const classService = {
       body: JSON.stringify(data),
     }),
 
-  /** Ambil daftar 16 sesi kelas */
+  /** Ambil daftar sesi kelas */
   getClassSessions: (classId: string) =>
     apiFetch<Class['sessions']>(`/classes/${classId}/sessions`),
 

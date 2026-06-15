@@ -659,7 +659,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
             ]} />
             {editAssignType === 'INDIVIDUAL' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pilih Mahasiswa</label>
+                <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pilih Anggota</label>
                 <div style={{ border: '1px solid var(--border-default)', padding: '0.75rem', borderRadius: 'var(--radius-lg)', maxHeight: '120px', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', background: 'var(--input-bg)' }}>
                   {members.map((m: any) => (
                     <label key={m.userId} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: 'var(--font-xs)', color: editAssignedUserIds.includes(m.userId) ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))', cursor: 'pointer' }}>
@@ -863,7 +863,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
           {/* INDIVIDUAL SELECTION */}
           {assignType === 'INDIVIDUAL' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pilih Mahasiswa</label>
+              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pilih Anggota</label>
               <div style={{ border: '1px solid var(--border-default)', padding: '0.75rem', borderRadius: 'var(--radius-lg)', maxHeight: '120px', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', background: 'var(--input-bg)' }}>
                 {members.map((m) => (
                   <label key={m.userId} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: 'var(--font-xs)', color: assignedUserIds.includes(m.userId) ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))', cursor: 'pointer' }}>
@@ -922,7 +922,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
 
           {editAssignType === 'INDIVIDUAL' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pilih Mahasiswa</label>
+              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Pilih Anggota</label>
               <div style={{ border: '1px solid var(--border-default)', padding: '0.75rem', borderRadius: 'var(--radius-lg)', maxHeight: '120px', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', background: 'var(--input-bg)' }}>
                 {members.map((m) => (
                   <label key={m.userId} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: 'var(--font-xs)', color: editAssignedUserIds.includes(m.userId) ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))', cursor: 'pointer' }}>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle2, Circle, Plus, ListChecks } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, ListChecks, Trash2 } from 'lucide-react';
 import { TextInput } from '@/components/ui';
 
 export interface DraftSubtask {
@@ -35,6 +35,10 @@ export function SubtaskEditor({ value, onChange }: SubtaskEditorProps) {
     onChange(value.map((s, i) => (i === idx ? { ...s, isDone: !s.isDone } : s)));
   };
 
+  const remove = (idx: number) => {
+    onChange(value.filter((_, i) => i !== idx));
+  };
+
   const done = value.filter(s => s.isDone).length;
 
   return (
@@ -61,6 +65,13 @@ export function SubtaskEditor({ value, onChange }: SubtaskEditorProps) {
                 : <Circle size={15} style={{ opacity: 0.4, flexShrink: 0 }} />}
               <span style={{ fontSize: 12.5, flex: 1, textDecoration: s.isDone ? 'line-through' : 'none', opacity: s.isDone ? 0.55 : 1 }}>
                 {s.title}
+              </span>
+              <span
+                role="button"
+                onClick={(e) => { e.stopPropagation(); remove(idx); }}
+                style={{ opacity: 0.3, cursor: 'pointer', flexShrink: 0, padding: 2 }}
+              >
+                <Trash2 size={12} />
               </span>
             </button>
           ))}

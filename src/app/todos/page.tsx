@@ -111,8 +111,9 @@ export default function TodosPage() {
       const params: any = {};
       if (statusFilter) params.status = statusFilter;
       if (categoryFilter) params.category = categoryFilter;
-      const [list, s] = await Promise.all([todoService.getAll(params), todoService.getStats()]);
-      setTodos(list); setStats(s);
+      params.limit = 200; // todos need full dataset for grouping/calendar/streak
+      const [res, s] = await Promise.all([todoService.getAll(params), todoService.getStats()]);
+      setTodos(res.data); setStats(s);
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setLoading(false); }
   }, [statusFilter, categoryFilter]);
@@ -414,6 +415,15 @@ export default function TodosPage() {
     catch { fetchData(); }
   };
 
+  const handleDeleteSubtask = async (todoId: string, subId: string) => {
+    setTodos(prev => prev.map(t => {
+      if (t.id !== todoId) return t;
+      return { ...t, subtasks: (t.subtasks || []).filter(s => s.id !== subId) };
+    }));
+    try { await todoService.deleteSubtask(todoId, subId); }
+    catch { fetchData(); }
+  };
+
   const handleCreateCategory = (cat: CustomCategory) => {
     setCustomCategories(prev => [...prev, cat]);
     setShowCategoryCreator(false);
@@ -435,6 +445,7 @@ export default function TodosPage() {
         onDelete={() => handleDelete(todo.id)}
         onAddSubtask={(title) => handleAddSubtask(todo.id, title)}
         onToggleSubtask={(subId, isDone) => handleToggleSubtask(todo.id, subId, isDone)}
+        onDeleteSubtask={(subId) => handleDeleteSubtask(todo.id, subId)}
       />
     );
   };

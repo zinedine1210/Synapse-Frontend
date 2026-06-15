@@ -258,20 +258,10 @@ export default function ClassesPage() {
                                 {cls.memberRole === 'OWNER' ? 'Pemilik' : 'Anggota'}
                               </span>
                               <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                                <BookOpen size={11} /> 16 Sesi
+                                <BookOpen size={11} /> Pertemuan
                               </span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                              {cls.memberRole === 'OWNER' && (
-                                <button
-                                  onClick={(e) => handleDeleteClass(cls.id, e)}
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--color-error))', padding: '0.25rem', borderRadius: 'var(--radius-sm)', opacity: 0.4, transition: 'var(--transition-fast)' }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.opacity = '1')}
-                                  onMouseLeave={(e) => (e.currentTarget.style.opacity = '0.4')}
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              )}
                               <ChevronRight size={14} style={{ color: 'rgb(var(--text-muted))' }} />
                             </div>
                           </div>

@@ -623,7 +623,7 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
       {/* Footer */}
       <footer style={{ borderTop: '1px solid var(--border-default)', padding: '24px', textAlign: 'center', marginTop: 40 }}>
         <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>
-          © {new Date().getFullYear()} {brand.name} — Platform akademik berbasis AI untuk mahasiswa
+          © {new Date().getFullYear()} {brand.name} — Platform produktivitas berbasis AI untuk anak muda
         </p>
       </footer>
     </div>

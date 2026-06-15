@@ -144,8 +144,10 @@ export default function InsightPage() {
     duitTrackerService.getTransactions({
       month: undefined,
       year: undefined,
+      limit: 200,
     })
-      .then((txns) => {
+      .then((res) => {
+        const txns = res.data;
         setTransactions(txns);
         // Detect patterns from all transactions
         const detectedPatterns = detectDayOfWeekPatterns(txns);
@@ -332,7 +334,7 @@ export default function InsightPage() {
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.font = '28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-    ctx.fillText('Platform Mahasiswa Cerdas', w / 2, h - 140);
+    ctx.fillText('Platform Anak Muda Cerdas', w / 2, h - 140);
   }, [comparison, patterns, data, timeRange]);
 
   useEffect(() => {

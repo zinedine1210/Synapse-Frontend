@@ -55,12 +55,14 @@ export const todoService = {
   create: (data: Partial<PersonalTodo>) =>
     apiFetch<PersonalTodo>('/todos', { method: 'POST', body: JSON.stringify(data) }),
 
-  getAll: (params?: { status?: string; priority?: string; category?: string }) => {
+  getAll: (params?: { status?: string; priority?: string; category?: string; page?: number; limit?: number }) => {
     const q = new URLSearchParams();
     if (params?.status) q.set('status', params.status);
     if (params?.priority) q.set('priority', params.priority);
     if (params?.category) q.set('category', params.category);
-    return apiFetch<PersonalTodo[]>(`/todos?${q.toString()}`);
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    return apiFetch<{ data: PersonalTodo[]; total: number; page: number; limit: number; totalPages: number }>(`/todos?${q.toString()}`);
   },
 
   getById: (id: string) => apiFetch<PersonalTodo>(`/todos/${id}`),
@@ -89,6 +91,9 @@ export const todoService = {
 
   updateSubtask: (todoId: string, subId: string, data: { title?: string; isDone?: boolean }) =>
     apiFetch<TodoSubtask>(`/todos/${todoId}/subtasks/${subId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  deleteSubtask: (todoId: string, subId: string) =>
+    apiFetch<void>(`/todos/${todoId}/subtasks/${subId}`, { method: 'DELETE' }),
 
   // ─── Recurrence ────────────────────────────────────────────────────
   setRecurrence: (todoId: string, recurrence: 'daily' | 'weekly' | 'monthly' | null) =>

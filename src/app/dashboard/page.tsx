@@ -127,8 +127,9 @@ export default function DashboardPage() {
     async function loadPatterns() {
       try {
         const { apiFetch } = await import('@/lib/api');
-        const transactions = await apiFetch<any[]>('/duit-tracker/transactions');
-        if (transactions && transactions.length > 0) {
+        const res = await apiFetch<any>('/duit-tracker/transactions?limit=200');
+        const transactions = res?.data || res || [];
+        if (Array.isArray(transactions) && transactions.length > 0) {
           const detected = detectDayOfWeekPatterns(transactions);
           setPatterns(detected);
         }
@@ -139,7 +140,7 @@ export default function DashboardPage() {
     loadPatterns();
   }, []);
 
-  const greeting = getGreeting(user?.fullName || 'Mahasiswa');
+  const greeting = getGreeting(user?.fullName || 'Sobat');
 
   const handleRefreshAiBriefing = useCallback(async () => {
     setAiBriefingRefreshing(true);
@@ -802,11 +803,6 @@ export default function DashboardPage() {
                                 {cls.lecturer && <span>👨‍🏫 {cls.lecturer}</span>}
                                 {cls.day && <span>📅 {cls.day}{cls.time ? `, ${cls.time}` : ''}</span>}
                               </div>
-                              {cls.memberRole === 'OWNER' && (
-                                <button onClick={(e) => handleDeleteClass(cls.id, e)} style={{ position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', cursor: 'pointer', opacity: 0.2, padding: 2 }}>
-                                  <Trash2 size={11} />
-                                </button>
-                              )}
                             </Card>
                           </Link>
                         ))}

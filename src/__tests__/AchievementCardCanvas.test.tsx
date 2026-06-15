@@ -201,6 +201,6 @@ describe('AchievementCardCanvas', () => {
 
     const fillTextCalls = mockFillText.mock.calls.map((c) => c[0]);
     expect(fillTextCalls.some((text: string) => text.includes('Synapse'))).toBe(true);
-    expect(fillTextCalls.some((text: string) => text.includes('Platform Mahasiswa Cerdas'))).toBe(true);
+    expect(fillTextCalls.some((text: string) => text.includes('Platform Anak Muda Cerdas'))).toBe(true);
   });
 });

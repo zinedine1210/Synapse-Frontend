@@ -214,7 +214,7 @@ export function AchievementCardCanvas({
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.font = '28px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
-    ctx.fillText('Platform Mahasiswa Cerdas', w / 2, h - 140);
+    ctx.fillText('Platform Anak Muda Cerdas', w / 2, h - 140);
   }, [achievementName, progressText, quote, type]);
 
   useEffect(() => {

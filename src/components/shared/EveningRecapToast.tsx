@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import useSWR from 'swr';
 import { X, TrendingUp } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
@@ -58,13 +58,18 @@ const fetchTodos = (): Promise<PersonalTodo[]> => {
 
 export function EveningRecapToast() {
   const router = useRouter();
+  const pathname = usePathname();
   const { session } = useAuth();
   const [visible, setVisible] = useState(false);
   const [recapMessage, setRecapMessage] = useState('');
 
-  // Only fetch when user is logged in — pass null key to skip SWR fetch
+  // Skip fetching on public pages (auth, landing)
+  const isPublicPage = pathname === '/' || pathname === '/auth' || pathname.startsWith('/auth/');
+  const shouldFetch = session && !isPublicPage;
+
+  // Only fetch when user is logged in and on app pages
   const { data: transactions } = useSWR<Transaction[]>(
-    session ? '/duit-tracker/transactions' : null,
+    shouldFetch ? '/duit-tracker/transactions' : null,
     fetchTransactions,
     {
       revalidateOnFocus: false,
@@ -74,7 +79,7 @@ export function EveningRecapToast() {
   );
 
   const { data: todos } = useSWR<PersonalTodo[]>(
-    session ? '/todos' : null,
+    shouldFetch ? '/todos' : null,
     fetchTodos,
     {
       revalidateOnFocus: false,

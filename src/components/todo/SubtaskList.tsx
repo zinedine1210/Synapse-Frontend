@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckSquare, Square, Plus, X } from 'lucide-react';
+import { CheckSquare, Square, Plus, X, Trash2 } from 'lucide-react';
 import { TodoSubtask } from '@/services/todoService';
 import { TextInput } from '@/components/ui';
 
@@ -10,9 +10,10 @@ interface SubtaskListProps {
   todoId: string;
   onAdd: (title: string) => Promise<void>;
   onToggle: (subId: string, isDone: boolean) => Promise<void>;
+  onDelete?: (subId: string) => Promise<void>;
 }
 
-export function SubtaskList({ subtasks, todoId, onAdd, onToggle }: SubtaskListProps) {
+export function SubtaskList({ subtasks, todoId, onAdd, onToggle, onDelete }: SubtaskListProps) {
   const [newTitle, setNewTitle] = useState('');
   const [adding, setAdding] = useState(false);
   const [showInput, setShowInput] = useState(false);
@@ -71,10 +72,12 @@ export function SubtaskList({ subtasks, todoId, onAdd, onToggle }: SubtaskListPr
               padding: '6px 8px',
               borderRadius: 8,
               background: 'var(--input-bg)',
-              cursor: 'pointer',
             }}
-            onClick={() => onToggle(sub.id, !sub.isDone)}
           >
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, cursor: 'pointer' }}
+              onClick={() => onToggle(sub.id, !sub.isDone)}
+            >
             {sub.isDone ? (
               <CheckSquare size={14} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
             ) : (
@@ -88,6 +91,15 @@ export function SubtaskList({ subtasks, todoId, onAdd, onToggle }: SubtaskListPr
             }}>
               {sub.title}
             </span>
+            </div>
+            {onDelete && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(sub.id); }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, opacity: 0.3, flexShrink: 0 }}
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
           </div>
         ))}
       </div>

@@ -234,6 +234,7 @@ export default function SettingsPage() {
         method: 'PATCH',
         body: JSON.stringify({ [key]: value }),
       });
+      showToast(value ? 'Notifikasi diaktifkan ✓' : 'Notifikasi dinonaktifkan', 'success');
     } catch (err: any) {
       // Revert on error
       setNotifToggles(prev => ({ ...prev, [key]: !value }));
@@ -619,7 +620,7 @@ function ProfileTab({
               label="Pekerjaan / Aktivitas"
               value={onboardingJob}
               onChange={setOnboardingJob}
-              placeholder="Contoh: Mahasiswa, Freelancer, Asisten Lab"
+              placeholder="Contoh: Mahasiswa, Pekerja, Freelancer"
             />
 
             {/* Reason */}
@@ -679,6 +680,7 @@ function NotificationsTab({
     unsubscribe: () => Promise<boolean>;
   };
 }) {
+  const { showToast } = useToast();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* Notification Toggles */}
@@ -720,11 +722,16 @@ function NotificationsTab({
               variant={pushNotifications.isSubscribed ? 'secondary' : 'primary'}
               isLoading={pushNotifications.loading}
               disabled={pushNotifications.permission === 'denied'}
-              onClick={() => {
+              onClick={async () => {
                 if (pushNotifications.isSubscribed) {
-                  pushNotifications.unsubscribe();
+                  const ok = await pushNotifications.unsubscribe();
+                  if (ok) showToast('Push notification dinonaktifkan', 'success');
+                  else showToast('Gagal menonaktifkan push notification', 'error');
                 } else {
-                  pushNotifications.subscribe();
+                  const ok = await pushNotifications.subscribe();
+                  if (ok) showToast('Push notification berhasil diaktifkan! 🔔', 'success');
+                  else if (pushNotifications.permission === 'denied') showToast('Izin notifikasi diblokir oleh browser. Aktifkan di pengaturan browser.', 'error');
+                  else showToast('Gagal mengaktifkan push notification', 'error');
                 }
               }}
               style={!pushNotifications.isSubscribed ? {

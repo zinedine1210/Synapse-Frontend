@@ -339,8 +339,9 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await forumService.getClassPosts(classId, activeDiscussionId || undefined);
-      setPosts((data || []).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
+      const res = await forumService.getClassPosts(classId, activeDiscussionId || undefined, { limit: 100 });
+      const list = res.data || [];
+      setPosts(list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
     } catch { } finally { setLoading(false); }
   }, [classId, activeDiscussionId]);
 

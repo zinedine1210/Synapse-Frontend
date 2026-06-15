@@ -147,7 +147,7 @@ export default function SuperadminForumPage() {
               <Card style={{ border: '1px solid var(--border-default)' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'rgb(var(--text-primary))', marginBottom: '0.5rem' }}>Ringkasan</h3>
                 <p style={{ fontSize: '0.85rem', color: 'rgb(var(--text-muted))', lineHeight: 1.6 }}>
-                  Forum adalah fitur kolaborasi utama di Synapse. Mahasiswa menggunakan forum untuk berdiskusi, bertanya, 
+                  Forum adalah fitur kolaborasi utama di Synapse. Pengguna menggunakan forum untuk berdiskusi, bertanya, 
                   membuat polling, dan mengirim pengingat. Setiap kelas memiliki forum real-time dengan fitur chat, reply thread, 
                   dan tag anggota.
                 </p>

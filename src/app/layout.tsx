@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     default: `${brand.name} – ${brand.tagline}`,
   },
   description: brand.description,
-  keywords: ['akademik', 'mahasiswa', 'AI', 'kuis', 'rangkuman', 'belajar'],
+  keywords: ['produktivitas', 'anak muda', 'AI', 'kuis', 'rangkuman', 'belajar'],
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

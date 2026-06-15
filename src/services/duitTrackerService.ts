@@ -63,7 +63,7 @@ export const duitTrackerService = {
   createTransaction: (data: Partial<Transaction>) =>
     apiFetch<Transaction>('/duit-tracker/transactions', { method: 'POST', body: JSON.stringify(data) }),
 
-  getTransactions: (params?: { month?: number; year?: number; category?: string; type?: string; startDate?: string; endDate?: string }) => {
+  getTransactions: (params?: { month?: number; year?: number; category?: string; type?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) => {
     const q = new URLSearchParams();
     if (params?.month) q.set('month', String(params.month));
     if (params?.year) q.set('year', String(params.year));
@@ -71,7 +71,9 @@ export const duitTrackerService = {
     if (params?.type) q.set('type', params.type);
     if (params?.startDate) q.set('startDate', params.startDate);
     if (params?.endDate) q.set('endDate', params.endDate);
-    return apiFetch<Transaction[]>(`/duit-tracker/transactions?${q.toString()}`);
+    if (params?.page) q.set('page', String(params.page));
+    if (params?.limit) q.set('limit', String(params.limit));
+    return apiFetch<{ data: Transaction[]; total: number; page: number; limit: number; totalPages: number }>(`/duit-tracker/transactions?${q.toString()}`);
   },
 
   deleteTransaction: (id: string) =>

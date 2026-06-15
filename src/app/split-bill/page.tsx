@@ -17,7 +17,7 @@ import {
 import {
   Receipt, Plus, Loader2, Camera, Check, X, Send, Trash2,
   ChevronLeft, Users, Percent, TrendingUp, Zap, History,
-  Sparkles, Wallet, CheckCircle2, Clock, ArrowRight, Wand2, ScanLine,
+  Sparkles, Wallet, CheckCircle2, Clock, ArrowRight, Wand2, ScanLine, ImageIcon,
 } from 'lucide-react';
 
 /* ── Helpers ───────────────────────────────────────────────────────────── */
@@ -89,6 +89,9 @@ export default function SplitBillPage() {
   const [participants, setParticipants] = useState<string[]>(['']);
   const [percentages, setPercentages] = useState<Record<number, string>>({});
   const [scanning, setScanning] = useState(false);
+  const [showScanChoice, setShowScanChoice] = useState(false);
+  const scanGalleryRef = useRef<HTMLInputElement>(null);
+  const scanCameraRef = useRef<HTMLInputElement>(null);
   const [creating, setCreating] = useState(false);
 
   // Auto-detect splittable
@@ -522,18 +525,47 @@ export default function SplitBillPage() {
                   </div>
 
                   {/* Scan receipt */}
-                  <label className={`sb-scan ${scanning ? 'is-scanning' : ''}`}>
+                  <input ref={scanGalleryRef} type="file" accept="image/*" hidden disabled={scanning}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleScanReceipt(f); e.target.value = ''; }} />
+                  <input ref={scanCameraRef} type="file" accept="image/*" capture="environment" hidden disabled={scanning}
+                    onChange={e => { const f = e.target.files?.[0]; if (f) handleScanReceipt(f); e.target.value = ''; }} />
+                  <div
+                    className={`sb-scan ${scanning ? 'is-scanning' : ''}`}
+                    onClick={() => {
+                      if (scanning) return;
+                      const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+                      if (isMobile) setShowScanChoice(true);
+                      else scanGalleryRef.current?.click();
+                    }}
+                    style={{ cursor: scanning ? 'progress' : 'pointer' }}
+                  >
                     <span className="sb-scan__icon">
                       {scanning ? <Loader2 size={22} className="sb-spin" /> : <ScanLine size={22} />}
                     </span>
                     <span className="sb-scan__text">
                       <strong>{scanning ? 'Membaca struk...' : 'Scan Struk'}</strong>
-                      <small>{scanning ? 'Tunggu sebentar ya' : 'Otomatis isi item dari foto struk (opsional)'}</small>
+                      <small>{scanning ? 'Tunggu sebentar ya' : 'Foto struk atau pilih dari galeri'}</small>
                     </span>
                     <Camera size={18} className="sb-scan__cam" />
-                    <input type="file" accept="image/*" hidden disabled={scanning}
-                      onChange={e => { const f = e.target.files?.[0]; if (f) handleScanReceipt(f); e.target.value = ''; }} />
-                  </label>
+                  </div>
+                  {showScanChoice && (
+                    <div onClick={() => setShowScanChoice(false)} style={{ position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px 24px' }}>
+                      <div onClick={e => e.stopPropagation()} style={{ background: 'rgb(var(--bg-surface))', borderRadius: 'var(--radius-xl)', padding: 20, width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <p style={{ fontSize: 'var(--font-md)', fontWeight: 700, textAlign: 'center', margin: 0 }}>📸 Pilih Sumber Foto</p>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                          <button onClick={() => { setShowScanChoice(false); scanCameraRef.current?.click(); }} style={{ flex: 1, padding: '16px 10px', borderRadius: 'var(--radius-md)', border: '2px solid var(--border-default)', background: 'rgb(var(--bg-surface))', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
+                            <Camera size={24} style={{ color: 'rgb(var(--color-primary))' }} />
+                            <span style={{ fontWeight: 600, fontSize: 'var(--font-sm)' }}>Kamera</span>
+                          </button>
+                          <button onClick={() => { setShowScanChoice(false); scanGalleryRef.current?.click(); }} style={{ flex: 1, padding: '16px 10px', borderRadius: 'var(--radius-md)', border: '2px solid var(--border-default)', background: 'rgb(var(--bg-surface))', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, fontFamily: 'inherit' }}>
+                            <ImageIcon size={24} style={{ color: 'rgb(var(--color-secondary))' }} />
+                            <span style={{ fontWeight: 600, fontSize: 'var(--font-sm)' }}>Galeri</span>
+                          </button>
+                        </div>
+                        <button onClick={() => setShowScanChoice(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', padding: 8 }}>Batal</button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Event name */}
                   <label className="sb-field">

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { Loader2, ImagePlus, UploadCloud } from 'lucide-react';
+import { Loader2, ImagePlus, UploadCloud, Camera, ImageIcon } from 'lucide-react';
 
 interface PhotoDropzoneProps {
   loading: boolean;
@@ -12,11 +12,14 @@ interface PhotoDropzoneProps {
 
 /**
  * Big friendly dropzone with drag & drop + click/tap to upload.
+ * On mobile, shows camera vs gallery choice.
  * Accepts images only and forwards the first valid file.
  */
 export function PhotoDropzone({ loading, title, hint, onFile }: PhotoDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [showChoice, setShowChoice] = useState(false);
 
   const pick = (files: FileList | null) => {
     const file = files?.[0];
@@ -25,18 +28,29 @@ export function PhotoDropzone({ loading, title, hint, onFile }: PhotoDropzonePro
     onFile(file);
   };
 
+  const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
+  const handleClick = () => {
+    if (loading) return;
+    if (isMobile) {
+      setShowChoice(true);
+    } else {
+      inputRef.current?.click();
+    }
+  };
+
   return (
     <div
       role="button"
       tabIndex={0}
       aria-label={title}
       aria-disabled={loading}
-      onClick={() => !loading && inputRef.current?.click()}
+      onClick={handleClick}
       onKeyDown={e => {
         if (loading) return;
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          inputRef.current?.click();
+          handleClick();
         }
       }}
       onDragOver={e => { e.preventDefault(); if (!loading) setDragging(true); }}
@@ -119,6 +133,72 @@ export function PhotoDropzone({ loading, title, hint, onFile }: PhotoDropzonePro
         style={{ display: 'none' }}
         onChange={e => { pick(e.target.files); e.target.value = ''; }}
       />
+      <input
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={e => { pick(e.target.files); e.target.value = ''; }}
+      />
+
+      {/* Camera / Gallery choice overlay */}
+      {showChoice && (
+        <div
+          onClick={(e) => { e.stopPropagation(); setShowChoice(false); }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 999, background: 'rgba(0,0,0,0.45)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            padding: '0 16px 24px',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'rgb(var(--bg-surface))', borderRadius: 'var(--radius-xl)',
+              padding: '20px', width: '100%', maxWidth: 360,
+              display: 'flex', flexDirection: 'column', gap: 12,
+            }}
+          >
+            <p style={{ fontSize: 'var(--font-md)', fontWeight: 700, textAlign: 'center', margin: 0 }}>📸 Pilih Sumber Foto</p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => { setShowChoice(false); cameraRef.current?.click(); }}
+                style={{
+                  flex: 1, padding: '16px 10px', borderRadius: 'var(--radius-md)',
+                  border: '2px solid var(--border-default)', background: 'rgb(var(--bg-surface))',
+                  cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                  fontFamily: 'inherit',
+                }}
+              >
+                <Camera size={24} style={{ color: 'rgb(var(--color-primary))' }} />
+                <span style={{ fontWeight: 600, fontSize: 'var(--font-sm)' }}>Kamera</span>
+              </button>
+              <button
+                onClick={() => { setShowChoice(false); inputRef.current?.click(); }}
+                style={{
+                  flex: 1, padding: '16px 10px', borderRadius: 'var(--radius-md)',
+                  border: '2px solid var(--border-default)', background: 'rgb(var(--bg-surface))',
+                  cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                  fontFamily: 'inherit',
+                }}
+              >
+                <ImageIcon size={24} style={{ color: 'rgb(var(--color-secondary))' }} />
+                <span style={{ fontWeight: 600, fontSize: 'var(--font-sm)' }}>Galeri</span>
+              </button>
+            </div>
+            <button
+              onClick={() => setShowChoice(false)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', padding: 8,
+              }}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

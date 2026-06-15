@@ -8,7 +8,7 @@ export const brand = {
   name: 'Synapse',
   tagline: 'Hubungkan pikiran, kuasai ilmu.',
   description:
-    'Platform akademik berbasis AI untuk mahasiswa — rangkuman cerdas, kuis adaptif, dan manajemen kelas dalam satu dasbor.',
+    'Platform produktivitas berbasis AI untuk anak muda — rangkuman cerdas, kuis adaptif, dan manajemen kelas dalam satu dasbor.',
   logoText: 'SN', // Singkatan untuk fallback logo text
   logoPath: '/logo.png', // Path logo di folder public/
   version: '1.0.0',
@@ -25,6 +25,6 @@ export const brand = {
   },
 
   footer: {
-    copyright: `© ${new Date().getFullYear()} Synapse. Dibuat dengan ❤️ untuk mahasiswa Indonesia.`,
+    copyright: `© ${new Date().getFullYear()} Synapse. Dibuat dengan ❤️ untuk anak muda Indonesia.`,
   },
 } as const;

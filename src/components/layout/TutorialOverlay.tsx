@@ -37,7 +37,7 @@ const TUTORIAL_STEPS = [
     icon: <Globe size={32} />,
     title: 'Timeline',
     emoji: '🌐',
-    desc: 'Forum diskusi ala sosmed. Tanya, jawab, dan bangun reputasi bersama mahasiswa lain.',
+    desc: 'Forum diskusi ala sosmed. Tanya, jawab, dan bangun reputasi bersama pengguna lain.',
     tip: 'Jawab pertanyaan teman untuk tingkatkan reputasimu!',
   },
   {

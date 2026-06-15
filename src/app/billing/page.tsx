@@ -279,7 +279,7 @@ export default function BillingPage() {
                     <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginLeft: '0.25rem' }}>/ bulan</span>
                   </div>
                   <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>
-                    Untuk mahasiswa dengan jadwal padat yang butuh produktivitas tinggi.
+                    Untuk kamu yang punya jadwal padat dan butuh produktivitas tinggi.
                   </p>
 
                   <div

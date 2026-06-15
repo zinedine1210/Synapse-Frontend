@@ -20,6 +20,7 @@ interface CacheEntry<T = any> {
 // Global in-memory store — survives SPA navigations
 const store = new Map<string, CacheEntry>();
 const listeners = new Map<string, Set<Listener>>();
+const inflightRequests = new Map<string, Promise<any>>();
 
 function notify(key: string) {
   listeners.get(key)?.forEach((fn) => fn());
@@ -66,7 +67,6 @@ export function useCache<T>(
   const [data, setData] = useState<T | undefined>(cached);
   const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<any>(null);
-  const lastFetchRef = useRef(0);
   const mountedRef = useRef(true);
 
   // Subscribe to cache changes
@@ -91,14 +91,33 @@ export function useCache<T>(
   const revalidate = useCallback(async () => {
     if (!key || !fetcher) return;
     const now = Date.now();
-    if (now - lastFetchRef.current < dedupingInterval) return;
-    lastFetchRef.current = now;
+    
+    // Check if we already have a recent cache entry within the deduping interval globally
+    const entry = store.get(key);
+    if (entry && now - entry.timestamp < dedupingInterval) {
+      return;
+    }
+
+    // Check if there is already an in-flight request for this key
+    let promise = inflightRequests.get(key);
+    if (promise) {
+      try {
+        await promise;
+      } catch (err) {
+        // Ignored here; handled by the initiating component/hook
+      }
+      return;
+    }
 
     // If no cached data, show loading
     if (!store.has(key)) setLoading(true);
 
+    // Create the promise and store it globally
+    promise = fetcher();
+    inflightRequests.set(key, promise);
+
     try {
-      const fresh = await fetcher();
+      const fresh = await promise;
       if (mountedRef.current) {
         setCache(key, fresh);
         setError(null);
@@ -109,6 +128,8 @@ export function useCache<T>(
         // Keep stale data on error
         if (!store.has(key)) setLoading(false);
       }
+    } finally {
+      inflightRequests.delete(key);
     }
   }, [key, fetcher, dedupingInterval]);
 

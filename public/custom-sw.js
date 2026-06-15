@@ -1,12 +1,24 @@
 // ─── Synapse Custom Service Worker (Push Notifications) ───────────────
-// This file is injected into the generated sw.js via next-pwa's customWorkerDir
-// or imported. It adds push notification handling to the Workbox service worker.
+// This file handles push notifications. It can be:
+// 1. Injected into the Workbox-generated sw.js via next-pwa's importScripts
+// 2. Registered directly as a standalone SW (e.g. in dev mode)
 
 /// <reference lib="webworker" />
 
 /** @type {ServiceWorkerGlobalScope} */
 const sw = /** @type {any} */ (self);
 
+// ─── Lifecycle: Activate immediately ───────────────────────────────────
+// These are essential when this file is registered as a standalone SW.
+// When injected into Workbox's sw.js, Workbox handles skipWaiting/clientsClaim
+// separately, so these are harmless duplicates.
+sw.addEventListener('install', (event) => {
+  sw.skipWaiting();
+});
+
+sw.addEventListener('activate', (event) => {
+  event.waitUntil(sw.clients.claim());
+});
 // ─── Push Event: Receive push notification from server ─────────────────
 sw.addEventListener('push', (event) => {
   if (!event.data) return;

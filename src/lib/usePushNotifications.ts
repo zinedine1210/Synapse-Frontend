@@ -100,65 +100,71 @@ export function usePushNotifications() {
       // Get or register service worker
       let registration: ServiceWorkerRegistration | undefined;
 
-      // Step 1: Check if SW is already registered
+      // Step 1: Check if SW is already registered and active
       registration = await navigator.serviceWorker.getRegistration('/');
 
-      // Step 2: If not registered, register manually
-      if (!registration) {
-        try {
-          let swUrl = '/sw.js';
-          const probe = await fetch('/sw.js', { method: 'HEAD' }).catch(() => null);
-          if (!probe || !probe.ok) swUrl = '/custom-sw.js';
-          registration = await navigator.serviceWorker.register(swUrl, { scope: '/' });
-        } catch (e) {
-          const msg = 'Gagal mendaftarkan service worker. Coba refresh halaman dan ulangi.';
-          setError(msg);
-          setLoading(false);
-          console.error('SW register error:', e);
-          return { ok: false, error: msg };
-        }
-      }
-
-      // Step 3: Wait for SW to become active (handles installing/waiting states)
-      if (!registration.active) {
-        try {
-          await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('SW activation timeout')), 20000);
-
-            // Check if it activated while we were setting up
-            if (registration!.active) { clearTimeout(timeout); resolve(); return; }
-
-            const sw = registration!.installing || registration!.waiting;
-            if (sw) {
-              sw.addEventListener('statechange', () => {
-                if (sw.state === 'activated') { clearTimeout(timeout); resolve(); }
-                if (sw.state === 'redundant') { clearTimeout(timeout); reject(new Error('SW became redundant')); }
-              });
-            } else {
-              // No installing/waiting/active — try navigator.serviceWorker.ready as last resort
-              clearTimeout(timeout);
-              const readyTimeout = setTimeout(() => reject(new Error('SW ready timeout')), 20000);
-              navigator.serviceWorker.ready.then((reg) => {
-                clearTimeout(readyTimeout);
-                registration = reg;
-                resolve();
-              }).catch(reject);
-            }
-          });
-        } catch (e) {
-          // Last resort: try navigator.serviceWorker.ready without timeout
-          // This promise NEVER rejects and always eventually resolves
+      if (registration?.active) {
+        // SW is ready — use it directly
+      } else {
+        // Step 2: Register SW if not found or not active
+        if (!registration) {
           try {
-            registration = await Promise.race([
-              navigator.serviceWorker.ready,
-              new Promise<never>((_, reject) => setTimeout(() => reject(new Error('final timeout')), 25000)),
-            ]);
-          } catch {
-            const msg = 'Service worker belum siap. Coba tutup dan buka ulang aplikasi.';
+            // Try custom-sw.js first (works in both dev and prod)
+            // Then fall back to sw.js (Workbox-generated, prod only)
+            let swUrl = '/custom-sw.js';
+            const probeCustom = await fetch('/custom-sw.js', { method: 'HEAD' }).catch(() => null);
+            if (!probeCustom || !probeCustom.ok) {
+              const probeSw = await fetch('/sw.js', { method: 'HEAD' }).catch(() => null);
+              if (probeSw?.ok) swUrl = '/sw.js';
+            }
+            registration = await navigator.serviceWorker.register(swUrl, { scope: '/' });
+          } catch (e) {
+            const msg = 'Gagal mendaftarkan service worker. Coba refresh halaman dan ulangi.';
             setError(msg);
             setLoading(false);
-            console.error('SW activation error:', e);
+            console.error('SW register error:', e);
             return { ok: false, error: msg };
+          }
+        }
+
+        // Step 3: Wait for SW to become active
+        if (!registration.active) {
+          try {
+            await new Promise<void>((resolve, reject) => {
+              const timeout = setTimeout(() => reject(new Error('SW activation timeout')), 15000);
+
+              // Check again in case it activated during setup
+              if (registration!.active) { clearTimeout(timeout); resolve(); return; }
+
+              const sw = registration!.installing || registration!.waiting;
+              if (sw) {
+                sw.addEventListener('statechange', () => {
+                  if (sw.state === 'activated') { clearTimeout(timeout); resolve(); }
+                  if (sw.state === 'redundant') { clearTimeout(timeout); reject(new Error('SW became redundant')); }
+                });
+              } else {
+                // Fallback: wait for navigator.serviceWorker.ready
+                clearTimeout(timeout);
+                navigator.serviceWorker.ready.then((reg) => {
+                  registration = reg;
+                  resolve();
+                }).catch(reject);
+              }
+            });
+          } catch (e) {
+            // Last resort: navigator.serviceWorker.ready never rejects
+            try {
+              registration = await Promise.race([
+                navigator.serviceWorker.ready,
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error('final timeout')), 20000)),
+              ]);
+            } catch {
+              const msg = 'Service worker belum siap. Coba refresh halaman atau buka ulang aplikasi.';
+              setError(msg);
+              setLoading(false);
+              console.error('SW activation error:', e);
+              return { ok: false, error: msg };
+            }
           }
         }
       }

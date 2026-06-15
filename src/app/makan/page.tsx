@@ -19,7 +19,7 @@ import {
 } from '@/services/foodService';
 import {
   UtensilsCrossed, Loader2, Settings2, Heart, History,
-  Wallet, Clock, Refrigerator, ScrollText, Sparkles,
+  Wallet, Clock, Refrigerator, ScrollText, Sparkles, ChevronDown, Gauge,
 } from 'lucide-react';
 import { SegmentedTabs } from '@/components/food/SegmentedTabs';
 import { BudgetRing } from '@/components/food/BudgetRing';
@@ -51,6 +51,7 @@ export default function MakanApaPage() {
   const [pref, setPref] = useState<FoodPreference | null>(null);
   const [showPrefModal, setShowPrefModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [fridgeResult, setFridgeResult] = useState<FridgeResult | null>(null);
   const [menuResult, setMenuResult] = useState<MenuResult | null>(null);
   const [menuFilter, setMenuFilter] = useState('hemat');
@@ -170,6 +171,254 @@ export default function MakanApaPage() {
     ? Math.max(0, Math.round((1 - spentFraction) * 100))
     : 0;
   const overBudget = spentFraction > 0.85;
+
+  const getDifficultyColor = (difficulty: string): string => {
+    const d = (difficulty || '').toLowerCase();
+    if (d.includes('mudah') || d.includes('easy')) return 'var(--color-success)';
+    if (d.includes('sulit') || d.includes('hard') || d.includes('susah')) return 'var(--color-error)';
+    return 'var(--color-warning)';
+  };
+
+  const renderHistoryItem = (item: FoodHistoryItem) => {
+    const isExpanded = expandedHistoryId === item.id;
+    let recipe: any = null;
+    if (item.recipeData) {
+      try { recipe = JSON.parse(item.recipeData); } catch {}
+    }
+    
+    const toggleExpand = () => {
+      setExpandedHistoryId(isExpanded ? null : item.id);
+    };
+
+    const isFridge = item.sourceType !== 'menu' && (!recipe || recipe.steps || recipe.ingredients);
+
+    return (
+      <Card
+        key={item.id}
+        style={{
+          padding: 0,
+          overflow: 'hidden',
+          border: isExpanded ? '1px solid rgba(var(--color-primary) / 0.3)' : '1px solid var(--border-default)',
+          background: isExpanded ? 'linear-gradient(180deg, rgb(var(--bg-elevated)), rgba(var(--color-primary) / 0.02))' : 'rgb(var(--bg-elevated))',
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: isExpanded ? 'scale(1.005)' : 'scale(1)',
+          boxShadow: isExpanded ? 'var(--shadow-md)' : 'none',
+        }}
+      >
+        <div
+          onClick={toggleExpand}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '14px 18px',
+            cursor: 'pointer',
+            userSelect: 'none',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: isFridge ? 'rgba(var(--color-success) / 0.1)' : 'rgba(var(--color-primary) / 0.1)',
+                color: isFridge ? 'rgb(var(--color-success))' : 'rgb(var(--color-primary))',
+                flexShrink: 0,
+              }}
+            >
+              {isFridge ? <Refrigerator size={16} /> : <ScrollText size={16} />}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <h4 style={{ fontWeight: 800, fontSize: 'var(--font-sm)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {item.recipeName}
+              </h4>
+              <span style={{ fontSize: '10px', color: 'rgb(var(--text-muted))', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                <Clock size={11} />
+                {new Date(item.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+            <div style={{ textAlign: 'right' }}>
+              {item.budget !== null && (
+                <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--color-primary))', fontWeight: 700 }}>
+                  {isFridge ? `Sisa: ${fmt(item.budget)}` : fmt(item.budget)}
+                </span>
+              )}
+              <p style={{ fontSize: '9px', color: 'rgb(var(--text-muted))', margin: 0, marginTop: 2 }}>
+                {isFridge ? 'Resep Kulkas' : 'Rekomendasi Menu'}
+              </p>
+            </div>
+            <ChevronDown
+              size={16}
+              style={{
+                color: 'rgb(var(--text-muted))',
+                transition: 'transform 0.25s',
+                transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              }}
+            />
+          </div>
+        </div>
+
+        {isExpanded && (
+          <div
+            style={{
+              padding: '0 18px 18px',
+              borderTop: '1px solid var(--border-default)',
+              background: 'rgba(0,0,0,0.01)',
+              animation: 'slideDown 0.2s ease-out',
+            }}
+          >
+            {recipe ? (
+              isFridge ? (
+                <div style={{ marginTop: 14 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                    {recipe.cookTime && (
+                      <span style={historyMetaChip}>
+                        <Clock size={12} /> {recipe.cookTime}
+                      </span>
+                    )}
+                    {recipe.difficulty && (
+                      <span
+                        style={{
+                          ...historyMetaChip,
+                          color: getDifficultyColor(recipe.difficulty),
+                          background: `${getDifficultyColor(recipe.difficulty)}1a`,
+                          borderColor: `${getDifficultyColor(recipe.difficulty)}4d`,
+                        }}
+                      >
+                        <Gauge size={12} /> {recipe.difficulty}
+                      </span>
+                    )}
+                    {recipe.estimatedCost && (
+                      <span style={{ ...historyMetaChip, color: 'rgb(var(--color-primary))' }}>
+                        <Wallet size={12} /> {fmt(recipe.estimatedCost)}
+                      </span>
+                    )}
+                    {recipe.tags?.map((t: string) => (
+                      <span key={t} style={historyMetaChip}>#{t}</span>
+                    ))}
+                  </div>
+
+                  {recipe.ingredients?.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      <p style={historySectionLabel}>🧺 Bahan-bahan</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                        {recipe.ingredients.map((ing: string, idx: number) => (
+                          <label
+                            key={idx}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              fontSize: 'var(--font-sm)',
+                              color: 'rgb(var(--text-secondary))',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              style={{
+                                accentColor: 'rgb(var(--color-primary))',
+                                width: 14,
+                                height: 14,
+                              }}
+                            />
+                            <span>{ing}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {recipe.steps?.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <p style={historySectionLabel}>👩‍🍳 Langkah Memasak</p>
+                      <ol style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', paddingLeft: 18, margin: 0, marginTop: 6, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {recipe.steps.map((step: string, idx: number) => (
+                          <li key={idx} style={{ lineHeight: 1.4 }}>{step}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+                    <Button
+                      onClick={(e) => { e.stopPropagation(); handleToggleFavorite(recipe); }}
+                      variant="ghost"
+                      size="sm"
+                      style={{
+                        color: isFavorited(recipe.name) ? 'rgb(var(--color-error))' : 'rgb(var(--text-muted))',
+                        fontWeight: 700,
+                        gap: 6,
+                        padding: '6px 12px',
+                      }}
+                    >
+                      <Heart
+                        size={15}
+                        fill={isFavorited(recipe.name) ? 'rgb(var(--color-error))' : 'none'}
+                        color={isFavorited(recipe.name) ? 'rgb(var(--color-error))' : 'currentColor'}
+                      />
+                      {isFavorited(recipe.name) ? 'Tersimpan di Favorit' : 'Tambah ke Favorit'}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginTop: 14 }}>
+                  <p style={{ ...historySectionLabel, marginBottom: 4 }}>💡 Alasan Rekomendasi</p>
+                  <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', lineHeight: 1.4, margin: 0 }}>
+                    {recipe.reason || 'Sesuai dengan filter budget dan seleramu.'}
+                  </p>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
+                     <div style={{ display: 'flex', gap: 6 }}>
+                       {recipe.tags?.map((t: string) => (
+                         <span key={t} style={historyMetaChip}>#{t}</span>
+                       ))}
+                     </div>
+                     <span style={{ fontWeight: 800, color: 'rgb(var(--color-primary))', fontSize: 'var(--font-sm)' }}>
+                       {fmt(recipe.price || item.budget || 0)}
+                     </span>
+                  </div>
+                </div>
+              )
+            ) : (
+              <div style={{ marginTop: 10, fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))' }}>
+                Nama resep/menu: <strong style={{ color: 'rgb(var(--text-primary))' }}>{item.recipeName}</strong>.
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+    );
+  };
+
+  const historyMetaChip: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '4px 8px',
+    borderRadius: 999,
+    fontSize: 10,
+    fontWeight: 600,
+    color: 'rgb(var(--text-secondary))',
+    background: 'rgb(var(--bg-elevated))',
+    border: '1px solid var(--border-default)',
+  };
+
+  const historySectionLabel: React.CSSProperties = {
+    fontSize: 'var(--font-xs)',
+    fontWeight: 800,
+    margin: 0,
+    color: 'rgb(var(--text-primary))',
+    textTransform: 'uppercase',
+    letterSpacing: '0.3px',
+  };
 
   return (
     <AuthGuard requiredFeature="food_recommend">
@@ -296,6 +545,40 @@ export default function MakanApaPage() {
                       : 'AI pilihkan menu terbaik sesuai budget & seleramu. Tarik foto ke sini atau klik untuk memilih.'}
                     onFile={handleImageUpload}
                   />
+
+                  {/* Processing / Loading Info Banner */}
+                  {loading && (
+                    <Card
+                      className="animate-pulse"
+                      style={{
+                        marginTop: 16,
+                        padding: '20px',
+                        background: 'linear-gradient(135deg, rgba(var(--color-primary) / 0.08), rgba(var(--color-secondary) / 0.05))',
+                        border: '1px dashed rgb(var(--color-primary))',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        gap: 12,
+                        borderRadius: 'var(--radius-lg)',
+                        boxShadow: '0 8px 30px rgba(var(--color-primary) / 0.06)',
+                      }}
+                    >
+                      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44 }}>
+                        <div style={{ position: 'absolute', width: 44, height: 44, borderRadius: '50%', border: '3px solid rgba(var(--color-primary), 0.1)', borderTopColor: 'rgb(var(--color-primary))', animation: 'spin 1s linear infinite' }} />
+                        <Sparkles size={18} style={{ color: 'rgb(var(--color-primary))', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                      </div>
+                      <div>
+                        <h4 style={{ fontWeight: 800, fontSize: 'var(--font-md)', color: 'rgb(var(--text-primary))', marginBottom: 6 }}>
+                          Sedang Menganalisis Gambar...
+                        </h4>
+                        <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', maxWidth: 520, margin: '0 auto', lineHeight: 1.45 }}>
+                          Gemini AI sedang membaca foto {mode === 'fridge' ? 'isi kulkas' : 'menu restoran'} Anda untuk menyusun rekomendasi terbaik sesuai selera & sisa budget makanmu. Mohon tunggu sekitar 5-10 detik. ✨
+                        </p>
+                      </div>
+                    </Card>
+                  )}
 
                   {/* Fridge Results */}
                   {fridgeResult && (
@@ -466,29 +749,8 @@ export default function MakanApaPage() {
                       <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))' }}>Belum ada riwayat rekomendasi. Upload foto untuk mulai!</p>
                     </Card>
                   ) : (
-                    <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {history.map(item => (
-                        <Card key={item.id} style={{ padding: '12px 16px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <div style={{ width: 32, height: 32, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(var(--color-primary) / 0.1)', flexShrink: 0 }}>
-                                <Clock size={15} style={{ color: 'rgb(var(--color-primary))' }} />
-                              </div>
-                              <span style={{ fontWeight: 600, fontSize: 'var(--font-sm)' }}>{item.recipeName}</span>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                              {item.budget !== null && (
-                                <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--color-primary))', fontWeight: 600 }}>
-                                  Budget: {fmt(item.budget)}
-                                </span>
-                              )}
-                              <p style={{ fontSize: '10px', color: 'rgb(var(--text-muted))' }}>
-                                {new Date(item.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                              </p>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
+                    <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {history.map(item => renderHistoryItem(item))}
                     </div>
                   )}
                 </div>
@@ -499,6 +761,31 @@ export default function MakanApaPage() {
             <BottomSheet isOpen={showPrefModal} onClose={() => setShowPrefModal(false)} title="⚙️ Preferensi Makan">
               <PreferenceForm pref={pref} onSave={handleSavePref} />
             </BottomSheet>
+            <style dangerouslySetInnerHTML={{ __html: `
+              @keyframes slideDown {
+                from { opacity: 0; transform: translateY(-8px); }
+                to { opacity: 1; transform: translateY(0); }
+              }
+              @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+              }
+              @keyframes pulse {
+                0%, 100% { opacity: 1; transform: scale(1); }
+                50% { opacity: 0.6; transform: scale(0.97); }
+              }
+              .animate-pulse {
+                animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+              }
+              .tag-chip {
+                transition: all 0.2s ease;
+              }
+              .tag-chip:hover {
+                background: rgba(var(--color-primary) / 0.15) !important;
+                color: rgb(var(--color-primary)) !important;
+                transform: translateY(-1px);
+              }
+            `}} />
           </div>
         </div>
       </div>

@@ -77,7 +77,10 @@ export default function SplitBillPage() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { data: bills = [], loading, revalidate: fetchBills, mutate: mutateBills } = useCache<SplitBill[]>('split-bill:list', () => splitBillService.getAll());
+  const { data: bills = [], loading, revalidate: fetchBills, mutate: mutateBills } = useCache<SplitBill[]>('split-bill:list', async () => {
+    const res = await splitBillService.getAll();
+    return Array.isArray(res) ? res : [];
+  });
   const [view, setView] = useState<'list' | 'detail' | 'create' | 'history'>('list');
   const [selectedBill, setSelectedBill] = useState<SplitBill | null>(null);
   const [socketLive, setSocketLive] = useState(false);
@@ -93,6 +96,7 @@ export default function SplitBillPage() {
   const scanGalleryRef = useRef<HTMLInputElement>(null);
   const scanCameraRef = useRef<HTMLInputElement>(null);
   const [creating, setCreating] = useState(false);
+  const [scannedItems, setScannedItems] = useState<{ name: string; price: number; quantity: number; checked: boolean }[]>([]);
 
   // Auto-detect splittable
   const [splittableTransactions, setSplittableTransactions] = useState<SplittableTransaction[]>([]);
@@ -168,6 +172,7 @@ export default function SplitBillPage() {
 
   const handleScanReceipt = async (file: File) => {
     setScanning(true);
+    setScannedItems([]);
     try {
       const reader = new FileReader();
       const base64 = await new Promise<string>((resolve) => {
@@ -178,13 +183,15 @@ export default function SplitBillPage() {
       if (result.error) {
         showToast(result.error, 'error');
       } else if (result.items) {
-        setItems(result.items.map(i => ({
-          name: i.name,
-          price: String(i.price),
-          quantity: String(i.quantity),
-        })));
+        const parsed = result.items.map(i => ({
+          name: i.name || 'Item',
+          price: Number(i.price) || 0,
+          quantity: Number(i.quantity) || 1,
+          checked: true,
+        }));
+        setScannedItems(parsed);
         if (result.storeName) setEventName(result.storeName);
-        showToast(`${result.items.length} item terdeteksi dari struk!`, 'success');
+        showToast(`${result.items.length} item terdeteksi dari struk! 📸`, 'success');
       }
     } catch (e: any) {
       showToast(e.message || 'Gagal scan struk.', 'error');
@@ -242,6 +249,7 @@ export default function SplitBillPage() {
     setItems([{ name: '', price: '', quantity: '1' }]);
     setParticipants(['']);
     setPercentages({});
+    setScannedItems([]);
   };
 
   const openDetail = async (id: string) => {
@@ -554,6 +562,89 @@ export default function SplitBillPage() {
                           </button>
                         </div>
                         <button onClick={() => setShowScanChoice(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', padding: 8 }}>Batal</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Scanned Items Checklist Area */}
+                  {scannedItems.length > 0 && (
+                    <div style={{ marginBottom: 20, padding: 16, borderRadius: 'var(--radius-lg)', background: 'rgba(var(--color-primary), 0.05)', border: '1px solid rgba(var(--color-primary), 0.15)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <span style={{ fontWeight: 700, fontSize: 'var(--font-sm)', display: 'flex', alignItems: 'center', gap: 6, color: 'rgb(var(--text-primary))' }}>
+                          📋 Item Terdeteksi ({scannedItems.filter(i => i.checked).length}/{scannedItems.length})
+                        </span>
+                        <button type="button" onClick={() => setScannedItems([])} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgb(var(--text-muted))', fontWeight: 600 }}>
+                          Batal
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 240, overflowY: 'auto', marginBottom: 14 }}>
+                        {scannedItems.map((item, idx) => (
+                          <label
+                            key={idx}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 10,
+                              padding: '10px 12px',
+                              borderRadius: 'var(--radius-md)',
+                              background: item.checked ? 'rgba(var(--color-secondary), 0.08)' : 'rgba(var(--text-muted), 0.04)',
+                              border: item.checked ? '1px solid rgba(var(--color-secondary), 0.2)' : '1px solid var(--border-default)',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={item.checked}
+                              onChange={() => setScannedItems(prev => prev.map((it, i) => i === idx ? { ...it, checked: !it.checked } : it))}
+                              style={{ accentColor: 'rgb(var(--color-primary))', width: 16, height: 16, flexShrink: 0 }}
+                            />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'rgb(var(--text-primary))' }}>
+                                {item.name}
+                              </div>
+                              <div style={{ fontSize: 11, color: 'rgb(var(--text-muted))', marginTop: 2 }}>
+                                Jumlah: {item.quantity}
+                              </div>
+                            </div>
+                            <span style={{ fontWeight: 800, fontSize: 13, color: 'rgb(var(--color-primary))', flexShrink: 0 }}>
+                              {fmt(item.price * item.quantity)}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            const allChecked = scannedItems.every(i => i.checked);
+                            setScannedItems(prev => prev.map(i => ({ ...i, checked: !allChecked })));
+                          }}
+                          style={{ flex: 1, borderRadius: 10, fontSize: 12, padding: '8px 0' }}
+                        >
+                          {scannedItems.every(i => i.checked) ? 'Hapus Pilihan' : 'Pilih Semua'}
+                        </Button>
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            const selected = scannedItems.filter(i => i.checked);
+                            if (selected.length === 0) {
+                              showToast('Pilih minimal 1 item untuk diimpor.', 'error');
+                              return;
+                            }
+                            setItems(selected.map(i => ({
+                              name: i.name,
+                              price: String(i.price),
+                              quantity: String(i.quantity),
+                            })));
+                            setScannedItems([]);
+                            showToast(`${selected.length} item berhasil diimpor ke form! 💾`, 'success');
+                          }}
+                          style={{ flex: 2, borderRadius: 10, fontSize: 12, padding: '8px 0' }}
+                        >
+                          💾 Impor {scannedItems.filter(i => i.checked).length} Item
+                        </Button>
                       </div>
                     </div>
                   )}

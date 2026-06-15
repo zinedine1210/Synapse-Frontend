@@ -1,19 +1,25 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Flame, Trophy } from 'lucide-react';
 import { gamificationService, GamificationProfile } from '@/services/gamificationService';
+import { useCache } from '@/lib/cache';
 
 interface XpBarProps {
   collapsed?: boolean;
 }
 
 export function XpBar({ collapsed = false }: XpBarProps) {
-  const [profile, setProfile] = useState<GamificationProfile | null>(null);
-
-  useEffect(() => {
-    gamificationService.getProfile().then(setProfile).catch(() => {});
-  }, []);
+  // Use in-memory cache to persist user gamification details across page navigations.
+  // We only fetch in the background if the cache is older than the deduping interval,
+  // providing a seamless and highly responsive navigation experience.
+  const { data: profile } = useCache<GamificationProfile>(
+    'gamification:profile',
+    () => gamificationService.getProfile(),
+    {
+      dedupingInterval: 60000, // dedupe fetches within 1 minute
+    }
+  );
 
   if (!profile) return null;
 

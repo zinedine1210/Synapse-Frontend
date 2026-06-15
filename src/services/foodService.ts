@@ -53,6 +53,8 @@ export interface FoodHistoryItem {
   userId: string;
   recipeName: string;
   budget: number | null;
+  recipeData?: string;
+  sourceType?: string;
   createdAt: string;
 }
 

@@ -71,7 +71,7 @@ export const splitBillService = {
   }) =>
     apiFetch<SplitBill>('/split-bill', { method: 'POST', body: JSON.stringify(data) }),
 
-  getAll: () => apiFetch<SplitBill[]>('/split-bill'),
+  getAll: () => apiFetch<{ data: SplitBill[] }>('/split-bill').then(res => res?.data || []),
 
   getById: (id: string) => apiFetch<SplitBill>(`/split-bill/${id}`),
 

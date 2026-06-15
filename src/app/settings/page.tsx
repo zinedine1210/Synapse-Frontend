@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, useToast, useConfirm, TextInput, TagInput, TimePicker, SelectOption } from '@/components/ui';
 import { apiFetch, apiUpload } from '@/lib/api';
+import { useCache } from '@/lib/cache';
 
 import { usePushNotifications } from '@/lib/usePushNotifications';
 import {
@@ -66,7 +67,6 @@ export default function SettingsPage() {
   const { confirm } = useConfirm();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('profile');
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Profile state
@@ -81,7 +81,6 @@ export default function SettingsPage() {
   const [onboardingJob, setOnboardingJob] = useState('');
   const [onboardingReason, setOnboardingReason] = useState('');
   const [onboardingSaving, setOnboardingSaving] = useState(false);
-  const [onboardingLoading, setOnboardingLoading] = useState(true);
 
   // Preferences state
   const [notifToggles, setNotifToggles] = useState<Record<string, boolean>>({});
@@ -93,64 +92,47 @@ export default function SettingsPage() {
   // Push notification state
   const pushNotifications = usePushNotifications();
 
-  // Load preferences on mount
-  const loadPreferences = useCallback(async () => {
-    try {
-      setLoading(true);
-      const prefs = await apiFetch<UserPreferences>('/settings/preferences');
+  // Cached data fetching
+  const { data: prefData, loading } = useCache<UserPreferences>(
+    user ? 'settings:preferences' : null,
+    () => apiFetch<UserPreferences>('/settings/preferences')
+  );
 
-      // Set notification toggles
+  const { data: onboardingData, loading: onboardingLoading } = useCache<{
+    university: string | null; hobbies: string[]; job: string | null; reason: string | null;
+  }>(
+    user ? 'settings:onboarding-profile' : null,
+    () => apiFetch('/user/profile')
+  );
+
+  // Hydrate state from cached data
+  useEffect(() => {
+    if (prefData) {
       const toggles: Record<string, boolean> = {};
-      NOTIFICATION_TOGGLES.forEach(t => {
-        toggles[t.key] = prefs.notifications[t.key];
-      });
+      NOTIFICATION_TOGGLES.forEach(t => { toggles[t.key] = prefData.notifications[t.key]; });
       setNotifToggles(toggles);
-
-      // Set quiet hours
-      setQuietStart(prefs.notifications.quietHoursStart || '');
-      setQuietEnd(prefs.notifications.quietHoursEnd || '');
-
-      // Set theme
-      setThemeChoice(prefs.theme as 'light' | 'dark' | 'system');
-
-      // Set language
-      setLanguage(prefs.language as 'id' | 'en');
-    } catch (err) {
-      console.error('Failed to load preferences:', err);
-    } finally {
-      setLoading(false);
+      setQuietStart(prefData.notifications.quietHoursStart || '');
+      setQuietEnd(prefData.notifications.quietHoursEnd || '');
+      setThemeChoice(prefData.theme as 'light' | 'dark' | 'system');
+      setLanguage(prefData.language as 'id' | 'en');
     }
-  }, []);
+  }, [prefData]);
 
-  // Load onboarding profile data
-  const loadOnboardingProfile = useCallback(async () => {
-    try {
-      setOnboardingLoading(true);
-      const profile = await apiFetch<{
-        university: string | null;
-        hobbies: string[];
-        job: string | null;
-        reason: string | null;
-      }>('/user/profile');
-      setOnboardingUniversity(profile.university || '');
-      setOnboardingHobbies(profile.hobbies || []);
-      setOnboardingJob(profile.job || '');
-      setOnboardingReason(profile.reason || '');
-    } catch (err) {
-      console.error('Failed to load onboarding profile:', err);
-    } finally {
-      setOnboardingLoading(false);
+  useEffect(() => {
+    if (onboardingData) {
+      setOnboardingUniversity(onboardingData.university || '');
+      setOnboardingHobbies(onboardingData.hobbies || []);
+      setOnboardingJob(onboardingData.job || '');
+      setOnboardingReason(onboardingData.reason || '');
     }
-  }, []);
+  }, [onboardingData]);
 
   useEffect(() => {
     if (user) {
       setFullName(user.fullName || '');
       setAvatarUrl(user.avatarUrl);
-      loadPreferences();
-      loadOnboardingProfile();
     }
-  }, [user, loadPreferences, loadOnboardingProfile]);
+  }, [user]);
 
   // Profile handlers
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -676,8 +658,9 @@ function NotificationsTab({
     isSubscribed: boolean;
     permission: NotificationPermission;
     loading: boolean;
-    subscribe: () => Promise<boolean>;
-    unsubscribe: () => Promise<boolean>;
+    error: string | null;
+    subscribe: () => Promise<{ ok: boolean; error?: string }>;
+    unsubscribe: () => Promise<{ ok: boolean; error?: string }>;
   };
 }) {
   const { showToast } = useToast();
@@ -724,14 +707,13 @@ function NotificationsTab({
               disabled={pushNotifications.permission === 'denied'}
               onClick={async () => {
                 if (pushNotifications.isSubscribed) {
-                  const ok = await pushNotifications.unsubscribe();
-                  if (ok) showToast('Push notification dinonaktifkan', 'success');
-                  else showToast('Gagal menonaktifkan push notification', 'error');
+                  const result = await pushNotifications.unsubscribe();
+                  if (result.ok) showToast('Push notification dinonaktifkan', 'success');
+                  else showToast(result.error || 'Gagal menonaktifkan push notification', 'error');
                 } else {
-                  const ok = await pushNotifications.subscribe();
-                  if (ok) showToast('Push notification berhasil diaktifkan! 🔔', 'success');
-                  else if (pushNotifications.permission === 'denied') showToast('Izin notifikasi diblokir oleh browser. Aktifkan di pengaturan browser.', 'error');
-                  else showToast('Gagal mengaktifkan push notification', 'error');
+                  const result = await pushNotifications.subscribe();
+                  if (result.ok) showToast('Push notification berhasil diaktifkan! 🔔', 'success');
+                  else showToast(result.error || 'Gagal mengaktifkan push notification', 'error');
                 }
               }}
               style={!pushNotifications.isSubscribed ? {

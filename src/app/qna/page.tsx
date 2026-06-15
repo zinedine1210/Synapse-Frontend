@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
@@ -13,7 +13,7 @@ import dynamic from 'next/dynamic';
 
 const RichTextEditor = dynamic(() => import('@/components/ui/RichTextEditor').then(m => ({ default: m.RichTextEditor })), { ssr: false });
 import { qnaService, QnaQuestion, QnaPaginated, UserReputation } from '@/services/qnaService';
-import { useCache } from '@/lib/cache';
+import { useCache, setCache } from '@/lib/cache';
 import { useDebounce } from '@/lib/useDebounce';
 import { Plus, Loader2, MessageSquare, CheckCircle, Search, Award, Clock, User as UserIcon, Hash, Eye, HelpCircle, Flame, Star, Sparkles, Zap } from 'lucide-react';
 
@@ -71,6 +71,26 @@ export default function QnaPage() {
   const debouncedSearch = useDebounce(search, 350);
   const [page, setPage] = useState(1);
 
+  // Cache key for the current view — allows instant data on navigation back
+  const cacheKey = `qna:questions:${tab}:${selectedCategory}:${debouncedSearch || '_'}`;
+  const { data: cachedQuestions } = useCache<{ questions: QnaQuestion[]; totalPages: number; total: number }>(
+    cacheKey,
+    null, // no auto-fetch — we fetch manually to handle append/pagination
+    { revalidateOnMount: false }
+  );
+
+  // Hydrate from cache on mount / tab change — show stale data instantly
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (cachedQuestions && questions.length === 0 && loading) {
+      setQuestions(cachedQuestions.questions);
+      setTotalPages(cachedQuestions.totalPages);
+      setTotal(cachedQuestions.total);
+      setLoading(false);
+      hydratedRef.current = true;
+    }
+  }, [cachedQuestions]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [showAskModal, setShowAskModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [askForm, setAskForm] = useState({ title: '', body: '', category: '' });
@@ -90,7 +110,6 @@ export default function QnaPage() {
     else setLoading(true);
     try {
       if (tab === 'mine') {
-        // getMyQuestions returns the full list (not paginated); filter client-side.
         const all = await qnaService.getMyQuestions();
         let filtered = all;
         if (selectedCategory !== 'semua') filtered = filtered.filter(q => q.category?.includes(selectedCategory));
@@ -105,6 +124,8 @@ export default function QnaPage() {
         setQuestions(filtered);
         setTotalPages(1);
         setTotal(filtered.length);
+        // Save to cache for instant back-navigation
+        setCache(cacheKey, { questions: filtered, totalPages: 1, total: filtered.length });
         return;
       }
 
@@ -117,17 +138,20 @@ export default function QnaPage() {
         res = await qnaService.getQuestions(params);
       }
 
+      const newQuestions = append ? [...questions, ...res.questions] : res.questions;
       if (append) setQuestions(prev => [...prev, ...res.questions]);
       else setQuestions(res.questions);
       setTotalPages(res.totalPages);
       setTotal(res.total);
+      // Save to cache (always save full current list for back-navigation)
+      setCache(cacheKey, { questions: newQuestions, totalPages: res.totalPages, total: res.total });
     } catch (e: any) {
       showToast(e.message, 'error');
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [debouncedSearch, selectedCategory, tab, showToast]);
+  }, [debouncedSearch, selectedCategory, tab, showToast, cacheKey, questions]);
 
   // Reset and fetch when tab, search, or category changes
   useEffect(() => {

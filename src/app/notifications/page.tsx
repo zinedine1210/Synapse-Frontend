@@ -18,6 +18,7 @@ import {
   Trophy, HelpCircle, Filter, Inbox,
 } from 'lucide-react';
 import { usePushNotifications } from '@/lib/usePushNotifications';
+import { getCache, setCache as setCacheStore } from '@/lib/cache';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -127,13 +128,18 @@ export default function NotificationsPage() {
   const { showToast } = useToast();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
+
+  // Hydrate from cache for instant back-navigation
+  const cachedKey = `notifications:${activeCategory}`;
+  const cached = getCache<{ notifications: Notification[]; unreadCount: number }>(cachedKey);
+
+  const [notifications, setNotifications] = useState<Notification[]>(cached?.notifications ?? []);
+  const [loading, setLoading] = useState(!cached);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [activeCategory, setActiveCategory] = useState<CategoryFilter>('all');
+  const [unreadCount, setUnreadCount] = useState(cached?.unreadCount ?? 0);
   const socketRef = useRef<Socket | null>(null);
 
   // Push notification state
@@ -154,16 +160,21 @@ export default function NotificationsPage() {
       });
 
       const fetched = data.notifications ?? [];
-      setNotifications((prev) => append ? [...prev, ...fetched] : fetched);
+      const newNotifs = append ? [...notifications, ...fetched] : fetched;
+      setNotifications(append ? (prev) => [...prev, ...fetched] : fetched);
       setUnreadCount(data.unreadCount ?? 0);
       setHasMore(fetched.length >= PAGE_LIMIT);
+      // Cache page 1 for instant back-navigation
+      if (!append) {
+        setCacheStore(`notifications:${category}`, { notifications: fetched, unreadCount: data.unreadCount ?? 0 });
+      }
     } catch (err) {
       if (!append) setNotifications([]);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [notifications]);
 
   // Initial load + when category changes
   useEffect(() => {
@@ -363,16 +374,27 @@ export default function NotificationsPage() {
               border: '1px solid rgba(var(--color-primary) / 0.12)',
               marginBottom: '0.75rem', flexWrap: 'wrap',
             }}>
-              <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', margin: 0, flex: 1, minWidth: 180 }}>
-                📱 Aktifkan notifikasi HP agar tidak ketinggalan info penting!
-              </p>
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', margin: 0 }}>
+                  📱 Aktifkan notifikasi HP agar tidak ketinggalan info penting!
+                </p>
+                {push.error && (
+                  <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--color-danger))', margin: '4px 0 0', lineHeight: 1.4 }}>
+                    ⚠️ {push.error}
+                  </p>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: '0.35rem' }}>
                 <Button
                   size="sm"
                   isLoading={push.loading}
                   onClick={async () => {
-                    const ok = await push.subscribe();
-                    if (ok) showToast('Push notification aktif!', 'success');
+                    const result = await push.subscribe();
+                    if (result.ok) {
+                      showToast('Push notification aktif! 🎉', 'success');
+                    } else {
+                      showToast(result.error || 'Gagal mengaktifkan push notification.', 'error');
+                    }
                   }}
                   style={{
                     background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
@@ -385,6 +407,20 @@ export default function NotificationsPage() {
                   Nanti
                 </Button>
               </div>
+            </div>
+          )}
+
+          {/* Push denied banner */}
+          {push.isSupported && push.permission === 'denied' && !pushDismissed && (
+            <div style={{
+              padding: '0.65rem 0.85rem', borderRadius: 'var(--radius-lg)',
+              background: 'rgba(var(--color-danger) / 0.06)',
+              border: '1px solid rgba(var(--color-danger) / 0.12)',
+              marginBottom: '0.75rem',
+            }}>
+              <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', margin: 0 }}>
+                🔇 Notifikasi diblokir. Buka pengaturan browser → Izin → Notifikasi → izinkan untuk situs ini, lalu refresh halaman.
+              </p>
             </div>
           )}
 

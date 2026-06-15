@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { superadminService } from '@/services/superadminService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Alert, DataTable } from '@/components/ui';
 import type { Column } from '@/components/ui';
+import { useCache } from '@/lib/cache';
 import { MessageSquare, Loader2, MessagesSquare, Reply, Calendar, TrendingUp } from 'lucide-react';
 
 interface ForumStats {
@@ -27,24 +28,8 @@ interface StatRow {
 export default function SuperadminForumPage() {
   const { user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<ForumStats | null>(null);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await superadminService.getForumStats();
-      setStats(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat statistik forum.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
+  const { data: stats, loading, error: cacheError } = useCache<ForumStats>('superadmin:forum', () => superadminService.getForumStats());
+  const error = cacheError ? (cacheError instanceof Error ? cacheError.message : 'Gagal memuat statistik forum.') : null;
 
   const statRows: StatRow[] = stats ? [
     { id: '1', metric: 'Total Post Forum', value: stats.totalPosts, description: 'Jumlah seluruh post di semua kelas' },

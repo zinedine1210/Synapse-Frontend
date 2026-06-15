@@ -1,34 +1,22 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
 import { taskService, Task } from '@/services/taskService';
+import { useCache } from '@/lib/cache';
 
 export function useDeadlines() {
-  const [deadlines, setDeadlines] = useState<Task[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: deadlines = [],
+    loading: isLoading,
+    error: cacheError,
+    revalidate: refetch,
+  } = useCache<Task[]>('deadlines:list', () => taskService.getMyDeadlines());
 
-  const fetchDeadlines = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await taskService.getMyDeadlines();
-      setDeadlines(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat tenggat waktu tugas.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchDeadlines();
-  }, [fetchDeadlines]);
+  const error = cacheError ? (cacheError instanceof Error ? cacheError.message : 'Gagal memuat tenggat waktu tugas.') : null;
 
   return {
     deadlines,
     isLoading,
     error,
-    refetch: fetchDeadlines,
+    refetch,
   };
 }

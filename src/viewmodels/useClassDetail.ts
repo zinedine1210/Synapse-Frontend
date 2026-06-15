@@ -5,17 +5,31 @@ import { Class, Session } from '@/models/Class';
 import { Material, MaterialStatus } from '@/models/File';
 import { classService } from '@/services/classService';
 import { aiService } from '@/services/aiService';
+import { useCache } from '@/lib/cache';
 
 /**
  * useClassDetail – ViewModel untuk halaman detail kelas.
- * Menangani: memuat detail kelas, sesi, upload materi, polling AI, dan quiz.
+ * Uses useCache for stale-while-revalidate on class data and sessions.
  */
 export function useClassDetail(classId: string) {
-  const [classData, setClassData] = useState<Class | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
+  const {
+    data: classData,
+    loading: classLoading,
+    error: classError,
+    revalidate: refetchClassData,
+    mutate: mutateClassData,
+  } = useCache<Class>(`class:${classId}:detail`, () => classService.getClassById(classId));
+
+  const {
+    data: sessions = [],
+    loading: sessionsLoading,
+    revalidate: refetchSessions,
+    mutate: mutateSessions,
+  } = useCache<Session[]>(`class:${classId}:sessions`, async () => (await classService.getClassSessions(classId)) ?? []);
+
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const isLoading = classLoading && !classData;
+  const error = classError ? (classError instanceof Error ? classError.message : 'Gagal memuat detail kelas.') : null;
   
   // Session details states (materials & quizzes)
   const [sessionDetailsLoading, setSessionDetailsLoading] = useState(false);
@@ -25,24 +39,12 @@ export function useClassDetail(classId: string) {
   
   const pollingRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
-  const fetchClassData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [cls, sess] = await Promise.all([
-        classService.getClassById(classId),
-        classService.getClassSessions(classId),
-      ]);
-      setClassData(cls);
-      setSessions(sess ?? []);
-      if (sess && sess.length > 0 && !selectedSession) {
-        setSelectedSession(sess[0]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat detail kelas.');
-    } finally {
-      setIsLoading(false);
+  // Auto-select first session when sessions load
+  useEffect(() => {
+    if (sessions.length > 0 && !selectedSession) {
+      setSelectedSession(sessions[0]);
     }
-  }, [classId]);
+  }, [sessions, selectedSession]);
 
   const fetchSessionDetails = useCallback(async () => {
     if (!selectedSession) return;
@@ -64,11 +66,10 @@ export function useClassDetail(classId: string) {
   }, [selectedSession?.id]);
 
   useEffect(() => {
-    fetchClassData();
     return () => {
       pollingRefs.current.forEach((timeout) => clearInterval(timeout));
     };
-  }, [fetchClassData]);
+  }, []);
 
   useEffect(() => {
     fetchSessionDetails();
@@ -144,7 +145,7 @@ export function useClassDetail(classId: string) {
   const createSession = async (title?: string) => {
     try {
       const newSession = await classService.createSession(classId, title);
-      setSessions((prev) => [...prev, newSession]);
+      mutateSessions((prev) => [...(prev || []), newSession]);
       if (!selectedSession) setSelectedSession(newSession);
       return { success: true, session: newSession };
     } catch (err) {
@@ -159,8 +160,8 @@ export function useClassDetail(classId: string) {
   const updateSession = async (sessionId: string, title: string) => {
     try {
       const updated = await classService.updateSession(sessionId, title);
-      setSessions((prev) =>
-        prev.map((s) => (s.id === sessionId ? { ...s, title: updated.title } : s)),
+      mutateSessions((prev) =>
+        (prev || []).map((s) => (s.id === sessionId ? { ...s, title: updated.title } : s)),
       );
       if (selectedSession?.id === sessionId) {
         setSelectedSession((prev) => (prev ? { ...prev, title: updated.title } : null));
@@ -178,7 +179,7 @@ export function useClassDetail(classId: string) {
   const deleteSession = async (sessionId: string) => {
     try {
       await classService.deleteSession(sessionId);
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      mutateSessions((prev) => (prev || []).filter((s) => s.id !== sessionId));
       if (selectedSession?.id === sessionId) {
         setSelectedSession(null);
       }
@@ -195,8 +196,7 @@ export function useClassDetail(classId: string) {
   const reorderSession = async (sessionId: string, newSequence: number) => {
     try {
       await classService.reorderSession(sessionId, newSequence);
-      const sess = await classService.getClassSessions(classId);
-      setSessions(sess ?? []);
+      refetchSessions();
       return { success: true };
     } catch (err) {
       return {
@@ -207,8 +207,8 @@ export function useClassDetail(classId: string) {
   };
 
   return {
-    classData,
-    setClassData,
+    classData: classData ?? null,
+    setClassData: mutateClassData,
     sessions,
     selectedSession,
     setSelectedSession,

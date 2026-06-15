@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { superadminService } from '@/services/superadminService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Button, Alert, Modal, useToast, useConfirm, DataTable, Card, SelectOption, TextInput, PasswordInput } from '@/components/ui';
 import type { Column } from '@/components/ui';
+import { useCache } from '@/lib/cache';
 import { Users, Shield, Loader2, Trash2, UserPlus } from 'lucide-react';
 
 interface UserListItem {
@@ -31,10 +32,18 @@ export default function SuperadminUsersPage() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [usersList, setUsersList] = useState<UserListItem[]>([]);
-  const [configs, setConfigs] = useState<PricingPlan[]>([]);
+
+  const usersFetcher = useCallback(async () => {
+    const [usersData, configsData] = await Promise.all([
+      superadminService.getUsers(),
+      superadminService.getPlanConfigs(),
+    ]);
+    return { users: usersData.data ?? [], configs: configsData };
+  }, []);
+  const { data: usersData, loading, error: cacheError, revalidate: loadData } = useCache<{ users: UserListItem[]; configs: PricingPlan[] }>('superadmin:users', usersFetcher);
+  const usersList = usersData?.users ?? [];
+  const configs = usersData?.configs ?? [];
+  const error = cacheError ? (cacheError instanceof Error ? cacheError.message : 'Gagal memuat data pengguna.') : null;
 
   // Assign modal
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -51,27 +60,6 @@ export default function SuperadminUsersPage() {
   const [createRole, setCreateRole] = useState<string>('USER');
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [usersData, configsData] = await Promise.all([
-        superadminService.getUsers(),
-        superadminService.getPlanConfigs(),
-      ]);
-      setUsersList(usersData.data ?? []);
-      setConfigs(configsData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat data pengguna.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
 
   const handleOpenAssignModal = (usr: UserListItem) => {
     setSelectedUser(usr);

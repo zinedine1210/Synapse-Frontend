@@ -10,6 +10,7 @@ import { TimeRangeSelector } from '@/components/insight/TimeRangeSelector';
 import { insightService, WeeklySummary } from '@/services/insightService';
 import { duitTrackerService, Transaction } from '@/services/duitTrackerService';
 import { detectDayOfWeekPatterns, DayOfWeekPattern } from '@/services/contextualIntelligence';
+import { useCache } from '@/lib/cache';
 import {
   TimeRange,
   getDateRange,
@@ -103,8 +104,8 @@ export default function InsightPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [data, setData] = useState<WeeklySummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: dataRaw, loading, revalidate: refetchData, mutate: mutateData } = useCache<WeeklySummary>('insight:weekly', () => insightService.getWeekly());
+  const data = dataRaw ?? null;
   const [aiLoading, setAiLoading] = useState(false);
 
   // Enhanced: Time range state
@@ -115,8 +116,13 @@ export default function InsightPage() {
 
   // Enhanced: Period comparison
   const [comparison, setComparison] = useState<PeriodComparisonResult | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [transactionsLoading, setTransactionsLoading] = useState(true);
+
+  // Cached transactions for patterns
+  const txFetcher = useCallback(() =>
+    duitTrackerService.getTransactions({ month: undefined, year: undefined, limit: 200 }).then(res => res.data),
+    []
+  );
+  const { data: transactions = [], loading: transactionsLoading } = useCache<Transaction[]>('insight:transactions', txFetcher);
 
   // Enhanced: Pattern insights
   const [patterns, setPatterns] = useState<DayOfWeekPattern[]>([]);
@@ -126,36 +132,13 @@ export default function InsightPage() {
   const insightCanvasRef = useRef<HTMLCanvasElement>(null);
   const [canShare, setCanShare] = useState(false);
 
-  // Load base insight data
+  // Detect patterns when transactions change
   useEffect(() => {
-    insightService.getWeekly()
-      .then(setData)
-      .catch((e: any) => showToast(e.message, 'error'))
-      .finally(() => setLoading(false));
-  }, []);
-
-  // Load transactions for comparison and patterns
-  useEffect(() => {
-    setTransactionsLoading(true);
-    // Load all recent transactions (last 3 months for pattern detection)
-    const now = new Date();
-    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-
-    duitTrackerService.getTransactions({
-      month: undefined,
-      year: undefined,
-      limit: 200,
-    })
-      .then((res) => {
-        const txns = res.data;
-        setTransactions(txns);
-        // Detect patterns from all transactions
-        const detectedPatterns = detectDayOfWeekPatterns(txns);
-        setPatterns(detectedPatterns);
-      })
-      .catch((e: any) => showToast(e.message, 'error'))
-      .finally(() => setTransactionsLoading(false));
-  }, []);
+    if (transactions.length > 0) {
+      const detectedPatterns = detectDayOfWeekPatterns(transactions);
+      setPatterns(detectedPatterns);
+    }
+  }, [transactions]);
 
   // Recalculate period comparison when time range or transactions change
   useEffect(() => {
@@ -184,7 +167,7 @@ export default function InsightPage() {
     setAiLoading(true);
     try {
       const result = await insightService.getAiInsight();
-      setData(result);
+      mutateData(result);
     } catch (e: any) {
       showToast(e.message, 'error');
     } finally {

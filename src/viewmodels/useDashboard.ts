@@ -1,41 +1,32 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { Class } from '@/models/Class';
 import { classService } from '@/services/classService';
+import { useCache } from '@/lib/cache';
 
 /**
  * useDashboard – ViewModel untuk halaman Dashboard.
- * View tidak boleh memanggil API langsung; semua logika ada di sini.
+ * Uses useCache for stale-while-revalidate: instant data on navigation back.
  */
 export function useDashboard() {
-  const [classes, setClasses] = useState<Class[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: classes = [],
+    loading: isLoading,
+    error: cacheError,
+    revalidate: refetch,
+    mutate: mutateClasses,
+  } = useCache<Class[]>('classes:list', () => classService.getMyClasses());
+
+  const error = cacheError ? (cacheError instanceof Error ? cacheError.message : 'Gagal memuat daftar kelas.') : null;
+
   const [isCreating, setIsCreating] = useState(false);
-
-  const fetchClasses = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await classService.getMyClasses();
-      setClasses(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat daftar kelas.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchClasses();
-  }, [fetchClasses]);
 
   const createClass = async (name: string, description?: string, extra?: { lecturer?: string; day?: string; time?: string; room?: string }) => {
     try {
       setIsCreating(true);
       const newClass = await classService.createClass({ name, description, ...extra });
-      setClasses((prev) => [newClass, ...prev]);
+      mutateClasses((prev) => [newClass, ...(prev || [])]);
       return { success: true };
     } catch (err) {
       return {
@@ -50,7 +41,7 @@ export function useDashboard() {
   const deleteClass = async (classId: string) => {
     try {
       await classService.deleteClass(classId);
-      setClasses((prev) => prev.filter((c) => c.id !== classId));
+      mutateClasses((prev) => (prev || []).filter((c) => c.id !== classId));
       return { success: true };
     } catch (err) {
       return {
@@ -67,7 +58,7 @@ export function useDashboard() {
     isCreating,
     createClass,
     deleteClass,
-    refetch: fetchClasses,
+    refetch,
   };
 }
 

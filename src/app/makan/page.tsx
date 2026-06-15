@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, BottomSheet, useToast } from '@/components/ui';
+import { useCache } from '@/lib/cache';
 import {
   foodService,
   FoodPreference,
@@ -54,71 +55,26 @@ export default function MakanApaPage() {
   const [menuResult, setMenuResult] = useState<MenuResult | null>(null);
   const [menuFilter, setMenuFilter] = useState('hemat');
 
-  // Budget integration state
-  const [budgetInfo, setBudgetInfo] = useState<FoodBudgetInfo | null>(null);
-  const [budgetLoading, setBudgetLoading] = useState(true);
+  // Cached data fetching
+  const budgetFetcher = useCallback(() => foodService.getRemainingBudget().catch(() => null), []);
+  const { data: budgetInfo, loading: budgetLoading, revalidate: refetchBudget } = useCache<FoodBudgetInfo | null>('food:budget', budgetFetcher);
 
-  // Favorites state
-  const [favorites, setFavorites] = useState<FoodFavorite[]>([]);
-  const [favoritesLoading, setFavoritesLoading] = useState(false);
+  const { data: prefData } = useCache<FoodPreference>('food:preference', () => foodService.getPreference());
+  useEffect(() => { if (prefData) setPref(prefData); }, [prefData]);
 
-  // History state
-  const [history, setHistory] = useState<FoodHistoryItem[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
+  // Favorites state — cached
+  const favFetcher = useCallback(() => foodService.getFavorites(), []);
+  const { data: favorites = [], loading: favoritesLoading, revalidate: refetchFavorites, mutate: mutateFavorites } = useCache<FoodFavorite[]>(
+    mode === 'favorites' || mode === 'fridge' ? 'food:favorites' : null,
+    favFetcher
+  );
 
-  useEffect(() => {
-    foodService.getPreference().then(setPref).catch(() => {});
-    loadBudget();
-  }, []);
-
-  const loadBudget = async () => {
-    setBudgetLoading(true);
-    try {
-      const info = await foodService.getRemainingBudget();
-      setBudgetInfo(info);
-    } catch {
-      // Budget not set — that's fine
-      setBudgetInfo(null);
-    } finally {
-      setBudgetLoading(false);
-    }
-  };
-
-  const loadFavorites = async () => {
-    setFavoritesLoading(true);
-    try {
-      const favs = await foodService.getFavorites();
-      setFavorites(favs);
-    } catch {
-      showToast('Gagal memuat favorit.', 'error');
-    } finally {
-      setFavoritesLoading(false);
-    }
-  };
-
-  const loadHistory = async () => {
-    setHistoryLoading(true);
-    try {
-      const hist = await foodService.getHistory(30);
-      setHistory(hist);
-    } catch {
-      showToast('Gagal memuat riwayat.', 'error');
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (mode === 'favorites') loadFavorites();
-    if (mode === 'history') loadHistory();
-  }, [mode]);
-
-  // Favorites are needed to show heart state on fridge results too
-  useEffect(() => {
-    if (mode === 'fridge' && favorites.length === 0) {
-      foodService.getFavorites().then(setFavorites).catch(() => {});
-    }
-  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
+  // History state — cached
+  const histFetcher = useCallback(() => foodService.getHistory(30), []);
+  const { data: history = [], loading: historyLoading } = useCache<FoodHistoryItem[]>(
+    mode === 'history' ? 'food:history' : null,
+    histFetcher
+  );
 
   const handleImageUpload = async (file: File) => {
     setLoading(true);
@@ -140,7 +96,7 @@ export default function MakanApaPage() {
         setMenuResult(result);
       }
       // Refresh budget after getting recommendations
-      loadBudget();
+      refetchBudget();
     } catch (e: any) {
       showToast(e.message || 'Gagal memproses foto.', 'error');
     } finally {
@@ -164,7 +120,7 @@ export default function MakanApaPage() {
     if (existing) {
       try {
         await foodService.removeFavorite(existing.id);
-        setFavorites(prev => prev.filter(f => f.id !== existing.id));
+        mutateFavorites(prev => (prev || []).filter(f => f.id !== existing.id));
         showToast('Dihapus dari favorit.', 'info');
       } catch {
         showToast('Gagal menghapus favorit.', 'error');
@@ -172,7 +128,7 @@ export default function MakanApaPage() {
     } else {
       try {
         const fav = await foodService.addFavorite(recipe.name, JSON.stringify(recipe));
-        setFavorites(prev => [fav, ...prev]);
+        mutateFavorites(prev => [fav, ...(prev || [])]);
         showToast('Ditambahkan ke favorit! ❤️', 'success');
       } catch {
         showToast('Gagal menyimpan favorit.', 'error');
@@ -183,7 +139,7 @@ export default function MakanApaPage() {
   const handleRemoveFavorite = async (id: string) => {
     try {
       await foodService.removeFavorite(id);
-      setFavorites(prev => prev.filter(f => f.id !== id));
+      mutateFavorites(prev => (prev || []).filter(f => f.id !== id));
       showToast('Dihapus dari favorit.', 'info');
     } catch {
       showToast('Gagal menghapus favorit.', 'error');

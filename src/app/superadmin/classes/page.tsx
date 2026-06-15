@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { superadminService } from '@/services/superadminService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Button, Alert, useToast, useConfirm, DataTable, Card } from '@/components/ui';
 import type { Column } from '@/components/ui';
+import { useCache } from '@/lib/cache';
 import { School, Loader2, Trash2 } from 'lucide-react';
 
 interface ClassItem {
@@ -25,24 +26,13 @@ export default function SuperadminClassesPage() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [classes, setClasses] = useState<ClassItem[]>([]);
 
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await superadminService.getAllClasses();
-      setClasses(result.data || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat data kelas.');
-    } finally {
-      setLoading(false);
-    }
+  const classesFetcher = useCallback(async () => {
+    const result = await superadminService.getAllClasses();
+    return result.data || [];
   }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
+  const { data: classes = [], loading, error: cacheError, revalidate: reloadClasses } = useCache<ClassItem[]>('superadmin:classes', classesFetcher);
+  const error = cacheError ? (cacheError instanceof Error ? cacheError.message : 'Gagal memuat data kelas.') : null;
 
   const handleDelete = async (cls: ClassItem) => {
     const ok = await confirm({ title: 'Hapus Kelas', message: `Hapus kelas "${cls.name}" beserta semua datanya? Tindakan ini tidak dapat dibatalkan.`, confirmText: 'Hapus', variant: 'danger' });
@@ -50,7 +40,7 @@ export default function SuperadminClassesPage() {
     try {
       await superadminService.deleteClass(cls.id);
       showToast('Kelas berhasil dihapus.', 'success');
-      loadData();
+      reloadClasses();
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Gagal menghapus kelas.', 'error');
     }

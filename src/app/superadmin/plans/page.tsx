@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { superadminService } from '@/services/superadminService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
@@ -8,6 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Button, Alert, Modal, useToast, useConfirm, DataTable, Card, CurrencyInput, TextInput, SelectOption, NumberInput } from '@/components/ui';
 import type { Column } from '@/components/ui';
+import { useCache } from '@/lib/cache';
 import { Layers, Loader2, Clock } from 'lucide-react';
 
 interface PricingPlan {
@@ -131,9 +132,8 @@ export default function SuperadminPlansPage() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [configs, setConfigs] = useState<PricingPlan[]>([]);
+  const { data: configs = [], loading, error: cacheError, revalidate: loadData, mutate: mutateConfigs } = useCache<PricingPlan[]>('superadmin:plans', () => superadminService.getPlanConfigs());
+  const error = cacheError ? (cacheError instanceof Error ? cacheError.message : 'Gagal memuat data paket.') : null;
 
   // Plan modal
   const [showPlanModal, setShowPlanModal] = useState(false);
@@ -160,23 +160,6 @@ export default function SuperadminPlansPage() {
   const cleanAmount = (val: string) => {
     return val ? parseFloat(val.replace(/\D/g, '')) : 0;
   };
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await superadminService.getPlanConfigs();
-      setConfigs(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat data paket.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
 
   const handleOpenPlanModal = (plan: PricingPlan | null = null) => {
     setEditingPlan(plan);
@@ -260,7 +243,7 @@ export default function SuperadminPlansPage() {
   const handleFeatureToggle = async (plan: PricingPlan, featureId: string, isChecked: boolean) => {
     const updatedFeatures = isChecked ? [...plan.features, featureId] : plan.features.filter((f) => f !== featureId);
     try {
-      setConfigs((prev) => prev.map((c) => (c.id === plan.id ? { ...c, features: updatedFeatures } : c)));
+      mutateConfigs((prev) => (prev || []).map((c) => (c.id === plan.id ? { ...c, features: updatedFeatures } : c)));
       await superadminService.updatePricingPlan(plan.id, { features: updatedFeatures });
       showToast(`Fitur paket ${plan.name} berhasil diperbarui!`, 'success');
       await loadData();
@@ -277,7 +260,7 @@ export default function SuperadminPlansPage() {
       ? Array.from(new Set([...plan.features, ...sectionIds]))
       : plan.features.filter(f => !sectionIds.includes(f));
     try {
-      setConfigs((prev) => prev.map((c) => (c.id === plan.id ? { ...c, features: updatedFeatures } : c)));
+      mutateConfigs((prev) => (prev || []).map((c) => (c.id === plan.id ? { ...c, features: updatedFeatures } : c)));
       await superadminService.updatePricingPlan(plan.id, { features: updatedFeatures });
       showToast(`Section ${section.section} ${checked ? 'diaktifkan' : 'dinonaktifkan'} untuk ${plan.name}`, 'success');
       await loadData();
@@ -291,7 +274,7 @@ export default function SuperadminPlansPage() {
   const handleSelectAllToggle = async (plan: PricingPlan, selectAll: boolean) => {
     const updatedFeatures = selectAll ? ALL_FEATURES.map(f => f.id) : [];
     try {
-      setConfigs((prev) => prev.map((c) => (c.id === plan.id ? { ...c, features: updatedFeatures } : c)));
+      mutateConfigs((prev) => (prev || []).map((c) => (c.id === plan.id ? { ...c, features: updatedFeatures } : c)));
       await superadminService.updatePricingPlan(plan.id, { features: updatedFeatures });
       showToast(`Semua fitur ${selectAll ? 'diaktifkan' : 'dinonaktifkan'} untuk ${plan.name}`, 'success');
       await loadData();

@@ -20,20 +20,20 @@ interface ParseResult {
 interface ParsePreviewProps {
   /** The input text to parse */
   inputText: string;
-  /** Debounce delay in ms (default: 300) */
+  /** Debounce delay in ms (default: 800) */
   debounceMs?: number;
   /** Called when parse completes, so parent can use parsed data */
   onParseResult?: (result: any) => void;
 }
 
 /**
- * ParsePreview — Live parse result display with 300ms debounce.
+ * ParsePreview — Live parse result display with 800ms debounce.
  * Shows detected fields (description, category, amount, date) from AI parser.
  * Uncertain fields are displayed with a gray/question mark indicator.
  */
 export function ParsePreview({
   inputText,
-  debounceMs = 300,
+  debounceMs = 800,
   onParseResult,
 }: ParsePreviewProps) {
   const [result, setResult] = useState<ParseResult | null>(null);

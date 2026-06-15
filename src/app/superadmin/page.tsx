@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { superadminService } from '@/services/superadminService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Alert } from '@/components/ui';
+import { useCache } from '@/lib/cache';
 import {
   Users,
   BookOpen,
@@ -26,26 +27,8 @@ interface AnalyticsData {
 export default function SuperadminPage() {
   const { user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await superadminService.getAnalytics();
-      setAnalytics(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat data analitik.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const { data: analytics, loading, error: cacheError } = useCache<AnalyticsData>('superadmin:analytics', () => superadminService.getAnalytics());
+  const error = cacheError ? (cacheError instanceof Error ? cacheError.message : 'Gagal memuat data analitik.') : null;
 
   const formatRupiah = (val: number) =>
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);

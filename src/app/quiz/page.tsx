@@ -9,6 +9,7 @@ import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, Alert, useToast, SelectOption } from '@/components/ui';
+import { useCache } from '@/lib/cache';
 import {
   GraduationCap,
   Sparkles,
@@ -42,15 +43,14 @@ export default function QuizPage() {
   const { showToast } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // Data states
-  const [classes, setClasses] = useState<ClassItem[]>([]);
+  // Data states — classes cached via useCache
+  const { data: classes = [], loading: loadingClasses } = useCache<ClassItem[]>('classes:list', () => classService.getMyClasses());
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [selectedSessionIds, setSelectedSessionIds] = useState<string[]>([]);
   const [questionCount, setQuestionCount] = useState<number>(5);
 
   // Loading & error states
-  const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,24 +65,12 @@ export default function QuizPage() {
   const [quizScore, setQuizScore] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load classes on mount
+  // Auto-select first class when loaded
   useEffect(() => {
-    async function loadClasses() {
-      try {
-        setLoadingClasses(true);
-        const list = await classService.getMyClasses();
-        setClasses(list || []);
-        if (list && list.length > 0) {
-          setSelectedClassId(list[0].id);
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Gagal memuat daftar kelas.');
-      } finally {
-        setLoadingClasses(false);
-      }
+    if (classes.length > 0 && !selectedClassId) {
+      setSelectedClassId(classes[0].id);
     }
-    loadClasses();
-  }, []);
+  }, [classes, selectedClassId]);
 
   // Load sessions when class changes
   useEffect(() => {

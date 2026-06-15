@@ -1,35 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { superadminService } from '@/services/superadminService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Alert } from '@/components/ui';
+import { useCache } from '@/lib/cache';
 import { Trophy, Loader2, Flame, Star, Zap, Users } from 'lucide-react';
 
 export default function SuperadminGamificationPage() {
   const { user } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<any>(null);
-
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await superadminService.getGamificationStats();
-      setStats(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat data.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
+  const { data: stats, loading, error: cacheError } = useCache<any>('superadmin:gamification', () => superadminService.getGamificationStats());
+  const error = cacheError ? (cacheError instanceof Error ? cacheError.message : 'Gagal memuat data.') : null;
 
   const sourceLabel: Record<string, string> = {
     transaction: 'Catat Transaksi', todo: 'Selesai Todo', qna: 'Jawab Q&A',

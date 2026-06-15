@@ -252,7 +252,8 @@ export default function DuitTrackerPage() {
     return params;
   }, [periodPreset, appliedRange, month, year, typeFilter, categoryFilter]);
 
-  // Infinite scroll for transactions
+  // Infinite scroll for transactions — cached for instant back-navigation
+  const txCacheKey = `dt:transactions:${JSON.stringify(txQueryParams)}`;
   const txFetcher = useCallback(async (page: number) => {
     return duitTrackerService.getTransactions({ ...txQueryParams, page, limit: 30 });
   }, [txQueryParams]);
@@ -267,7 +268,7 @@ export default function DuitTrackerPage() {
     removeItem: removeTx,
     updateItem: updateTx,
     setItems: setTransactions,
-  } = useInfiniteScroll<Transaction>({ fetcher: txFetcher });
+  } = useInfiniteScroll<Transaction>({ fetcher: txFetcher, cacheKey: txCacheKey });
 
   // Cached side data — instant on navigation back
   const summaryFetcher = useCallback(() => duitTrackerService.getSummary(month, year), [month, year]);

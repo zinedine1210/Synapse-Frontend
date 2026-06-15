@@ -8,6 +8,7 @@ import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, useToast, TextArea } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { apiFetch, apiUpload } from '@/lib/api';
+import { useCache } from '@/lib/cache';
 import {
   Camera, Trash2, Upload, Loader2, User, ArrowLeft, ImagePlus, Save, Brain,
 } from 'lucide-react';
@@ -44,7 +45,6 @@ export default function UserProfilePage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // AI Context fields state
@@ -54,30 +54,25 @@ export default function UserProfilePage() {
   const [personalNotes, setPersonalNotes] = useState('');
   const [savingContext, setSavingContext] = useState(false);
 
-  // Load current profile
-  const loadProfile = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await apiFetch<ProfileData>('/user/profile');
-      setAvatarUrl(data.avatarUrl || null);
-      setDailyHabits(data.dailyHabits || '');
-      setLifeGoals(data.lifeGoals || '');
-      setStudySchedule(data.studySchedule || '');
-      setPersonalNotes(data.personalNotes || '');
-    } catch (err) {
-      // If profile doesn't exist yet, that's fine
-      console.error('Failed to load profile:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Cached profile loading
+  const { data: profileData, loading } = useCache<ProfileData>(
+    user ? 'user:profile' : null,
+    () => apiFetch<ProfileData>('/user/profile')
+  );
 
   useEffect(() => {
-    if (user) {
-      setAvatarUrl(user.avatarUrl || null);
-      loadProfile();
+    if (user) setAvatarUrl(user.avatarUrl || null);
+  }, [user]);
+
+  useEffect(() => {
+    if (profileData) {
+      setAvatarUrl(profileData.avatarUrl || null);
+      setDailyHabits(profileData.dailyHabits || '');
+      setLifeGoals(profileData.lifeGoals || '');
+      setStudySchedule(profileData.studySchedule || '');
+      setPersonalNotes(profileData.personalNotes || '');
     }
-  }, [user, loadProfile]);
+  }, [profileData]);
 
   // File validation
   const validateFile = (file: File): string | null => {

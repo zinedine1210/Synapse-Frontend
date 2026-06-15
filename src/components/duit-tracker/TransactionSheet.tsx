@@ -14,13 +14,6 @@ export interface TxForm {
   date: string;
 }
 
-export interface ScannedItem {
-  label: string;
-  amount: number;
-  category: string;
-  type: string;
-  checked: boolean;
-}
 
 interface CategoryDef {
   id: string;
@@ -36,7 +29,6 @@ interface TransactionSheetProps {
   editingTx: Transaction | null;
   submitting: boolean;
   onSubmit: (e: React.FormEvent) => void;
-  onBulkCreate?: (items: ScannedItem[]) => Promise<void>;
   expenseCategories: CategoryDef[];
   incomeCategories: CategoryDef[];
 }
@@ -55,24 +47,16 @@ export function TransactionSheet({
   editingTx,
   submitting,
   onSubmit,
-  onBulkCreate,
   expenseCategories,
   incomeCategories,
 }: TransactionSheetProps) {
   const { showToast } = useToast();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
   const [quickText, setQuickText] = useState('');
   const [quickLoading, setQuickLoading] = useState(false);
-  const [scanning, setScanning] = useState(false);
-  const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
-  const [savingBulk, setSavingBulk] = useState(false);
 
   const categories = form.type === 'income' ? incomeCategories : expenseCategories;
   const isIncome = form.type === 'income';
   const accent = isIncome ? 'var(--dt-income)' : 'var(--dt-expense)';
-  const checkedCount = useMemo(() => scannedItems.filter(i => i.checked).length, [scannedItems]);
-  const allChecked = useMemo(() => scannedItems.length > 0 && scannedItems.every(i => i.checked), [scannedItems]);
 
   const handleQuickParse = async () => {
     if (!quickText.trim() || quickLoading) return;
@@ -100,69 +84,6 @@ export function TransactionSheet({
     }
   };
 
-  const handleReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      showToast('Format berkas harus berupa gambar.', 'error');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('Ukuran gambar maksimal 5MB.', 'error');
-      return;
-    }
-    setScanning(true);
-    try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-      const clean = base64.split(',')[1];
-      const res: any = await duitTrackerService.scanReceipt(clean, file.type);
-      const items: any[] = Array.isArray(res) ? res : res?.items ? res.items : res?.error ? [] : [res];
-      if (items.length > 0 && (items[0].amount || items[0].total)) {
-        const mapped: ScannedItem[] = items.map((it: any) => ({
-          label: it.label || it.merchant || 'Item',
-          amount: it.amount || it.total || 0,
-          category: it.category || 'lainnya',
-          type: it.type || 'expense',
-          checked: true,
-        }));
-        setScannedItems(mapped);
-        showToast(`${mapped.length} item terdeteksi dari struk! 📸`, 'success');
-      } else {
-        showToast('Tidak bisa membaca struk. Coba foto lebih jelas.', 'error');
-      }
-    } catch (err: any) {
-      showToast(err.message || 'Gagal memindai struk.', 'error');
-    } finally {
-      setScanning(false);
-      if (fileRef.current) fileRef.current.value = '';
-      if (cameraRef.current) cameraRef.current.value = '';
-    }
-  };
-
-  const handleSaveBulk = async () => {
-    const selected = scannedItems.filter(it => it.checked);
-    if (selected.length === 0) {
-      showToast('Pilih minimal 1 item untuk disimpan.', 'error');
-      return;
-    }
-    if (onBulkCreate) {
-      setSavingBulk(true);
-      try {
-        await onBulkCreate(selected);
-        setScannedItems([]);
-        showToast(`${selected.length} transaksi berhasil disimpan! ✅`, 'success');
-      } catch (err: any) {
-        showToast(err.message || 'Gagal menyimpan transaksi.', 'error');
-      } finally {
-        setSavingBulk(false);
-      }
-    }
-  };
 
   return (
     <BottomSheet
@@ -170,35 +91,6 @@ export function TransactionSheet({
       onClose={onClose}
       title={editingTx ? '✏️ Edit Transaksi' : '💰 Tambah Transaksi'}
     >
-      {/* ── Scanned Items Checklist ── */}
-      {scannedItems.length > 0 && (
-        <div style={{ marginBottom: 16, padding: 16, borderRadius: 14, background: 'rgba(var(--color-primary), 0.05)', border: '1px solid rgba(var(--color-primary), 0.15)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <span style={{ fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>📋 Item Terdeteksi ({checkedCount}/{scannedItems.length})</span>
-            <button type="button" onClick={() => setScannedItems([])} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'rgb(var(--text-muted))' }}>Batal</button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 240, overflowY: 'auto' }}>
-            {scannedItems.map((item, idx) => (
-              <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 10, background: item.checked ? 'rgba(var(--color-secondary), 0.08)' : 'rgba(var(--text-muted), 0.04)', border: item.checked ? '1px solid rgba(var(--color-secondary), 0.2)' : '1px solid transparent', cursor: 'pointer', transition: 'all 0.15s' }}>
-                <input type="checkbox" checked={item.checked} onChange={() => setScannedItems(prev => prev.map((it, i) => i === idx ? { ...it, checked: !it.checked } : it))} style={{ accentColor: 'rgb(var(--color-primary))', width: 18, height: 18, flexShrink: 0 }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</div>
-                  <div style={{ fontSize: 11, color: 'rgb(var(--text-muted))' }}>{item.category}</div>
-                </div>
-                <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--dt-expense)', flexShrink: 0 }}>Rp {item.amount.toLocaleString('id-ID')}</span>
-              </label>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-            <Button type="button" variant="secondary" onClick={() => setScannedItems(items => items.map(i => ({ ...i, checked: !allChecked })))} style={{ flex: 1, borderRadius: 10, fontSize: 12, padding: '8px 0' }}>
-              {allChecked ? 'Hapus Centang Semua' : 'Pilih Semua'}
-            </Button>
-            <Button type="button" onClick={handleSaveBulk} disabled={savingBulk || checkedCount === 0} style={{ flex: 2, borderRadius: 10, fontSize: 12, padding: '8px 0' }}>
-              {savingBulk ? <Loader2 className="spin" size={14} /> : `💾 Simpan ${checkedCount} Transaksi`}
-            </Button>
-          </div>
-        </div>
-      )}
 
       {/* Inline AI quick fill (front & center) */}
       {!editingTx && (
@@ -330,45 +222,7 @@ export function TransactionSheet({
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-          {!editingTx && (
-            <>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                onChange={handleReceipt}
-                style={{ display: 'none' }}
-              />
-              <input
-                ref={cameraRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleReceipt}
-                style={{ display: 'none' }}
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => cameraRef.current?.click()}
-                disabled={scanning}
-                style={{ borderRadius: 12, padding: '12px 16px', flexShrink: 0 }}
-                title="Ambil Foto Struk"
-              >
-                {scanning ? <Loader2 className="spin" size={16} /> : <Camera size={16} />}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => fileRef.current?.click()}
-                disabled={scanning}
-                style={{ borderRadius: 12, padding: '12px 16px', flexShrink: 0 }}
-                title="Pilih File Struk"
-              >
-                {scanning ? <Loader2 className="spin" size={16} /> : <Image size={16} />}
-              </Button>
-            </>
-          )}
+
           <Button
             type="submit"
             disabled={submitting}

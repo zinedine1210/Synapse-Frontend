@@ -15,10 +15,11 @@ import { SubscriptionCard } from '@/components/duit-tracker/SubscriptionCard';
 import { QuickInputBar } from '@/components/duit-tracker/QuickInputBar';
 import { ParsePreview } from '@/components/duit-tracker/ParsePreview';
 import { FinancialHero } from '@/components/duit-tracker/FinancialHero';
-import { TransactionSheet, ScannedItem } from '@/components/duit-tracker/TransactionSheet';
+import { TransactionSheet } from '@/components/duit-tracker/TransactionSheet';
+import { ReceiptScannerModal, ScannedItem } from '@/components/duit-tracker/ReceiptScannerModal';
 import { useCache } from '@/lib/cache';
 import { useCelebration } from '@/components/shared/CelebrationOverlay';
-import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X } from 'lucide-react';
+import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X, Camera } from 'lucide-react';
 
 type PeriodPreset = 'today' | 'yesterday' | '2days' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'custom';
 
@@ -286,6 +287,7 @@ export default function DuitTrackerPage() {
     refetchBudgets();
   }, [refreshTx, refetchSummary, refetchTrees, refetchBudgets]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showScannerModal, setShowScannerModal] = useState(false);
   const [showTreeModal, setShowTreeModal] = useState(false);
   const [showAiInput, setShowAiInput] = useState(false);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
@@ -383,7 +385,6 @@ export default function DuitTrackerPage() {
         label: item.label,
       });
     }
-    setShowAddModal(false);
     fetchData();
   };
 
@@ -544,6 +545,7 @@ export default function DuitTrackerPage() {
                   {hasFeature('duit_tracker_quick_input') && (
                     <Button onClick={() => setShowAiInput(true)} variant="secondary" size="sm"><Sparkles size={14} /> AI Input</Button>
                   )}
+                  <Button onClick={() => setShowScannerModal(true)} variant="secondary" size="sm" style={{ background: 'var(--input-bg)', border: '1px solid var(--border-default)', color: 'inherit' }}><Camera size={14} /> Scan Struk</Button>
                   <Button onClick={() => { setEditingTx(null); setForm({ amount: '', type: 'expense', category: 'lainnya', label: '', note: '', date: '' }); setShowAddModal(true); }} size="sm"><Plus size={14} /> Tambah</Button>
                 </div>
               </div>
@@ -1190,6 +1192,25 @@ export default function DuitTrackerPage() {
                 </div>
               </div>
             </Modal>
+
+            <TransactionSheet
+              isOpen={showAddModal}
+              onClose={() => setShowAddModal(false)}
+              form={form}
+              setForm={setForm}
+              editingTx={editingTx}
+              submitting={submitting}
+              onSubmit={handleAddTransaction}
+              expenseCategories={EXPENSE_CATEGORIES}
+              incomeCategories={INCOME_CATEGORIES}
+            />
+
+            <ReceiptScannerModal
+              isOpen={showScannerModal}
+              onClose={() => setShowScannerModal(false)}
+              onBulkCreate={handleBulkCreate}
+            />
+
             </PullToRefresh>
           </div>
         </div>

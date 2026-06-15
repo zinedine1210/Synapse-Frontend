@@ -34,6 +34,32 @@ const FILTER_OPTIONS = [
   { label: '😌 Tidak Pedas', value: 'tidak pedas' },
 ];
 
+function useSessionStorage<T>(key: string, initialValue: T) {
+  const [storedValue, setStoredValue] = useState<T>(() => {
+    if (typeof window === 'undefined') return initialValue;
+    try {
+      const item = window.sessionStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      return initialValue;
+    }
+  });
+
+  const setValue = (value: T | ((val: T) => T)) => {
+    try {
+      const valueToStore = value instanceof Function ? value(storedValue) : value;
+      setStoredValue(valueToStore);
+      if (typeof window !== 'undefined') {
+        window.sessionStorage.setItem(key, JSON.stringify(valueToStore));
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  return [storedValue, setValue] as const;
+}
+
 type TabMode = 'fridge' | 'menu' | 'favorites' | 'history';
 
 const TABS = [
@@ -47,14 +73,14 @@ export default function MakanApaPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mode, setMode] = useState<TabMode>('fridge');
+  const [mode, setMode] = useSessionStorage<TabMode>('makan_mode', 'fridge');
   const [pref, setPref] = useState<FoodPreference | null>(null);
   const [showPrefModal, setShowPrefModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
-  const [fridgeResult, setFridgeResult] = useState<FridgeResult | null>(null);
-  const [menuResult, setMenuResult] = useState<MenuResult | null>(null);
-  const [menuFilter, setMenuFilter] = useState('hemat');
+  const [fridgeResult, setFridgeResult] = useSessionStorage<FridgeResult | null>('makan_fridgeResult', null);
+  const [menuResult, setMenuResult] = useSessionStorage<MenuResult | null>('makan_menuResult', null);
+  const [menuFilter, setMenuFilter] = useSessionStorage('makan_menuFilter', 'hemat');
 
   // Cached data fetching
   const budgetFetcher = useCallback(() => foodService.getRemainingBudget().catch(() => null), []);
@@ -595,10 +621,6 @@ export default function MakanApaPage() {
                   style={{ marginBottom: 0 }}
                   onChange={(m) => {
                     setMode(m);
-                    if (m === 'fridge' || m === 'menu') {
-                      setFridgeResult(null);
-                      setMenuResult(null);
-                    }
                   }}
                 />
               </div>

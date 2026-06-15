@@ -13,6 +13,7 @@ export interface TextInputProps extends FormFieldProps {
   maxLength?: number;
   autoFocus?: boolean;
   name?: string;
+  autoComplete?: string;
   leftIcon?: React.ReactNode;
   'aria-describedby'?: string;
 }
@@ -20,7 +21,7 @@ export interface TextInputProps extends FormFieldProps {
 export function TextInput({
   label, error, hint, required, disabled, className,
   value, onChange, onBlur, placeholder, type = 'text',
-  maxLength, autoFocus, name, leftIcon, 'aria-describedby': ariaDescribedBy,
+  maxLength, autoFocus, name, autoComplete, leftIcon, 'aria-describedby': ariaDescribedBy,
 }: TextInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   const inputId = useId();
@@ -40,7 +41,7 @@ export function TextInput({
             {leftIcon}
           </span>
         )}
-        <input id={inputId} type={type} name={name} value={value}
+        <input id={inputId} type={type} name={name} autoComplete={autoComplete} value={value}
           onChange={handleChange} onFocus={handleFocus} onBlur={handleBlur}
           placeholder={placeholder} maxLength={maxLength} autoFocus={autoFocus}
           disabled={disabled} required={required} aria-invalid={!!error}

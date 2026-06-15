@@ -176,16 +176,16 @@ export default function DashboardPage() {
   const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError(null);
-    if (!newClassName.trim()) { setCreateError('Nama kelas wajib diisi.'); return; }
+    if (!newClassName.trim()) { setCreateError('Nama kelas-nya diisi dulu dong!'); return; }
     const res = await createClass(newClassName, newClassDesc);
     if (res.success) { setNewClassName(''); setNewClassDesc(''); setShowCreateModal(false); }
-    else { setCreateError(res.error || 'Gagal membuat kelas.'); }
+    else { setCreateError(res.error || 'Gagal bikin kelas nih.'); }
   };
 
   const handleDeleteClass = async (classId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const ok = await confirm({ title: 'Konfirmasi', message: 'Hapus kelas ini?', confirmText: 'Hapus', variant: 'danger' });
+    const ok = await confirm({ title: 'Yakin Hapus?', message: 'Kelas ini bakal dihapus permanen. Yakin nih?', confirmText: 'Gas Hapus', variant: 'danger' });
     if (!ok) return;
     await deleteClass(classId);
   };
@@ -195,7 +195,7 @@ export default function DashboardPage() {
     if (!file) return;
     setIsParsing(true); setParseError(null); setParsedCourses([]);
     try { const result = await aiService.parseSchedule(file); setParsedCourses(result); }
-    catch (err) { setParseError(err instanceof Error ? err.message : 'Gagal mengurai gambar jadwal.'); }
+    catch (err) { setParseError(err instanceof Error ? err.message : 'Gagal nge-scan gambar jadwalnya nih.'); }
     finally { setIsParsing(false); }
   };
 
@@ -205,9 +205,9 @@ export default function DashboardPage() {
     try {
       const description = `Jadwal: ${course.day}, ${course.time}. Ruang: ${course.room || '-'}. Dosen: ${course.lecturer || '-'}`;
       const res = await createClass(course.courseName, description, { lecturer: course.lecturer, day: course.day, time: course.time, room: course.room });
-      if (res.success) { setCreatedFromParse(prev => ({ ...prev, [key]: true })); showToast(`Kelas ${course.courseName} berhasil dibuat!`, 'success'); }
-      else { showToast(res.error || 'Gagal.', 'error'); }
-    } catch { showToast('Terjadi kesalahan.', 'error'); }
+      if (res.success) { setCreatedFromParse(prev => ({ ...prev, [key]: true })); showToast(`Kelas ${course.courseName} sukses dibikin! 🎉`, 'success'); }
+      else { showToast(res.error || 'Gagal nih.', 'error'); }
+    } catch { showToast('Ada error nih.', 'error'); }
   };
 
   const handleQuickTodo = async (e: React.FormEvent) => {
@@ -217,10 +217,10 @@ export default function DashboardPage() {
     try {
       const parsed = await todoService.parseNaturalInput(quickTodo);
       await todoService.create({ title: parsed.title || quickTodo, dueDate: parsed.dueDate, dueTime: parsed.dueTime, priority: parsed.priority || 'medium', category: parsed.category });
-      showToast('Todo ditambahkan! ✅', 'success');
+      showToast('Todo udah masuk! ✅', 'success');
       setQuickTodo('');
       refetchSummary();
-    } catch { showToast('Gagal menambah todo.', 'error'); }
+    } catch { showToast('Gagal nambahin todo.', 'error'); }
     finally { setAddingTodo(false); }
   };
 
@@ -319,7 +319,7 @@ export default function DashboardPage() {
                       className="flex items-center gap-2 border border-indigo-200 hover:border-indigo-400 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 text-indigo-700 font-medium py-2 px-4 rounded-xl shadow-md hover:shadow-lg active:scale-95"
                     >
                       <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />
-                      <span>Buat Briefing AI</span>
+                      <span>Bikin Briefing AI 🚀</span>
                     </Button>
                   </div>
                 ) : aiBriefingFailed && briefingData ? (
@@ -423,7 +423,7 @@ export default function DashboardPage() {
                 ) : (
                   <div style={{ textAlign: 'center', padding: 20, opacity: 0.4, fontSize: 13 }}>
                     <Wallet size={28} style={{ opacity: 0.3, marginBottom: 8 }} /><br />
-                    Mulai catat keuanganmu
+                    Mulai catat keuanganmu yuk!
                   </div>
                 )}
               </Card>
@@ -467,7 +467,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div style={{ textAlign: 'center', padding: 16, opacity: 0.4, fontSize: 13 }}>
-                    Tidak ada todo hari ini 🎉
+                    Gak ada todo hari ini 🎉
                   </div>
                 )}
 
@@ -646,7 +646,7 @@ export default function DashboardPage() {
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div onClick={(e) => { e.stopPropagation(); setShowCreateModal(true); }} style={{ padding: '4px 10px', borderRadius: 6, background: 'rgba(var(--color-primary), 0.1)', color: 'rgb(var(--color-primary))', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                      + Buat
+                      + Bikin
                     </div>
                     {showClasses ? <ChevronUp size={16} style={{ opacity: 0.5 }} /> : <ChevronDown size={16} style={{ opacity: 0.5 }} />}
                   </div>
@@ -689,7 +689,7 @@ export default function DashboardPage() {
                             </div>
                             <div>
                               <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0, letterSpacing: -0.3 }}>AI KRS Importer</h4>
-                              <p style={{ fontSize: 11.5, opacity: 0.55, margin: '2px 0 0' }}>Foto KRS-mu, langsung jadi kelas otomatis</p>
+                              <p style={{ fontSize: 11.5, opacity: 0.55, margin: '2px 0 0' }}>Foto KRS-mu, auto jadi kelas!</p>
                             </div>
                           </div>
 
@@ -712,7 +712,7 @@ export default function DashboardPage() {
                             <span>•</span>
                             <span>Foto / Screenshot KRS</span>
                             <span>•</span>
-                            <span>Auto-create kelas</span>
+                            <span>Auto-create kelas 🚀</span>
                           </div>
                         </div>
                       </div>
@@ -749,7 +749,7 @@ export default function DashboardPage() {
                     ) : classes.length === 0 ? (
                       <Card style={{ textAlign: 'center', padding: 20 }}>
                         <BookOpen size={28} style={{ opacity: 0.2, marginBottom: 8 }} />
-                        <p style={{ opacity: 0.5, fontSize: 13 }}>Belum ada kelas</p>
+                        <p style={{ opacity: 0.5, fontSize: 13 }}>Belum ada kelas nih</p>
                       </Card>
                     ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
@@ -780,12 +780,12 @@ export default function DashboardPage() {
       </div>
 
       {/* Create Class Modal */}
-      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Buat Kelas Baru">
+      <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Bikin Kelas Baru">
         <form onSubmit={handleCreateClass} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {createError && <Alert type="error" message={createError} />}
           <TextInput label="Nama Kelas" value={newClassName} onChange={setNewClassName} placeholder="Nama mata kuliah" required />
           <TextArea placeholder="Deskripsi (opsional)" value={newClassDesc} onChange={setNewClassDesc} rows={2} />
-          <Button type="submit" disabled={isCreating}>{isCreating ? <Loader2 className="spin" size={16} /> : 'Buat Kelas'}</Button>
+          <Button type="submit" disabled={isCreating}>{isCreating ? <Loader2 className="spin" size={16} /> : 'Bikin Kelas'}</Button>
         </form>
       </Modal>
 

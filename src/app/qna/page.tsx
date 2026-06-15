@@ -193,9 +193,9 @@ export default function QnaPage() {
         tags: askTags.length ? askTags : undefined,
         category: askForm.category ? [askForm.category] : undefined,
       });
-      showToast('Pertanyaan berhasil diposting! 🎉', 'success');
+      showToast('Pertanyaan udah dipost! 🎉', 'success');
       // XP notification for creating a question
-      setTimeout(() => showToast('+5 XP untuk pertanyaan baru! ⭐', 'success'), 800);
+      setTimeout(() => showToast('+5 XP buat pertanyaan baru! ⭐', 'success'), 800);
       setShowAskModal(false);
       setAskForm({ title: '', body: '', category: '' });
       setAskTags([]);

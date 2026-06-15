@@ -121,7 +121,7 @@ export default function AuthPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('error') === 'confirmation_failed') {
-      setError('Konfirmasi email gagal. Silakan coba daftar ulang.');
+      setError('Konfirmasi email gagal nih. Coba daftar ulang ya.');
       window.history.replaceState({}, '', '/auth');
     }
   }, []);
@@ -171,7 +171,7 @@ export default function AuthPage() {
           }
         }
       } else {
-        if (!fullName.trim()) throw new Error('Nama lengkap wajib diisi.');
+        if (!fullName.trim()) throw new Error('Nama lengkap-nya diisi dulu dong!');
 
         const { data, error: authError } = await supabase.auth.signUp({
           email, password,
@@ -195,14 +195,14 @@ export default function AuthPage() {
             });
             const profile = await profileResponse.json().catch(() => ({}));
             if (profile.role === 'SUPERADMIN') {
-              setSuccess('Registrasi berhasil! Mengalihkan ke panel superadmin...');
+              setSuccess('Registrasi sukses! Otw superadmin panel...');
               setTimeout(() => router.push('/superadmin'), 1500);
             } else {
-              setSuccess('Registrasi berhasil! Mengalihkan ke dashboard...');
+              setSuccess('Registrasi sukses! Otw dashboard...');
               setTimeout(() => router.push('/dashboard'), 1500);
             }
           } else {
-            setSuccess('Registrasi berhasil! Silakan cek email Anda untuk konfirmasi akun.');
+            setSuccess('Registrasi sukses! Cek email lo ya buat konfirmasi akun.');
           }
         }
       }
@@ -302,7 +302,7 @@ export default function AuthPage() {
             fontFamily: 'inherit', padding: '0.4rem 0.6rem', borderRadius: 8,
             transition: 'color 0.2s',
           }}>
-            <ArrowLeft size={14} /> Kembali
+            <ArrowLeft size={14} /> Balik
           </button>
           <button onClick={toggleTheme} title="Toggle theme" style={{
             padding: '0.4rem', borderRadius: 8, border: `1px solid ${c.toggleBorder}`,
@@ -337,7 +337,7 @@ export default function AuthPage() {
                 background: c.badgeBg, border: `1px solid ${c.badgeBorder}`,
                 fontSize: '0.72rem', color: c.badgeColor, fontWeight: 600,
               }}>
-                <Sparkles size={12} /> {isLogin ? 'Selamat datang kembali' : 'Bergabung sekarang'}
+                <Sparkles size={12} /> {isLogin ? 'Selamat datang kembali' : 'Gabung sekarang yuk'}
               </div>
 
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: c.text, margin: '0 0 0.35rem' }}>
@@ -345,7 +345,7 @@ export default function AuthPage() {
                 <span style={{ background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{brand.name}</span>
               </h2>
               <p style={{ fontSize: '0.85rem', color: c.textMuted, margin: 0 }}>
-                {isLogin ? 'Gunakan akun Anda untuk melanjutkan belajar' : 'Buat akun baru dan mulai belajar lebih cerdas'}
+                {isLogin ? 'Login dulu biar bisa lanjut belajar' : 'Bikin akun baru dan mulai belajar lebih cerdas'}
               </p>
             </div>
 
@@ -401,7 +401,7 @@ export default function AuthPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.5rem 0' }}>
               <div style={{ flex: 1, height: 1, background: c.dividerColor }} />
               <span style={{ fontSize: '0.72rem', color: c.textFaint, fontWeight: 500 }}>
-                {isLogin ? 'Belum punya akun?' : 'Sudah punya akun?'}
+                {isLogin ? 'Belum punya akun?' : 'Udah punya akun?'}
               </span>
               <div style={{ flex: 1, height: 1, background: c.dividerColor }} />
             </div>
@@ -414,7 +414,7 @@ export default function AuthPage() {
               cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem',
             }}>
-              {isLogin ? 'Buat Akun Baru' : 'Masuk ke Akun'} <ArrowRight size={14} />
+              {isLogin ? 'Bikin Akun Baru' : 'Login ke Akun'} <ArrowRight size={14} />
             </button>
           </div>
 

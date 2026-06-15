@@ -60,10 +60,10 @@ function isSameDay(d1: Date, d2: Date) {
 
 function greeting(): string {
   const h = new Date().getHours();
-  if (h < 11) return 'Selamat pagi';
-  if (h < 15) return 'Selamat siang';
-  if (h < 19) return 'Selamat sore';
-  return 'Selamat malam';
+  if (h < 11) return 'Pagi';
+  if (h < 15) return 'Siang';
+  if (h < 19) return 'Sore';
+  return 'Malam';
 }
 
 interface TodoGroup { label: string; emoji: string; todos: PersonalTodo[]; color?: string; }
@@ -266,7 +266,7 @@ export default function TodosPage() {
     try {
       await todoService.reorder(updated.map((t, i) => ({ id: t.id, sortOrder: i })));
     } catch (err: any) {
-      showToast('Gagal menyimpan urutan', 'error');
+      showToast('Gagal save urutan', 'error');
       fetchData();
     }
   }, [todos, fetchData]);
@@ -309,7 +309,7 @@ export default function TodosPage() {
           await todoService.setRecurrence(editingTodo.id, form.recurrence);
         }
         await syncSubtasks(editingTodo.id, formSubtasks, originalSubs);
-        showToast('Tugas diperbarui!', 'success');
+        showToast('Task udah di-update! ✏️', 'success');
       } else {
         const created = await todoService.create(data);
         if (form.recurrence && created.id) {
@@ -318,7 +318,7 @@ export default function TodosPage() {
         if (created.id && formSubtasks.length) {
           await syncSubtasks(created.id, formSubtasks, []);
         }
-        showToast('Tugas ditambahkan!', 'success');
+        showToast('Task baru ditambahin! ✅', 'success');
       }
       setShowSheet(false); setEditingTodo(null);
       setForm(EMPTY_FORM); setFormSubtasks([]);
@@ -334,7 +334,7 @@ export default function TodosPage() {
     try {
       const parsed = await todoService.parseNaturalInput(quickText);
       await todoService.create({ title: parsed.title || quickText, dueDate: parsed.dueDate, dueTime: parsed.dueTime, priority: parsed.priority || 'medium', category: parsed.category });
-      showToast('Tugas ditambahkan! ✅', 'success');
+      showToast('Task ditambahin! ✅', 'success');
       setQuickText('');
       fetchData();
     } catch (e: any) { showToast(e.message, 'error'); }
@@ -385,15 +385,15 @@ export default function TodosPage() {
     const todo = todos.find(t => t.id === id);
     if (!todo) return;
     const confirmed = await confirm({
-      title: 'Hapus Tugas?',
-      message: `"${todo.title}" akan dihapus secara permanen beserta semua subtask-nya.`,
-      confirmText: 'Hapus',
-      cancelText: 'Batal',
+      title: 'Hapus Task?',
+      message: `"${todo.title}" bakal dihapus permanen beserta semua subtask-nya. Yakin nih?`,
+      confirmText: 'Gas Hapus',
+      cancelText: 'Gak Jadi',
       variant: 'danger',
     });
     if (!confirmed) return;
     mutateTodos(prev => (prev || []).filter(t => t.id !== id));
-    try { await todoService.delete(id); showToast('Tugas dihapus', 'success'); }
+    try { await todoService.delete(id); showToast('Task udah dihapus 🗑️', 'success'); }
     catch (e: any) { showToast(e.message, 'error'); fetchData(); }
   };
 
@@ -427,7 +427,7 @@ export default function TodosPage() {
   const handleCreateCategory = (cat: CustomCategory) => {
     setCustomCategories(prev => [...prev, cat]);
     setShowCategoryCreator(false);
-    showToast(`Kategori "${cat.label}" dibuat!`, 'success');
+    showToast(`Kategori "${cat.label}" udah dibuat! 🎉`, 'success');
   };
 
   // ─── Render a single todo (with DnD wrapper) ──────────────────────
@@ -451,10 +451,10 @@ export default function TodosPage() {
   };
 
   const motivational = todayProgress.percent >= 100 && todayProgress.total > 0
-    ? 'Semua tugas hari ini beres! 🎉'
+    ? 'All done buat hari ini! GG! 🎉'
     : todayProgress.remaining > 0
-      ? `${todayProgress.remaining} tugas menanti diselesaikan`
-      : 'Belum ada tugas untuk hari ini ✨';
+      ? `${todayProgress.remaining} task lagi yang nunggu diselesaiin`
+      : 'Belum ada task buat hari ini ✨';
 
   return (
     <AuthGuard requiredFeature="todo_list">
@@ -630,9 +630,9 @@ export default function TodosPage() {
                 ) : groups.length === 0 ? (
                   <Card style={{ textAlign: 'center', padding: 40 }}>
                     <CheckSquare size={44} style={{ opacity: 0.18, marginBottom: 14 }} />
-                    <p style={{ opacity: 0.7, fontSize: 15, marginBottom: 4, fontWeight: 600 }}>Belum ada tugas</p>
-                    <p style={{ opacity: 0.45, fontSize: 13, marginBottom: 16 }}>Ketik di kolom cepat di atas atau buat tugas baru.</p>
-                    <Button onClick={() => openAdd()} style={{ margin: '0 auto' }}><Plus size={16} /> Buat Tugas</Button>
+                    <p style={{ opacity: 0.7, fontSize: 15, marginBottom: 4, fontWeight: 600 }}>Belum ada task nih</p>
+                    <p style={{ opacity: 0.45, fontSize: 13, marginBottom: 16 }}>Ketik di kolom cepat di atas atau bikin task baru yuk!</p>
+                    <Button onClick={() => openAdd()} style={{ margin: '0 auto' }}><Plus size={16} /> Bikin Task</Button>
                   </Card>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
@@ -670,7 +670,7 @@ export default function TodosPage() {
             </PullToRefresh>
 
             {/* ─── Add / Edit sheet (BottomSheet on mobile, modal on desktop) ─── */}
-            <BottomSheet isOpen={showSheet} onClose={closeSheet} title={editingTodo ? '✏️ Edit Tugas' : '✅ Tambah Tugas'}>
+            <BottomSheet isOpen={showSheet} onClose={closeSheet} title={editingTodo ? '✏️ Edit Task' : '✅ Tambah Task'}>
               <TodoForm
                 form={form}
                 setForm={setForm}

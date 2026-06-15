@@ -312,9 +312,9 @@ export default function DuitTrackerPage() {
     try {
       const updatedTx = await duitTrackerService.generateComment(txId);
       updateTx(tx => tx.id === txId, () => updatedTx);
-      showToast('Komentar Si Bawel berhasil dibuat! 🗣️', 'success');
+      showToast('Komentar Si Bawel udah jadi! 🗣️', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Gagal membuat komentar.', 'error');
+      showToast(err.message || 'Gagal bikin komentar nih.', 'error');
     } finally {
       setCommentLoading(prev => ({ ...prev, [txId]: false }));
     }
@@ -326,9 +326,9 @@ export default function DuitTrackerPage() {
       const roast = await siBawelService.getWeeklyRoast();
       setWeeklyRoast(roast);
       localStorage.setItem('synapse_weekly_roast', JSON.stringify(roast));
-      showToast('Weekly Roast berhasil dibuat! 🔥', 'success');
+      showToast('Weekly Roast udah siap! Siap-siap di-roast 🔥', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Gagal menghasilkan Weekly Roast.', 'error');
+      showToast(err.message || 'Gagal bikin Weekly Roast nih.', 'error');
     } finally {
       setRoastLoading(false);
     }
@@ -350,8 +350,8 @@ export default function DuitTrackerPage() {
     try {
       const updated = await siBawelService.updateSetting({ [field]: value } as any);
       setBawelSetting(updated);
-      showToast('Pengaturan Si Bawel diperbarui!', 'success');
-    } catch { showToast('Gagal update setting.', 'error'); }
+      showToast('Setting Si Bawel udah di-update!', 'success');
+    } catch { showToast('Gagal update setting nih.', 'error'); }
   };
 
   const handleAddTransaction = async (e: React.FormEvent) => {
@@ -362,10 +362,10 @@ export default function DuitTrackerPage() {
     try {
       if (editingTx) {
         await duitTrackerService.updateTransaction(editingTx.id, { amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || undefined });
-        showToast('Transaksi berhasil diperbarui!', 'success');
+        showToast('Transaksi udah di-update! ✅', 'success');
       } else {
         await duitTrackerService.createTransaction({ amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || undefined });
-        showToast('Transaksi berhasil ditambahkan!', 'success');
+        showToast('Transaksi udah ditambahin! ✅', 'success');
       }
       setShowAddModal(false); setEditingTx(null);
       setForm({ amount: '', type: 'expense', category: 'lainnya', label: '', note: '', date: '' });
@@ -389,7 +389,7 @@ export default function DuitTrackerPage() {
 
   const openEdit = (tx: Transaction) => {
     const h = (Date.now() - new Date(tx.createdAt).getTime()) / 3600000;
-    if (h > 24) { showToast('Transaksi hanya bisa diedit dalam 24 jam.', 'error'); return; }
+    if (h > 24) { showToast('Udah lewat 24 jam, gak bisa diedit lagi nih.', 'error'); return; }
     setEditingTx(tx);
     setForm({ amount: String(tx.amount), type: tx.type, category: tx.category, label: tx.label, note: tx.note || '', date: tx.date ? new Date(tx.date).toISOString().split('T')[0] : '' });
     setShowAddModal(true);
@@ -401,9 +401,9 @@ export default function DuitTrackerPage() {
 
     const confirmed = await confirm({
       title: 'Hapus Transaksi?',
-      message: `"${tx.label || tx.category}" sebesar ${tx.type === 'income' ? '+' : '-'}${fmt(tx.amount)} akan dihapus secara permanen.`,
-      confirmText: 'Hapus',
-      cancelText: 'Batal',
+      message: `"${tx.label || tx.category}" sebesar ${tx.type === 'income' ? '+' : '-'}${fmt(tx.amount)} bakal dihapus permanen nih.`,
+      confirmText: 'Gas Hapus',
+      cancelText: 'Gak Jadi',
       variant: 'danger',
     });
     if (!confirmed) return;
@@ -411,7 +411,7 @@ export default function DuitTrackerPage() {
     removeTx(t => t.id === id);
     try {
       await duitTrackerService.deleteTransaction(id);
-      showToast('Transaksi berhasil dihapus', 'success');
+      showToast('Transaksi udah dihapus! 🗑️', 'success');
     } catch (e: any) {
       showToast(e.message, 'error');
       refreshTx();
@@ -426,8 +426,8 @@ export default function DuitTrackerPage() {
       if (p.amount) {
         setForm({ amount: String(p.amount), type: p.type || 'expense', category: p.category || 'lainnya', label: p.label || aiText, note: p.note || '', date: '' });
         setShowAiInput(false); setShowAddModal(true);
-        showToast(`Berhasil diparsing!`, 'success');
-      } else { showToast('Gagal memparse input.', 'error'); }
+        showToast('Berhasil di-parse! Cek datanya ya~', 'success');
+      } else { showToast('Hmm, gak bisa di-parse nih. Coba tulis ulang!', 'error'); }
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); setAiText(''); }
   };
@@ -440,8 +440,8 @@ export default function DuitTrackerPage() {
         setForm({ amount: String(p.amount), type: p.type || 'expense', category: p.category || 'lainnya', label: p.label || text, note: p.note || '', date: '' });
         setQuickInputText('');
         setShowAddModal(true);
-        showToast('Berhasil diparsing!', 'success');
-      } else { showToast('Gagal memparse input.', 'error'); }
+        showToast('Berhasil di-parse! 🎉', 'success');
+      } else { showToast('Gak bisa di-parse nih. Coba lagi!', 'error'); }
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setQuickInputSubmitting(false); }
   };
@@ -453,7 +453,7 @@ export default function DuitTrackerPage() {
     setSubmitting(true);
     try {
       await duitTrackerService.createTree({ name: treeForm.name, targetAmount: target, deadline: treeForm.deadline || undefined });
-      showToast('Pohon tabungan berhasil dibuat! 🌱', 'success');
+      showToast('Pohon tabungan udah ditanem! 🌱', 'success');
       setShowTreeModal(false); setTreeForm({ name: '', targetAmount: '', deadline: '' }); fetchData();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
@@ -466,22 +466,22 @@ export default function DuitTrackerPage() {
     setSubmitting(true);
     try {
       await duitTrackerService.addTreeTransaction(depositTreeId, { amount: amt, type: depositType });
-      showToast(depositType === 'deposit' ? 'Tabungan ditambah! 🌳' : 'Penarikan berhasil.', 'success');
+      showToast(depositType === 'deposit' ? 'Tabungan nambah! 🌳' : 'Udah ditarik ya.', 'success');
       setDepositTreeId(null); setDepositAmount(''); fetchData();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
 
   const handleDeleteTree = async (id: string) => {
-    if (!await confirm({ message: 'Hapus pohon tabungan ini?', variant: 'danger' })) return;
-    try { await duitTrackerService.deleteTree(id); showToast('Dihapus.', 'success'); fetchData(); }
+    if (!await confirm({ message: 'Yakin nih mau hapus pohon tabungan ini?', variant: 'danger' })) return;
+    try { await duitTrackerService.deleteTree(id); showToast('Udah dihapus!', 'success'); fetchData(); }
     catch (e: any) { showToast(e.message, 'error'); }
   };
 
   const handleDeleteBudget = async (budget: CategoryBudget) => {
     const catInfo = EXPENSE_CATEGORIES.find(c => c.id === budget.category);
     const catLabel = catInfo?.label || budget.category;
-    if (!await confirm({ message: `Hapus budget ${catLabel} bulan ini?`, variant: 'danger' })) return;
+    if (!await confirm({ message: `Yakin hapus budget ${catLabel} bulan ini?`, variant: 'danger' })) return;
 
     // Optimistic removal
     const prevBudgets = budgets;
@@ -489,11 +489,11 @@ export default function DuitTrackerPage() {
 
     try {
       await duitTrackerService.deleteBudget(budget.id);
-      showToast('Budget berhasil dihapus.', 'success');
+      showToast('Budget udah dihapus!', 'success');
     } catch (e: any) {
       // Revert optimistic update on error
       mutateBudgets(prevBudgets);
-      showToast(e.message || 'Gagal menghapus budget.', 'error');
+      showToast(e.message || 'Gagal hapus budget nih.', 'error');
     }
   };
 
@@ -504,7 +504,7 @@ export default function DuitTrackerPage() {
     setSubmitting(true);
     try {
       await duitTrackerService.setBudget({ category: budgetForm.category, amount: amt, month, year });
-      showToast('Budget berhasil diatur!', 'success');
+      showToast('Budget udah di-set! 💰', 'success');
       setShowBudgetModal(false); setBudgetForm({ category: 'makanan', amount: '' }); fetchData();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
@@ -624,7 +624,7 @@ export default function DuitTrackerPage() {
                           <Button
                             size="sm"
                             onClick={() => {
-                              if (!customStart || !customEnd) { showToast('Pilih tanggal awal dan akhir', 'error'); return; }
+                              if (!customStart || !customEnd) { showToast('Pilih tanggal awal dan akhir dulu dong!', 'error'); return; }
                               setAppliedRange({ start: customStart, end: customEnd });
                             }}
                             disabled={!customStart || !customEnd}

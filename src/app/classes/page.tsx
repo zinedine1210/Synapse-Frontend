@@ -34,16 +34,16 @@ export default function ClassesPage() {
   const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError(null);
-    if (!newClassName.trim()) { setCreateError('Nama kelas wajib diisi.'); return; }
+    if (!newClassName.trim()) { setCreateError('Nama kelas-nya diisi dulu dong!'); return; }
     const res = await createClass(newClassName, newClassDesc);
     if (res.success) { setNewClassName(''); setNewClassDesc(''); setShowCreateModal(false); }
-    else { setCreateError(res.error || 'Gagal membuat kelas.'); }
+    else { setCreateError(res.error || 'Gagal bikin kelas nih.'); }
   };
 
   const handleDeleteClass = async (classId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const ok = await confirm({ title: 'Konfirmasi', message: 'Apakah Anda yakin ingin menghapus kelas ini?', confirmText: 'Hapus', variant: 'danger' });
+    const ok = await confirm({ title: 'Yakin Hapus?', message: 'Kelas ini bakal dihapus permanen. Yakin nih?', confirmText: 'Gas Hapus', variant: 'danger' });
     if (ok) await deleteClass(classId);
   };
 
@@ -57,7 +57,7 @@ export default function ClassesPage() {
       const code = joinCode.trim();
       // Use join-by-code endpoint that resolves code → UUID internally
       const res = await classService.joinByCode(code, joinPassword || undefined);
-      showToast(res.message || 'Berhasil bergabung ke kelas!', 'success');
+      showToast(res.message || 'Berhasil join kelas! 🎉', 'success');
       setShowJoinModal(false);
       setJoinCode('');
       setJoinPassword('');
@@ -65,7 +65,7 @@ export default function ClassesPage() {
       if (res.classId) router.push(`/class/${res.classId}`);
       else window.location.reload();
     } catch (err) {
-      setJoinError(err instanceof Error ? err.message : 'Gagal bergabung. Periksa kode kelas Anda.');
+      setJoinError(err instanceof Error ? err.message : 'Gagal join. Cek lagi kode kelas-nya ya!');
     } finally {
       setIsJoining(false);
     }
@@ -91,7 +91,7 @@ export default function ClassesPage() {
               <div>
                 <h2 style={{ fontSize: 'var(--font-xl)', fontWeight: 600 }}>Kelas Kuliah</h2>
                 <p style={{ fontSize: 'var(--font-sm)', marginTop: '0.2rem' }}>
-                  Kelola materi, rangkuman, dan kuis untuk setiap kelas.
+                  Atur materi, rangkuman, dan kuis buat tiap kelas.
                 </p>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -122,12 +122,12 @@ export default function ClassesPage() {
               <Card style={{ textAlign: 'center', padding: '3rem 2rem' }}>
                 <BookOpen size={40} style={{ color: 'rgb(var(--text-muted))', marginBottom: '0.75rem', opacity: 0.4 }} />
                 <h4 style={{ fontSize: 'var(--font-md)', marginBottom: '0.3rem' }}>
-                  {searchQuery ? 'Kelas tidak ditemukan' : 'Belum ada kelas'}
+                  {searchQuery ? 'Kelas gak ketemu nih' : 'Belum ada kelas'}
                 </h4>
                 <p style={{ fontSize: 'var(--font-sm)', marginBottom: '1.25rem' }}>
-                  {searchQuery ? `Tidak ada kelas yang cocok dengan "${searchQuery}".` : 'Buat kelas baru untuk mulai mengelola materi kuliah.'}
+                  {searchQuery ? `Gak ada kelas yang cocok sama "${searchQuery}".` : 'Bikin kelas baru yuk buat mulai ngatur materi kuliah!'}
                 </p>
-                {!searchQuery && <Button size="sm" onClick={() => setShowCreateModal(true)} leftIcon={<Plus size={14} />}>Buat Kelas</Button>}
+                {!searchQuery && <Button size="sm" onClick={() => setShowCreateModal(true)} leftIcon={<Plus size={14} />}>Bikin Kelas</Button>}
               </Card>
             ) : (
               <div className="stagger-enter classes-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
@@ -280,13 +280,13 @@ export default function ClassesPage() {
           <form onSubmit={handleCreateClass} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {createError && <Alert type="error" message={createError} />}
 
-            <TextInput label="Nama Kelas" value={newClassName} onChange={setNewClassName} placeholder="Matematika Ekonomi" required />
+            <TextInput label="Nama Kelas" value={newClassName} onChange={setNewClassName} placeholder="Contoh: Matematika Ekonomi" required />
 
             <TextArea label="Deskripsi (Opsional)" rows={3} value={newClassDesc} onChange={setNewClassDesc} placeholder="Deskripsi singkat kelas ini" />
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setShowCreateModal(false)}>Batal</Button>
-              <Button type="submit" size="sm" isLoading={isCreating}>Buat</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowCreateModal(false)}>Gak Jadi</Button>
+              <Button type="submit" size="sm" isLoading={isCreating}>Bikin</Button>
             </div>
           </form>
         </Modal>
@@ -307,7 +307,7 @@ export default function ClassesPage() {
                 maxLength={8}
               />
               <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: 0 }}>
-                Minta kode kelas dari pemilik kelas.
+                Minta kode kelas dari yang punya kelas ya.
               </p>
             </div>
 
@@ -321,7 +321,7 @@ export default function ClassesPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.25rem' }}>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setShowJoinModal(false)}>Batal</Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowJoinModal(false)}>Gak Jadi</Button>
               <Button type="submit" size="sm" isLoading={isJoining} leftIcon={<LogIn size={13} />}>Gabung</Button>
             </div>
           </form>

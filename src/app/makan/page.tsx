@@ -428,81 +428,182 @@ export default function MakanApaPage() {
           <Appbar sidebarCollapsed={sidebarCollapsed} />
           <div className="page-content page-transition">
             <div className="feature-container" style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 'calc(var(--bottom-nav-height, 60px) + 16px)' }}>
-              <div className="feature-header">
-                <h1><UtensilsCrossed size={26} style={{ color: 'rgb(var(--color-primary))' }} /> Makan Apa</h1>
-                <div className="feature-actions">
-                  <Button onClick={() => setShowPrefModal(true)} variant="ghost" size="sm"><Settings2 size={15} /> Preferensi</Button>
+              
+              {/* Feature Header with Relocated Preference Button */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 24,
+                flexWrap: 'wrap',
+                gap: 12
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'linear-gradient(135deg, rgba(var(--color-primary) / 0.15), rgba(var(--color-secondary) / 0.15))',
+                    color: 'rgb(var(--color-primary))',
+                  }}>
+                    <UtensilsCrossed size={22} />
+                  </div>
+                  <div>
+                    <h1 style={{ fontSize: 'var(--font-xl)', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      Makan Apa
+                    </h1>
+                    <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: 0 }}>
+                      Rekomendasi makanan cerdas berbasis sisa budget & seleramu
+                    </p>
+                  </div>
                 </div>
+
+                <Button
+                  onClick={() => setShowPrefModal(true)}
+                  variant="outline"
+                  size="sm"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    borderRadius: 'var(--radius-md)',
+                    padding: '8px 14px',
+                    fontSize: 'var(--font-xs)',
+                    fontWeight: 700,
+                  }}
+                >
+                  <Settings2 size={15} />
+                  <span>Preferensi Makan</span>
+                </Button>
               </div>
 
               {/* Budget Card with progress ring */}
               {!budgetLoading && budgetInfo && budgetInfo.budget > 0 && (
                 <Card
                   style={{
-                    marginBottom: 20,
-                    padding: '18px 20px',
-                    background: 'linear-gradient(135deg, rgba(var(--color-primary) / 0.12), rgba(var(--color-secondary) / 0.07))',
-                    border: '1px solid rgba(var(--color-primary) / 0.25)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    marginBottom: 24,
+                    padding: '20px 24px',
+                    background: 'linear-gradient(135deg, rgba(var(--bg-surface), 0.7), rgba(var(--bg-elevated), 0.8))',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 'var(--radius-xl)',
+                    boxShadow: 'var(--shadow-lg), var(--shadow-glow-primary)',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+                  {/* Background decorative glows */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '-40px',
+                    right: '-40px',
+                    width: 120,
+                    height: 120,
+                    background: 'radial-gradient(circle, rgba(var(--color-primary) / 0.15) 0%, transparent 70%)',
+                    zIndex: 0,
+                    pointerEvents: 'none'
+                  }} />
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '-40px',
+                    left: '-40px',
+                    width: 120,
+                    height: 120,
+                    background: 'radial-gradient(circle, rgba(var(--color-secondary) / 0.15) 0%, transparent 70%)',
+                    zIndex: 0,
+                    pointerEvents: 'none'
+                  }} />
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 20, position: 'relative', zIndex: 1 }}>
                     {budgetInfo.remaining !== null ? (
                       <BudgetRing
                         fraction={spentFraction}
                         danger={overBudget}
                         centerTop={`${remainingPct}%`}
                         centerBottom="sisa"
+                        size={80}
                       />
                     ) : (
-                      <div style={{ width: 76, height: 76, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(var(--color-primary) / 0.1)', flexShrink: 0 }}>
-                        <Wallet size={26} style={{ color: 'rgb(var(--color-primary))' }} />
+                      <div style={{ width: 80, height: 80, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(var(--color-primary) / 0.1)', flexShrink: 0 }}>
+                        <Wallet size={28} style={{ color: 'rgb(var(--color-primary))' }} />
                       </div>
                     )}
 
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', fontWeight: 600, marginBottom: 2 }}>
-                        Sisa budget makan bulan ini
-                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <Wallet size={14} style={{ color: 'rgb(var(--color-primary))' }} />
+                        <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', fontWeight: 600, margin: 0 }}>
+                          Sisa Budget Makan Bulan Ini
+                        </p>
+                      </div>
+                      
                       <p style={{
-                        fontSize: 'var(--font-xl, 1.5rem)',
+                        fontSize: '1.75rem',
                         fontWeight: 800,
-                        lineHeight: 1.15,
+                        lineHeight: 1.1,
+                        margin: 0,
                         color: overBudget ? 'rgb(var(--color-error))' : 'rgb(var(--color-primary))',
+                        letterSpacing: '-0.5px'
                       }}>
                         {budgetInfo.remaining !== null ? fmt(budgetInfo.remaining) : 'Tidak ada budget'}
                       </p>
-                      <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>
-                          Budget <b style={{ color: 'rgb(var(--text-secondary))' }}>{fmt(budgetInfo.budget)}</b>
-                        </span>
-                        <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>
-                          Terpakai <b style={{ color: 'rgb(var(--text-secondary))' }}>{fmt(budgetInfo.spent)}</b>
-                        </span>
+
+                      <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '10px', color: 'rgb(var(--text-muted))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Budget Awal</span>
+                          <span style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>{fmt(budgetInfo.budget)}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '10px', color: 'rgb(var(--text-muted))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Terpakai</span>
+                          <span style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>{fmt(budgetInfo.spent)}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
+
                   {overBudget && budgetInfo.remaining !== null && (
-                    <p style={{ marginTop: 12, fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--color-error))' }}>
-                      ⚠️ Budget makanmu hampir habis, pilih menu yang lebih hemat ya!
-                    </p>
+                    <div style={{
+                      marginTop: 14,
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'rgba(var(--color-error) / 0.1)',
+                      border: '1px solid rgba(var(--color-error) / 0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      position: 'relative',
+                      zIndex: 1
+                    }}>
+                      <span style={{ fontSize: '14px' }}>⚠️</span>
+                      <p style={{ margin: 0, fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--color-error))' }}>
+                        Budget makanmu hampir habis! Pilih menu atau resep hemat di bawah ini.
+                      </p>
+                    </div>
                   )}
                 </Card>
               )}
 
-              {/* Segmented tab control */}
-              <SegmentedTabs
-                tabs={TABS}
-                value={mode}
-                onChange={(m) => {
-                  setMode(m);
-                  if (m === 'fridge' || m === 'menu') {
-                    setFridgeResult(null);
-                    setMenuResult(null);
-                  }
-                }}
-              />
+              {/* Segmented tab control (Full Width) */}
+              <div style={{ marginBottom: 20 }}>
+                <SegmentedTabs
+                  tabs={TABS}
+                  value={mode}
+                  style={{ marginBottom: 0 }}
+                  onChange={(m) => {
+                    setMode(m);
+                    if (m === 'fridge' || m === 'menu') {
+                      setFridgeResult(null);
+                      setMenuResult(null);
+                    }
+                  }}
+                />
+              </div>
 
-              {/* Fridge/Menu mode content */}
+              {/* Fridge/Menu mode content */}      {/* Fridge/Menu mode content */}
               {(mode === 'fridge' || mode === 'menu') && (
                 <>
                   {/* Filter for menu mode */}

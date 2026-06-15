@@ -102,7 +102,7 @@ export default function QuizPage() {
 
   const handleGenerateQuiz = async () => {
     if (selectedSessionIds.length === 0) {
-      showToast('Pilih minimal 1 sesi pertemuan untuk diujikan.', 'warning');
+      showToast('Pilih minimal 1 sesi pertemuan dulu dong!', 'warning');
       return;
     }
 
@@ -120,13 +120,13 @@ export default function QuizPage() {
         setCurrentIdx(0);
         setUserAnswers({});
         setQuizSubmitted(false);
-        showToast('Kuis AI berhasil dibuat!', 'success');
+        showToast('Kuis AI sukses dibuat! 🎯', 'success');
       } else {
-        throw new Error(res.message || 'Gagal menghasilkan kuis. Pastikan sesi yang dipilih memiliki rangkuman AI.');
+        throw new Error(res.message || 'Gagal bikin kuis nih. Pastikan sesi yang lo pilih ada rangkuman AI-nya.');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Terjadi kesalahan saat membuat kuis.');
-      showToast(err instanceof Error ? err.message : 'Terjadi kesalahan saat membuat kuis.', 'error');
+      setError(err instanceof Error ? err.message : 'Ada error pas bikin kuis.');
+      showToast(err instanceof Error ? err.message : 'Ada error pas bikin kuis.', 'error');
     } finally {
       setIsGenerating(false);
     }
@@ -152,9 +152,9 @@ export default function QuizPage() {
         await aiService.submitQuizAttempt(quizIds[0], score, userAnswers as any);
       }
       setQuizSubmitted(true);
-      showToast('Jawaban kuis berhasil dikirim!', 'success');
+      showToast('Jawaban kuis sukses dikirim! 🚀', 'success');
     } catch (err) {
-      showToast('Gagal menyimpan hasil kuis.', 'error');
+      showToast('Gagal nyimpen hasil kuis.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -253,10 +253,10 @@ export default function QuizPage() {
               <Card style={{ textAlign: 'center', padding: '3rem 2rem', border: '1px dashed rgba(255, 255, 255, 0.08)' }}>
                 <BookOpen size={48} style={{ color: 'rgba(160, 160, 200, 0.2)', marginBottom: '1rem' }} />
                 <p style={{ color: 'rgba(160, 160, 200, 0.8)', marginBottom: '1.5rem' }}>
-                  Anda belum memiliki kelas. Buat kelas terlebih dahulu di dashboard.
+                  Anda belum memiliki kelas. Bikin kelas dulu yuk di dashboard.
                 </p>
                 <Link href="/dashboard" style={{ textDecoration: 'none' }}>
-                  <Button>Kembali ke Dashboard</Button>
+                  <Button>Balik ke Dashboard</Button>
                 </Link>
               </Card>
             ) : !quizStarted ? (
@@ -361,18 +361,18 @@ export default function QuizPage() {
                   </span>
                   <p style={{ fontSize: '0.85rem', color: 'rgba(160, 160, 200, 0.7)', marginTop: '1rem', marginBottom: '1.5rem' }}>
                     {quizScore >= 70
-                      ? 'Hebat! Anda berhasil menjawab soal-soal prediksi dengan sangat baik.'
-                      : 'Silakan ulas materi yang salah di bawah ini dan coba kembali kuis prediksi.'}
+                      ? 'Gokil! Jawaban prediksi lo mantap banget.'
+                      : 'Cek materi yang salah di bawah dan coba lagi kuis prediksinya ya.'}
                   </p>
                   <Button variant="secondary" onClick={handleResetQuiz} leftIcon={<RotateCcw size={16} />}>
-                    Buat Kuis Baru
+                    Bikin Kuis Baru
                   </Button>
                 </Card>
 
                 {/* Question Review */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white' }}>
-                    Pembahasan Kuis:
+                    Bahas Kuis:
                   </h4>
                   {quizQuizzes.map((q, idx) => {
                     const userAnswer = userAnswers[idx];
@@ -431,7 +431,7 @@ export default function QuizPage() {
                             </div>
                             {q.explanation && (
                               <p style={{ fontSize: '0.8rem', color: 'rgba(160, 160, 200, 0.7)', marginTop: '0.75rem', paddingLeft: '0.5rem', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
-                                💡 <b>Pembahasan:</b> {q.explanation}
+                                💡 <b>Bahas Detail:</b> {q.explanation}
                               </p>
                             )}
                           </div>
@@ -499,7 +499,7 @@ export default function QuizPage() {
                         onClick={() => setCurrentIdx((p) => p - 1)}
                         leftIcon={<ChevronLeft size={16} />}
                       >
-                        Kembali
+                        Balik
                       </Button>
 
                       {currentIdx < quizQuizzes.length - 1 ? (
@@ -517,7 +517,7 @@ export default function QuizPage() {
                           onClick={handleSubmitQuiz}
                           rightIcon={<CheckCircle2 size={16} />}
                         >
-                          Kirim Jawaban
+                          Kirim Jawaban 🚀
                         </Button>
                       )}
                     </div>

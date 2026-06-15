@@ -127,7 +127,7 @@ export default function SplitBillPage() {
     socket.on('split-bill:payment-updated', (data: { participantId: string; isPaid: boolean; bill: SplitBill }) => {
       // Update the bill in real-time when another viewer marks payment
       setSelectedBill(data.bill);
-      showToast('Status pembayaran diperbarui! ✅', 'info');
+      showToast('Pembayaran udah diupdate! ✅', 'info');
     });
 
     return () => {
@@ -147,7 +147,7 @@ export default function SplitBillPage() {
       const results = await splitBillService.detectSplittable();
       setSplittableTransactions(results);
       if (results.length === 0) {
-        showToast('Tidak ada transaksi yang bisa di-split.', 'info');
+        showToast('Gak ada transaksi yang bisa dipatungin nih.', 'info');
       }
     } catch (e: any) {
       showToast(e.message, 'error');
@@ -191,10 +191,10 @@ export default function SplitBillPage() {
         }));
         setScannedItems(parsed);
         if (result.storeName) setEventName(result.storeName);
-        showToast(`${result.items.length} item terdeteksi dari struk! 📸`, 'success');
+        showToast(`${result.items.length} item ketauan di struk! 📸`, 'success');
       }
     } catch (e: any) {
-      showToast(e.message || 'Gagal scan struk.', 'error');
+      showToast(e.message || 'Gagal scan struk nih.', 'error');
     } finally {
       setScanning(false);
     }
@@ -203,14 +203,14 @@ export default function SplitBillPage() {
   const handleCreate = async () => {
     const validItems = items.filter(i => i.name && i.price);
     const validParticipants = participants.filter(p => p.trim());
-    if (validItems.length === 0) { showToast('Tambah minimal 1 item.', 'error'); return; }
-    if (validParticipants.length === 0) { showToast('Tambah minimal 1 peserta.', 'error'); return; }
+    if (validItems.length === 0) { showToast('Tambah minimal 1 item dulu ya.', 'error'); return; }
+    if (validParticipants.length === 0) { showToast('Tambah minimal 1 peserta ya.', 'error'); return; }
 
     // Validate percentages if percentage method
     if (splitMethod === 'percentage') {
       const total = validParticipants.reduce((sum, _, i) => sum + (parseFloat(percentages[i] || '0')), 0);
       if (Math.abs(total - 100) > 0.01) {
-        showToast(`Total persentase harus 100% (sekarang: ${total.toFixed(1)}%)`, 'error');
+        showToast(`Total persentase harus pas 100% ya (sekarang: ${total.toFixed(1)}%)`, 'error');
         return;
       }
     }
@@ -231,7 +231,7 @@ export default function SplitBillPage() {
         participants: validParticipants,
         ...(splitMethod === 'percentage' ? { percentages: percentageMap } : {}),
       });
-      showToast('Split bill dibuat! 🎉', 'success');
+      showToast('Split bill sukses dibikin! 🎉', 'success');
       setView('detail');
       setSelectedBill(bill);
       fetchBills();
@@ -280,7 +280,7 @@ export default function SplitBillPage() {
       const updated = await splitBillService.markPaid(selectedBill.id, participantId);
       setSelectedBill(updated);
       fetchBills();
-      showToast('Ditandai sudah bayar! ✅', 'success');
+      showToast('Udah lunas ditandai! ✅', 'success');
     } catch (e: any) {
       showToast(e.message, 'error');
     }
@@ -297,11 +297,11 @@ export default function SplitBillPage() {
   };
 
   const handleDelete = async (billId: string) => {
-    const ok = await confirm({ title: 'Hapus split bill ini?', message: 'Tindakan ini tidak dapat dibatalkan.', variant: 'danger' });
+    const ok = await confirm({ title: 'Yakin hapus split bill?', message: 'Kalo dihapus gak bisa balik lagi loh.', variant: 'danger' });
     if (!ok) return;
     try {
       await splitBillService.delete(billId);
-      showToast('Bill dihapus.', 'success');
+      showToast('Bill udah dihapus.', 'success');
       setView('list');
       fetchBills();
     } catch (e: any) {
@@ -315,7 +315,7 @@ export default function SplitBillPage() {
     setItems([{ name: tx.label || 'Item', price: String(tx.amount), quantity: '1' }]);
     setSplittableTransactions([]);
     setView('create');
-    showToast('Transaksi dipilih! Tambahkan peserta.', 'info');
+    showToast('Transaksi dipilih! Tambah pesertanya ya.', 'info');
   };
 
   const fmt = (n: number) => `Rp ${Math.round(n).toLocaleString('id-ID')}`;
@@ -365,14 +365,14 @@ export default function SplitBillPage() {
                       <span className="sb-header__icon"><Receipt size={22} /></span>
                       <div>
                         <h1>Split Bill</h1>
-                        <p>Patungan tanpa drama. Bagi, lacak, beres.</p>
+                        <p>Patungan anti ribet. Bagi, pantau, kelar! 💸</p>
                       </div>
                     </div>
                     <div className="sb-header__actions">
                       <Button onClick={handleFetchHistory} variant="outline" size="sm" disabled={loadingHistory}>
-                        {loadingHistory ? <Loader2 size={14} className="sb-spin" /> : <History size={14} />} Riwayat
+                        {loadingHistory ? <Loader2 size={14} className="sb-spin" /> : <History size={14} />} Cek Riwayat 📜
                       </Button>
-                      <Button onClick={() => setView('create')} size="sm"><Plus size={15} /> Buat Split</Button>
+                      <Button onClick={() => setView('create')} size="sm"><Plus size={15} /> Bikin Split ➕</Button>
                     </div>
                   </div>
 
@@ -383,7 +383,7 @@ export default function SplitBillPage() {
                       <span className="sb-detect__badge"><Wand2 size={15} /></span>
                       <div className="sb-detect__copy">
                         <strong>Deteksi Otomatis <Sparkles size={13} /></strong>
-                        <span>Temukan transaksi dari Duit Tracker yang asik buat di-split bareng teman.</span>
+                        <span>Cari transaksi di Duit Tracker yang asik buat dipatungin bareng sobat.</span>
                       </div>
                       <button className="sb-detect__cta" onClick={handleDetectSplittable} disabled={loadingSplittable}>
                         {loadingSplittable ? <Loader2 size={15} className="sb-spin" /> : <TrendingUp size={15} />}
@@ -417,9 +417,9 @@ export default function SplitBillPage() {
                   ) : bills.length === 0 ? (
                     <div className="sb-empty">
                       <span className="sb-empty__icon">🧾</span>
-                      <h3>Belum ada split bill</h3>
-                      <p>Foto struk, tambah teman, bagi rata. Yuk mulai patungan pertamamu!</p>
-                      <Button onClick={() => setView('create')} style={{ marginTop: 14 }}><Plus size={15} /> Buat Split Bill</Button>
+                      <h3>Belum ada split bill nih</h3>
+                      <p>Foto struk, tag temen, bagi rata. Yuk mulai patungan perdana lo! 🚀</p>
+                      <Button onClick={() => setView('create')} style={{ marginTop: 14 }}><Plus size={15} /> Bikin Split Bill 💸</Button>
                     </div>
                   ) : (
                     <div className="sb-list">

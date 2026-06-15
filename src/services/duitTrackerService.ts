@@ -63,7 +63,7 @@ export const duitTrackerService = {
   createTransaction: (data: Partial<Transaction>) =>
     apiFetch<Transaction>('/duit-tracker/transactions', { method: 'POST', body: JSON.stringify(data) }),
 
-  getTransactions: (params?: { month?: number; year?: number; category?: string; type?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) => {
+  getTransactions: async (params?: { month?: number; year?: number; category?: string; type?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) => {
     const q = new URLSearchParams();
     if (params?.month) q.set('month', String(params.month));
     if (params?.year) q.set('year', String(params.year));
@@ -73,7 +73,17 @@ export const duitTrackerService = {
     if (params?.endDate) q.set('endDate', params.endDate);
     if (params?.page) q.set('page', String(params.page));
     if (params?.limit) q.set('limit', String(params.limit));
-    return apiFetch<{ data: Transaction[]; total: number; page: number; limit: number; totalPages: number }>(`/duit-tracker/transactions?${q.toString()}`);
+    const res = await apiFetch<any>(`/duit-tracker/transactions?${q.toString()}`);
+    if (Array.isArray(res)) {
+      return {
+        data: res,
+        total: res.length,
+        page: params?.page || 1,
+        limit: params?.limit || 30,
+        totalPages: 1,
+      };
+    }
+    return res || { data: [], total: 0, page: 1, limit: 30, totalPages: 1 };
   },
 
   deleteTransaction: (id: string) =>
@@ -96,7 +106,7 @@ export const duitTrackerService = {
     apiFetch<CategoryBudget[]>(`/duit-tracker/budgets?month=${month}&year=${year}`),
 
   deleteBudget: (id: string) =>
-    apiFetch(`/duit-tracker/budget/${id}`, { method: 'DELETE' }),
+    apiFetch(`/duit-tracker/budgets/${id}`, { method: 'DELETE' }),
 
   // Trees
   createTree: (data: { name: string; targetAmount: number; deadline?: string; treeType?: string }) =>

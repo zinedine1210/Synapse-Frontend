@@ -93,7 +93,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         {/* Fields */}
         <div style={{ marginBottom: '1.5rem', minHeight: 80 }}>
           {step === 0 && (
-            <TextInput value={data.university} onChange={v => setData(d => ({ ...d, university: v }))}
+            <TextInput name="university" autoComplete="organization" value={data.university} onChange={v => setData(d => ({ ...d, university: v }))}
               placeholder="Contoh: Universitas Indonesia" autoFocus />
           )}
           {step === 1 && (

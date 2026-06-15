@@ -12,6 +12,7 @@ interface SegmentedTabsProps<T extends string> {
   tabs: SegmentTab<T>[];
   value: T;
   onChange: (value: T) => void;
+  style?: React.CSSProperties;
 }
 
 /**
@@ -19,7 +20,7 @@ interface SegmentedTabsProps<T extends string> {
  * Horizontally scrollable on small screens. Relies on the global
  * prefers-reduced-motion handler to neutralise the slide transition.
  */
-export function SegmentedTabs<T extends string>({ tabs, value, onChange }: SegmentedTabsProps<T>) {
+export function SegmentedTabs<T extends string>({ tabs, value, onChange, style }: SegmentedTabsProps<T>) {
   const activeIndex = Math.max(0, tabs.findIndex(t => t.value === value));
   const widthPct = 100 / tabs.length;
 
@@ -37,6 +38,7 @@ export function SegmentedTabs<T extends string>({ tabs, value, onChange }: Segme
         borderRadius: 'var(--radius-lg)',
         marginBottom: 20,
         overflow: 'hidden',
+        ...style,
       }}
     >
       {/* Sliding indicator */}

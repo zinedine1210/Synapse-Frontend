@@ -50,14 +50,14 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
 ];
 
 const NOTIFICATION_TOGGLES: { key: keyof Omit<NotificationPreferences, 'quietHoursStart' | 'quietHoursEnd'>; label: string; description: string }[] = [
-  { key: 'deadlineReminder', label: 'Pengingat Deadline', description: 'Notifikasi saat deadline tugas mendekat' },
-  { key: 'budgetAlert', label: 'Peringatan Budget', description: 'Notifikasi saat budget kategori mencapai 80%' },
-  { key: 'streakReminder', label: 'Pengingat Streak', description: 'Notifikasi untuk menjaga streak harian' },
-  { key: 'idleReminder', label: 'Pengingat Idle', description: 'Notifikasi saat 3 hari tidak catat transaksi' },
-  { key: 'weeklyRecap', label: 'Rekap Mingguan', description: 'Ringkasan aktivitas mingguan' },
-  { key: 'forumReply', label: 'Balasan Forum', description: 'Notifikasi saat ada balasan di forum' },
-  { key: 'qnaAnswer', label: 'Jawaban Q&A', description: 'Notifikasi saat pertanyaanmu dijawab' },
-  { key: 'achievementAlert', label: 'Achievement', description: 'Notifikasi saat dapat achievement baru' },
+  { key: 'deadlineReminder', label: 'Reminder Deadline', description: 'Kasih tau kalo deadline udah mepet nih' },
+  { key: 'budgetAlert', label: 'Alert Budget', description: 'Warning kalo budget kategori udah 80%' },
+  { key: 'streakReminder', label: 'Reminder Streak', description: 'Ingetin biar streak harian gak putus' },
+  { key: 'idleReminder', label: 'Reminder Idle', description: 'Nudge kalo 3 hari gak catat transaksi' },
+  { key: 'weeklyRecap', label: 'Rekap Mingguan', description: 'Rangkuman aktivitas lo seminggu ini' },
+  { key: 'forumReply', label: 'Balasan Forum', description: 'Ada yang bales di forum nih!' },
+  { key: 'qnaAnswer', label: 'Jawaban Q&A', description: 'Pertanyaan lo udah dijawab!' },
+  { key: 'achievementAlert', label: 'Achievement', description: 'Dapet achievement baru! 🎉' },
 ];
 
 export default function SettingsPage() {
@@ -142,11 +142,11 @@ export default function SettingsPage() {
     // Validate file
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedTypes.includes(file.type)) {
-      showToast('Format harus JPG, PNG, atau WebP.', 'error');
+      showToast('Format-nya harus JPG, PNG, atau WebP ya!', 'error');
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      showToast('Ukuran file maksimal 2MB.', 'error');
+      showToast('Kegedean nih, maks 2MB ya!', 'error');
       return;
     }
 
@@ -159,9 +159,9 @@ export default function SettingsPage() {
       setAvatarUrl(result.avatarUrl);
 
       await refetchProfile();
-      showToast('Avatar berhasil diubah.', 'success');
+      showToast('Avatar udah diganti! Fresh~ ✨', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Gagal upload avatar.', 'error');
+      showToast(err.message || 'Yah, gagal upload avatar. Coba lagi ya!', 'error');
     } finally {
       setAvatarUploading(false);
     }
@@ -169,7 +169,7 @@ export default function SettingsPage() {
 
   const handleSaveProfile = async () => {
     if (!fullName.trim()) {
-      showToast('Nama tidak boleh kosong.', 'error');
+      showToast('Nama-nya jangan kosong dong!', 'error');
       return;
     }
     setSaving(true);
@@ -179,9 +179,9 @@ export default function SettingsPage() {
         body: JSON.stringify({ fullName: fullName.trim() }),
       });
       await refetchProfile();
-      showToast('Profil berhasil disimpan.', 'success');
+      showToast('Profil udah ke-save! 💾', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Gagal menyimpan profil.', 'error');
+      showToast(err.message || 'Duh, gagal nyimpen profil. Coba lagi!', 'error');
     } finally {
       setSaving(false);
     }
@@ -200,9 +200,9 @@ export default function SettingsPage() {
           reason: onboardingReason.trim(),
         }),
       });
-      showToast('Profil onboarding berhasil disimpan.', 'success');
+      showToast('Data onboarding udah ke-save! ✅', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Gagal menyimpan profil onboarding.', 'error');
+      showToast(err.message || 'Gagal nyimpen data onboarding nih.', 'error');
     } finally {
       setOnboardingSaving(false);
     }
@@ -216,11 +216,11 @@ export default function SettingsPage() {
         method: 'PATCH',
         body: JSON.stringify({ [key]: value }),
       });
-      showToast(value ? 'Notifikasi diaktifkan ✓' : 'Notifikasi dinonaktifkan', 'success');
+      showToast(value ? 'Notif udah nyala! 🔔' : 'Notif dimatiin', 'success');
     } catch (err: any) {
       // Revert on error
       setNotifToggles(prev => ({ ...prev, [key]: !value }));
-      showToast(err.message || 'Gagal memperbarui notifikasi.', 'error');
+      showToast(err.message || 'Gagal update notif nih, coba lagi!', 'error');
     }
   };
 
@@ -234,9 +234,9 @@ export default function SettingsPage() {
           quietHoursEnd: quietEnd || null,
         }),
       });
-      showToast('Quiet hours berhasil disimpan.', 'success');
+      showToast('Quiet hours udah di-set! 🌙', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Gagal menyimpan quiet hours.', 'error');
+      showToast(err.message || 'Gagal nyimpen quiet hours nih.', 'error');
     } finally {
       setSaving(false);
     }
@@ -261,7 +261,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ theme: newTheme }),
       });
     } catch (err: any) {
-      showToast(err.message || 'Gagal menyimpan tema.', 'error');
+      showToast(err.message || 'Gagal ganti tema nih.', 'error');
     }
   };
 
@@ -272,18 +272,18 @@ export default function SettingsPage() {
         method: 'PATCH',
         body: JSON.stringify({ language: newLang }),
       });
-      showToast('Bahasa berhasil diubah.', 'success');
+      showToast('Bahasa udah diganti! 🌍', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Gagal menyimpan bahasa.', 'error');
+      showToast(err.message || 'Gagal ganti bahasa nih.', 'error');
     }
   };
 
   // Sign out
   const handleSignOut = async () => {
     const ok = await confirm({
-      title: 'Konfirmasi',
-      message: 'Apakah Anda yakin ingin keluar dari akun Anda?',
-      confirmText: 'Keluar',
+      title: 'Mau Cabut?',
+      message: 'Yakin nih mau logout? Nanti harus login lagi loh~',
+      confirmText: 'Gas Logout',
       variant: 'danger',
     });
     if (!ok) return;
@@ -524,7 +524,7 @@ function ProfileTab({
           <div>
             <p style={{ fontSize: 'var(--font-sm)', fontWeight: 500 }}>Foto Profil</p>
             <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>
-              JPG, PNG, atau WebP. Maksimal 2MB.
+              JPG, PNG, atau WebP. Maks 2MB ya!
             </p>
           </div>
           <input
@@ -538,12 +538,12 @@ function ProfileTab({
 
         {/* Full Name */}
         <div style={{ marginBottom: '1rem' }}>
-          <TextInput label="Nama Lengkap" value={fullName} onChange={setFullName} placeholder="Masukkan nama lengkap" />
+          <TextInput name="name" autoComplete="name" label="Nama Lengkap" value={fullName} onChange={setFullName} placeholder="Tulis nama kamu di sini" />
         </div>
 
         {/* Email (read only) */}
         <div style={{ marginBottom: '1.25rem' }}>
-          <TextInput label="Email" value={user?.email || ''} onChange={() => {}} disabled placeholder="" />
+          <TextInput name="email" autoComplete="email" label="Email" value={user?.email || ''} onChange={() => {}} disabled placeholder="" />
         </div>
 
         <Button
@@ -553,7 +553,7 @@ function ProfileTab({
           leftIcon={<Save size={14} />}
           onClick={handleSaveProfile}
         >
-          Simpan Profil
+          Save Profil
         </Button>
       </Card>
 
@@ -561,10 +561,10 @@ function ProfileTab({
       <Card style={{ padding: '1.5rem' }}>
         <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
           <GraduationCap size={16} style={{ color: 'rgb(var(--color-primary))' }} />
-          Profil Onboarding
+          Info Kampus & Diri
         </h3>
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1.25rem' }}>
-          Lengkapi data profil kamu agar Synapse bisa lebih mengenal kamu.
+          Isi ini biar Synapse makin kenal kamu dan bisa kasih rekomendasi yang lebih personal!
         </p>
 
         {onboardingLoading ? (
@@ -575,7 +575,9 @@ function ProfileTab({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* University */}
             <TextInput
-              label="Universitas"
+              name="university"
+              autoComplete="organization"
+              label="Kampus"
               value={onboardingUniversity}
               onChange={setOnboardingUniversity}
               placeholder="Contoh: Universitas Indonesia"
@@ -589,17 +591,19 @@ function ProfileTab({
               <TagInput
                 value={onboardingHobbies}
                 onChange={setOnboardingHobbies}
-                placeholder="Tambah hobi (Enter/koma untuk menambah)"
+                placeholder="Tambahin hobi kamu (Enter/koma buat nambah)"
                 maxTags={10}
               />
               <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginTop: '0.25rem' }}>
-                Tekan Enter atau koma untuk menambahkan hobi.
+                Tekan Enter atau koma buat nambahin hobi.
               </p>
             </div>
 
             {/* Job */}
             <TextInput
-              label="Pekerjaan / Aktivitas"
+              name="job"
+              autoComplete="organization-title"
+              label="Kesibukan"
               value={onboardingJob}
               onChange={setOnboardingJob}
               placeholder="Contoh: Mahasiswa, Pekerja, Freelancer"
@@ -607,10 +611,11 @@ function ProfileTab({
 
             {/* Reason */}
             <TextInput
-              label="Alasan Menggunakan Synapse"
+              name="reason"
+              label="Kenapa Pakai Synapse?"
               value={onboardingReason}
               onChange={setOnboardingReason}
-              placeholder="Contoh: Ingin lebih produktif di kampus"
+              placeholder="Contoh: Pengen lebih produktif di kampus"
             />
 
             <div style={{ marginTop: '0.25rem' }}>
@@ -621,7 +626,7 @@ function ProfileTab({
                 leftIcon={<Save size={14} />}
                 onClick={handleSaveOnboardingProfile}
               >
-                Simpan Profil Onboarding
+                Save Data Kampus
               </Button>
             </div>
           </div>
@@ -899,7 +904,7 @@ function AppearanceTab({
           Bahasa
         </h3>
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>
-          Pilih bahasa tampilan aplikasi.
+          Pilih bahasa tampilan app.
         </p>
 
         <SelectOption value={language} onChange={v => handleLanguageChange(v as 'id' | 'en')} options={[
@@ -941,10 +946,10 @@ function DataTab() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showToast('Data berhasil diekspor.', 'success');
+      showToast('Data udah di-export! Check download-an kamu 📂', 'success');
     } catch (err: any) {
       // Rate limit (429) — backend enforces 1 export/hour
-      showToast(err.message || 'Gagal mengekspor data.', 'error');
+      showToast(err.message || 'Gagal export data nih. Coba lagi ya!', 'error');
     } finally {
       setExporting(false);
     }
@@ -953,10 +958,10 @@ function DataTab() {
   const handleDeleteAccount = async () => {
     // First confirmation via useConfirm dialog
     const firstConfirm = await confirm({
-      title: 'Hapus Akun',
-      message: 'Apakah kamu yakin ingin menghapus akun? Semua data akan dihapus secara permanen setelah 30 hari.',
-      confirmText: 'Ya, Lanjutkan',
-      cancelText: 'Batal',
+      title: 'Hapus Akun 😱',
+      message: 'Beneran nih mau hapus akun? Semua data bakal ilang permanen setelah 30 hari. No turning back!',
+      confirmText: 'Iya, Lanjut',
+      cancelText: 'Gak Jadi',
       variant: 'danger',
     });
 
@@ -969,7 +974,7 @@ function DataTab() {
 
   const handleConfirmDelete = async () => {
     if (confirmationText !== 'HAPUS AKUN') {
-      showToast('Ketik "HAPUS AKUN" dengan benar untuk konfirmasi.', 'error');
+      showToast('Ketik "HAPUS AKUN" yang bener ya buat konfirmasi.', 'error');
       return;
     }
 
@@ -980,7 +985,7 @@ function DataTab() {
         body: JSON.stringify({ confirmationText: 'HAPUS AKUN' }),
       });
 
-      showToast('Akun berhasil dihapus. Kamu akan keluar.', 'success');
+      showToast('Akun udah dihapus. Kamu bakal di-logout bentar lagi...', 'success');
       setShowDeleteDialog(false);
 
       // Sign out after a brief delay
@@ -988,7 +993,7 @@ function DataTab() {
         signOut();
       }, 1500);
     } catch (err: any) {
-      showToast(err.message || 'Gagal menghapus akun.', 'error');
+      showToast(err.message || 'Gagal hapus akun nih. Coba lagi!', 'error');
     } finally {
       setDeleting(false);
     }
@@ -1003,7 +1008,7 @@ function DataTab() {
           Ekspor Data
         </h3>
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>
-          Unduh semua data transaksi dan todo kamu dalam format CSV. Batas: 1x per jam.
+          Download semua data transaksi dan todo kamu dalam format CSV. Limit: 1x per jam.
         </p>
         <Button
           variant="secondary"
@@ -1023,7 +1028,7 @@ function DataTab() {
           Hapus Akun
         </h3>
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>
-          Menghapus akun akan menonaktifkan akses dan menghapus semua data setelah 30 hari. Tindakan ini tidak dapat dibatalkan.
+          Hapus akun berarti semua data kamu bakal hilang permanen setelah 30 hari. Gak bisa di-undo ya!
         </p>
         <Button
           variant="danger"
@@ -1084,16 +1089,16 @@ function DataTab() {
               </div>
               <div>
                 <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 700, margin: 0, color: 'rgb(var(--text-primary))' }}>
-                  Konfirmasi Penghapusan
+                  Yakin Hapus Akun?
                 </h3>
                 <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: 0 }}>
-                  Langkah terakhir untuk menghapus akun
+                  Step terakhir nih, pikirin baik-baik ya
                 </p>
               </div>
             </div>
 
             <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', margin: 0, lineHeight: 1.6 }}>
-              Ketik <strong style={{ color: 'rgb(var(--color-error))' }}>HAPUS AKUN</strong> di bawah ini untuk mengonfirmasi penghapusan akun.
+              Ketik <strong style={{ color: 'rgb(var(--color-error))' }}>HAPUS AKUN</strong> di bawah buat konfirmasi penghapusan.
             </p>
 
             <TextInput value={confirmationText} onChange={setConfirmationText} placeholder='Ketik "HAPUS AKUN"' />
@@ -1104,7 +1109,7 @@ function DataTab() {
                 onClick={() => setShowDeleteDialog(false)}
                 style={{ flex: 1 }}
               >
-                Batal
+                Gak Jadi
               </Button>
               <Button
                 variant="danger"
@@ -1113,7 +1118,7 @@ function DataTab() {
                 disabled={confirmationText !== 'HAPUS AKUN'}
                 style={{ flex: 1 }}
               >
-                Hapus Permanen
+                Gas Hapus
               </Button>
             </div>
           </div>

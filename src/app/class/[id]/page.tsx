@@ -50,10 +50,10 @@ function PendingMembersSection({ classId, showToast }: { classId: string; showTo
     classService.getPendingMembers(classId).then(setPending).catch(() => {}).finally(() => setLoading(false));
   }, [classId]);
   const handleApprove = async (userId: string) => {
-    try { await classService.approveMember(classId, userId); setPending(p => p.filter(m => m.userId !== userId)); showToast('Anggota disetujui.', 'success'); } catch { showToast('Gagal menyetujui.', 'error'); }
+    try { await classService.approveMember(classId, userId); setPending(p => p.filter(m => m.userId !== userId)); showToast('Member udah di-approve! ✅', 'success'); } catch { showToast('Gagal approve nih.', 'error'); }
   };
   const handleReject = async (userId: string) => {
-    try { await classService.rejectMember(classId, userId); setPending(p => p.filter(m => m.userId !== userId)); showToast('Permintaan ditolak.', 'success'); } catch { showToast('Gagal menolak.', 'error'); }
+    try { await classService.rejectMember(classId, userId); setPending(p => p.filter(m => m.userId !== userId)); showToast('Request ditolak.', 'success'); } catch { showToast('Gagal nolak nih.', 'error'); }
   };
   if (loading) return <div style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginTop: '0.5rem' }}>Memuat...</div>;
   if (pending.length === 0) return <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginTop: '0.5rem' }}>Tidak ada permintaan bergabung.</p>;
@@ -187,14 +187,14 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
     if (!classData) return;
     const joinUrl = `${window.location.origin}/class/join/${classData.id}`;
     navigator.clipboard.writeText(joinUrl);
-    showToast('Tautan bergabung berhasil disalin!', 'success');
+    showToast('Link join udah di-copy! 📎', 'success');
   };
 
   const copyClassCode = () => {
     if (!classData) return;
     const code = classData.code || classData.id.slice(0, 8).toUpperCase();
     navigator.clipboard.writeText(code);
-    showToast('Kode kelas berhasil disalin!', 'success');
+    showToast('Kode kelas udah di-copy! 📎', 'success');
   };
 
   const handleOpenEditClassModal = () => {
@@ -224,10 +224,10 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
         password: editPassword || undefined,
       });
       if (updated) window.location.reload();
-      showToast('Info kelas berhasil diperbarui!', 'success');
+      showToast('Info kelas udah di-update! ✨', 'success');
       setShowEditClassModal(false);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Gagal menyimpan info kelas.', 'error');
+      showToast(err instanceof Error ? err.message : 'Gagal save info kelas.', 'error');
     } finally { setIsSavingClassInfo(false); }
   };
 
@@ -237,12 +237,12 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
     setIsAddingMember(true);
     try {
       const res = await classService.addMember(classData.id, inviteEmail.trim());
-      showToast(res.message || 'Anggota berhasil ditambahkan!', 'success');
+      showToast(res.message || 'Member udah ditambahin! 🎉', 'success');
       setInviteEmail('');
       const members = await classService.getClassMembers(classData.id);
       setClassMembers(members);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Gagal menambahkan anggota.', 'error');
+      showToast(err instanceof Error ? err.message : 'Gagal nambahin member.', 'error');
     } finally {
       setIsAddingMember(false);
     }
@@ -258,11 +258,11 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
     if (!ok) return;
     try {
       const res = await classService.kickMember(classData!.id, userId);
-      showToast(res.message || 'Anggota dikeluarkan.', 'success');
+      showToast(res.message || 'Member udah dikeluarin.', 'success');
       const members = await classService.getClassMembers(classData!.id);
       setClassMembers(members);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Gagal mengeluarkan anggota.', 'error');
+      showToast(err instanceof Error ? err.message : 'Gagal ngeluarin member.', 'error');
     }
   };
 
@@ -331,29 +331,29 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
     try {
       if (editingRole) {
         await classService.updateClassRole(classData.id, editingRole.id, { name: roleName.trim(), permissions: rolePermissions });
-        showToast('Role berhasil diperbarui!', 'success');
+        showToast('Role udah di-update! ✅', 'success');
       } else {
         await classService.createClassRole(classData.id, roleName.trim(), rolePermissions);
-        showToast('Role berhasil dibuat!', 'success');
+        showToast('Role baru udah dibuat! 🎉', 'success');
       }
       setShowRoleModal(false);
       classService.getClassRoles(classData.id).then(setClassRoles).catch(() => {});
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Gagal menyimpan role.', 'error');
+      showToast(err instanceof Error ? err.message : 'Gagal save role nih.', 'error');
     }
   };
 
   const handleDeleteRole = async (roleId: string) => {
     if (!classData) return;
-    const ok = await confirm({ title: 'Hapus Role', message: 'Role akan dihapus dan anggota yang memiliki role ini akan kehilangan rolenya.', confirmText: 'Hapus', variant: 'danger' });
+    const ok = await confirm({ title: 'Hapus Role', message: 'Role bakal dihapus dan member yang punya role ini bakal kehilangan role-nya. Yakin?', confirmText: 'Gas Hapus', variant: 'danger' });
     if (!ok) return;
     try {
       await classService.deleteClassRole(classData.id, roleId);
-      showToast('Role berhasil dihapus.', 'success');
+      showToast('Role udah dihapus.', 'success');
       classService.getClassRoles(classData.id).then(setClassRoles).catch(() => {});
       classService.getClassMembers(classData.id).then(setClassMembers).catch(() => {});
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Gagal menghapus role.', 'error');
+      showToast(err instanceof Error ? err.message : 'Gagal hapus role nih.', 'error');
     }
   };
 
@@ -361,10 +361,10 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
     if (!classData) return;
     try {
       await classService.assignClassRole(classData.id, targetUserId, classRoleId);
-      showToast('Jabatan berhasil diubah.', 'success');
+      showToast('Jabatan udah diganti. ✅', 'success');
       classService.getClassMembers(classData.id).then(setClassMembers).catch(() => {});
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Gagal mengubah jabatan.', 'error');
+      showToast(err instanceof Error ? err.message : 'Gagal ganti jabatan nih.', 'error');
     }
   };
 
@@ -584,14 +584,14 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                             variant="danger"
                             leftIcon={<Trash2 size={13} />}
                             onClick={async () => {
-                              const ok = await confirm({ title: 'Hapus Kelas?', message: `Kelas "${classData.name}" dan semua data di dalamnya akan dihapus secara permanen.`, confirmText: 'Hapus Kelas', cancelText: 'Batal', variant: 'danger' });
+                              const ok = await confirm({ title: 'Hapus Kelas?', message: `Kelas "${classData.name}" dan semua data di dalamnya bakal dihapus permanen. Serius nih?`, confirmText: 'Gas Hapus', cancelText: 'Gak Jadi', variant: 'danger' });
                               if (!ok) return;
                               try {
                                 await classService.deleteClass(classData.id);
-                                showToast('Kelas berhasil dihapus.', 'success');
+                                showToast('Kelas udah dihapus. Bye bye~', 'success');
                                 router.push('/dashboard');
                               } catch (e: any) {
-                                showToast(e.message || 'Gagal menghapus kelas.', 'error');
+                                showToast(e.message || 'Gagal hapus kelas nih.', 'error');
                               }
                             }}
                             style={{ opacity: 0.7 }}
@@ -663,8 +663,8 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                                 try {
                                   await classService.updateClassSettings(classData.id, { joinMode: v });
                                   setClassData((prev: any) => prev ? { ...prev, joinMode: v } : prev);
-                                  showToast('Pengaturan berhasil diubah.', 'success');
-                                } catch (err) { showToast(err instanceof Error ? err.message : 'Gagal mengubah pengaturan.', 'error'); }
+                                  showToast('Setting udah diubah! ✅', 'success');
+                                } catch (err) { showToast(err instanceof Error ? err.message : 'Gagal ubah setting nih.', 'error'); }
                               }}
                               options={[
                                 { value: 'PUBLIC', label: 'Public (Langsung Masuk)' },
@@ -684,8 +684,8 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                                 try {
                                   await classService.updateClassSettings(classData.id, { autoRoleAssign: e.target.checked });
                                   setClassData((prev: any) => prev ? { ...prev, autoRoleAssign: e.target.checked } : prev);
-                                  showToast('Pengaturan berhasil diubah.', 'success');
-                                } catch (err) { showToast(err instanceof Error ? err.message : 'Gagal mengubah pengaturan.', 'error'); }
+                                  showToast('Setting udah diubah! ✅', 'success');
+                                } catch (err) { showToast(err instanceof Error ? err.message : 'Gagal ubah setting nih.', 'error'); }
                               }}
                               style={{ accentColor: 'rgb(var(--color-primary))', width: 16, height: 16 }}
                             />

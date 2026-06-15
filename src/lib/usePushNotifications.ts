@@ -100,50 +100,55 @@ export function usePushNotifications() {
       // Get or register service worker
       let registration: ServiceWorkerRegistration | undefined;
 
-      // Step 1: Check if SW is already registered and active
-      registration = await navigator.serviceWorker.getRegistration('/');
-
-      if (registration?.active) {
-        // SW is ready — use it directly
+      // Check if SW is already registered and active
+      const existingRegistration = await navigator.serviceWorker.getRegistration('/');
+      if (existingRegistration?.active) {
+        registration = existingRegistration;
       } else {
-        // Step 2: Register SW if not found or not active
-        if (!registration) {
-          try {
-            // Try custom-sw.js first (works in both dev and prod)
-            // Then fall back to sw.js (Workbox-generated, prod only)
-            let swUrl = '/custom-sw.js';
-            const probeCustom = await fetch('/custom-sw.js', { method: 'HEAD' }).catch(() => null);
-            if (!probeCustom || !probeCustom.ok) {
-              const probeSw = await fetch('/sw.js', { method: 'HEAD' }).catch(() => null);
-              if (probeSw?.ok) swUrl = '/sw.js';
-            }
-            registration = await navigator.serviceWorker.register(swUrl, { scope: '/' });
-          } catch (e) {
-            const msg = 'Gagal mendaftarkan service worker. Coba refresh halaman dan ulangi.';
-            setError(msg);
-            setLoading(false);
-            console.error('SW register error:', e);
-            return { ok: false, error: msg };
+        // Register SW
+        try {
+          // Try custom-sw.js first (works in dev and prod)
+          // Then fall back to sw.js (Workbox-generated, prod only)
+          let swUrl = '/custom-sw.js';
+          const probeCustom = await fetch('/custom-sw.js', { method: 'HEAD' }).catch(() => null);
+          if (!probeCustom || !probeCustom.ok) {
+            const probeSw = await fetch('/sw.js', { method: 'HEAD' }).catch(() => null);
+            if (probeSw?.ok) swUrl = '/sw.js';
           }
+          registration = await navigator.serviceWorker.register(swUrl, { scope: '/' });
+        } catch (e) {
+          const msg = 'Gagal mendaftarkan service worker. Coba refresh halaman dan ulangi.';
+          setError(msg);
+          setLoading(false);
+          console.error('SW register error:', e);
+          return { ok: false, error: msg };
         }
 
-        // Step 3: Wait for SW to become active
+        // Wait for SW to become active if it isn't yet
         if (!registration.active) {
           try {
             await new Promise<void>((resolve, reject) => {
-              const timeout = setTimeout(() => reject(new Error('SW activation timeout')), 15000);
+              const timeout = setTimeout(() => reject(new Error('SW activation timeout')), 10000);
 
-              // Check again in case it activated during setup
-              if (registration!.active) { clearTimeout(timeout); resolve(); return; }
+              if (registration!.active) {
+                clearTimeout(timeout);
+                resolve();
+                return;
+              }
 
               const sw = registration!.installing || registration!.waiting;
               if (sw) {
                 sw.addEventListener('statechange', () => {
-                  if (sw.state === 'activated') { clearTimeout(timeout); resolve(); }
-                  if (sw.state === 'redundant') { clearTimeout(timeout); reject(new Error('SW became redundant')); }
+                  if (sw.state === 'activated') {
+                    clearTimeout(timeout);
+                    resolve();
+                  }
+                  if (sw.state === 'redundant') {
+                    clearTimeout(timeout);
+                    reject(new Error('SW became redundant'));
+                  }
                 });
               } else {
-                // Fallback: wait for navigator.serviceWorker.ready
                 clearTimeout(timeout);
                 navigator.serviceWorker.ready.then((reg) => {
                   registration = reg;
@@ -152,11 +157,11 @@ export function usePushNotifications() {
               }
             });
           } catch (e) {
-            // Last resort: navigator.serviceWorker.ready never rejects
+            // Last resort: await ready with a race timeout
             try {
               registration = await Promise.race([
                 navigator.serviceWorker.ready,
-                new Promise<never>((_, reject) => setTimeout(() => reject(new Error('final timeout')), 20000)),
+                new Promise<never>((_, reject) => setTimeout(() => reject(new Error('final timeout')), 12000)),
               ]);
             } catch {
               const msg = 'Service worker belum siap. Coba refresh halaman atau buka ulang aplikasi.';

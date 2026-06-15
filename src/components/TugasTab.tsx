@@ -5,8 +5,11 @@ import { taskService, Task, TaskSubmission } from '@/services/taskService';
 import { classService } from '@/services/classService';
 import { groupService, TaskGroupFull } from '@/services/groupService';
 import { aiService } from '@/services/aiService';
-import { Card, Button, Modal, useToast, useConfirm, MarkdownRenderer, stripMarkdown, TextInput, SelectOption, DateTimePicker, TextArea } from '@/components/ui';
+import { Card, Button, Modal, useToast, useConfirm, MarkdownRenderer, HtmlRenderer, TextInput, SelectOption, DateTimePicker, TextArea } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
+import dynamic from 'next/dynamic';
+
+const RichTextEditor = dynamic(() => import('@/components/ui/RichTextEditor').then(m => ({ default: m.RichTextEditor })), { ssr: false });
 import {
   ClipboardList, Calendar, ChevronRight, Loader2, Send, Plus, Trash2, Camera, FileText, Sparkles, User, Users, Copy, Download, Pencil, Eye, EyeOff, ChevronLeft, Save, ChevronDown
 } from 'lucide-react';
@@ -59,7 +62,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
   const [members, setMembers] = useState<any[]>([]);
   const [groups, setGroups] = useState<TaskGroupFull[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
-  const [sessionId, setSessionId] = useState('');
+  const [sessionId, setSessionId] = useState(filterSessionId || '');
 
   // Edit task state
   const [showEditTask, setShowEditTask] = useState(false);
@@ -179,7 +182,6 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
   };
 
   // Text editor content for answer
-  const editorRef = useRef<HTMLDivElement>(null);
   const [editorContent, setEditorContent] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showAiHelper, setShowAiHelper] = useState(false);
@@ -259,11 +261,11 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
 
   // Save editor content as a submission (no AI)
   const handleSaveAnswer = async () => {
-    const text = editorRef.current?.innerText || '';
-    if (!text.trim() || !selectedTask) { showToast('Editor kosong. Tulis jawaban terlebih dahulu.', 'warning'); return; }
+    const plainText = editorContent.replace(/<[^>]+>/g, '').trim();
+    if (!plainText || !selectedTask) { showToast('Editor kosong. Tulis jawaban terlebih dahulu.', 'warning'); return; }
     setIsSaving(true);
     try {
-      const sub = await taskService.submitTask(selectedTask.id, { content: text.trim(), skipAi: true });
+      const sub = await taskService.submitTask(selectedTask.id, { content: editorContent, skipAi: true });
       setTaskSubmissions((p) => [sub, ...p]);
       showToast('Jawaban berhasil disimpan!', 'success');
     } catch (err) {
@@ -297,12 +299,9 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
       const sub = await taskService.submitTask(selectedTask.id, submitData);
       
       // Insert AI response into editor (don't save as a separate submission — user will edit & save)
-      if (sub.aiAnswer && editorRef.current) {
-        const currentText = editorRef.current.innerText;
-        const cleanAnswer = stripMarkdown(sub.aiAnswer);
-        const separator = currentText.trim() ? '\n\n---\n\n' : '';
-        editorRef.current.innerText = currentText + separator + cleanAnswer;
-        setEditorContent(editorRef.current.innerText);
+      if (sub.aiAnswer) {
+        const separator = editorContent.replace(/<[^>]+>/g, '').trim() ? '<hr/>' : '';
+        setEditorContent(prev => prev + separator + `<div>${sub.aiAnswer}</div>`);
       }
       
       setTaskInput('');
@@ -317,16 +316,16 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
 
   // Copy editor content
   const handleCopyEditor = () => {
-    const text = editorRef.current?.innerText || '';
-    if (!text.trim()) { showToast('Editor kosong.', 'warning'); return; }
+    const text = editorContent.replace(/<[^>]+>/g, '').trim();
+    if (!text) { showToast('Editor kosong.', 'warning'); return; }
     navigator.clipboard.writeText(text);
     showToast('Konten berhasil disalin!', 'success');
   };
 
   // Export editor to PDF
   const handleExportPDF = async () => {
-    const text = editorRef.current?.innerText || '';
-    if (!text.trim()) { showToast('Editor kosong.', 'warning'); return; }
+    const text = editorContent.replace(/<[^>]+>/g, '').trim();
+    if (!text) { showToast('Editor kosong.', 'warning'); return; }
     const { jsPDF } = await import('jspdf');
     const { renderMarkdownToPDF } = await import('@/lib/pdfMarkdown');
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -350,12 +349,9 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
     setIsSubmitting(true);
     try {
       const sub = await taskService.submitTask(selectedTask.id, { content: textToAsk });
-      if (sub.aiAnswer && editorRef.current) {
-        const currentText = editorRef.current.innerText;
-        const cleanAnswer = stripMarkdown(sub.aiAnswer);
-        const separator = currentText.trim() ? '\n\n---\n\n' : '';
-        editorRef.current.innerText = currentText + separator + cleanAnswer;
-        setEditorContent(editorRef.current.innerText);
+      if (sub.aiAnswer) {
+        const separator = editorContent.replace(/<[^>]+>/g, '').trim() ? '<hr/>' : '';
+        setEditorContent(prev => prev + separator + `<div>${sub.aiAnswer}</div>`);
       }
       showToast('Jawaban AI ditambahkan ke editor.', 'success');
     } catch {
@@ -479,28 +475,11 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
           <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginBottom: '0.5rem', lineHeight: 1.5 }}>
             Tulis jawaban tugas di editor ini, lalu klik &quot;Simpan Jawaban&quot;. Gunakan bantuan AI jika diperlukan.
           </p>
-          <div
-            ref={editorRef}
-            contentEditable
-            suppressContentEditableWarning
-            onInput={() => setEditorContent(editorRef.current?.innerText || '')}
-            style={{
-              minHeight: '200px',
-              maxHeight: '500px',
-              overflowY: 'auto',
-              padding: '0.85rem',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)',
-              background: 'var(--input-bg)',
-              fontSize: 'var(--font-sm)',
-              lineHeight: 1.7,
-              color: 'rgb(var(--text-primary))',
-              outline: 'none',
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-word',
-              fontFamily: 'inherit',
-            }}
-            data-placeholder="Mulai menulis jawaban di sini..."
+          <RichTextEditor
+            content={editorContent}
+            onChange={setEditorContent}
+            placeholder="Mulai menulis jawaban di sini..."
+            minHeight={200}
           />
 
           {/* Primary action: Save Answer */}
@@ -509,7 +488,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
               <Sparkles size={12} style={{ color: '#818cf8' }} /> Bantuan AI
               <ChevronDown size={11} style={{ transform: showAiHelper ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
             </Button>
-            <Button onClick={handleSaveAnswer} disabled={!editorContent.trim() || isSaving} isLoading={isSaving} style={{ background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))', color: 'black', borderRadius: 'var(--radius-md)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <Button onClick={handleSaveAnswer} disabled={!editorContent.replace(/<[^>]+>/g, '').trim() || isSaving} isLoading={isSaving} style={{ background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))', color: 'black', borderRadius: 'var(--radius-md)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               <Save size={14} /> Simpan Jawaban
             </Button>
           </div>
@@ -610,7 +589,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
                 </div>
               ) : isManualAnswer ? (
                 <Card key={sub.id} style={{ padding: '1.25rem', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-xl)', borderLeft: '3px solid rgb(var(--color-secondary))' }}>
-                  <div style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-primary))', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{sub.content}</div>
+                  <div style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-primary))', lineHeight: 1.7 }}><HtmlRenderer content={sub.content!} compact /></div>
                   <div style={{ fontSize: '0.65rem', color: 'rgb(var(--text-muted))', marginTop: '1rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>✍️ Jawaban manual</span>
                     {actionBtns}
@@ -642,7 +621,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
               <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Deskripsi Soal / Petunjuk</label>
               <TextArea value={editDesc} onChange={setEditDesc} placeholder="Tulis instruksi pengerjaan tugas..." rows={3} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+            <div className="task-modal-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                 <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Batas Waktu (Deadline)</label>
                 <DateTimePicker mode="datetime-local" value={editDeadline} onChange={setEditDeadline} placeholder="Pilih deadline" />
@@ -842,7 +821,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+          <div className="task-modal-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Batas Waktu (Deadline)</label>
               <DateTimePicker mode="datetime-local" value={newDeadline} onChange={setNewDeadline} placeholder="Pilih deadline" />
@@ -855,7 +834,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
             ]} />
           </div>
 
-          <SelectOption label="Pertemuan (Sesi) (Opsional)" value={sessionId} onChange={v => setSessionId(v)} options={[
+          <SelectOption label="Pertemuan (Sesi) (Opsional)" value={sessionId} onChange={v => setSessionId(v)} disabled={!!filterSessionId} options={[
             { value: '', label: '-- Tanpa Pertemuan --' },
             ...sessions.map((s) => ({ value: s.id, label: s.title })),
           ]} />

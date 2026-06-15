@@ -19,6 +19,7 @@ export { ConfirmProvider, useConfirm } from './ConfirmDialog';
 export { useTheme, ThemeProvider } from '@/lib/ThemeContext';
 export { AIPhotoInput } from './AIPhotoInput';
 export { MarkdownRenderer, stripMarkdown } from './MarkdownRenderer';
+export { HtmlRenderer } from './HtmlRenderer';
 export { DataTable } from './DataTable';
 export type { Column } from './DataTable';
 export { CurrencyInput, parseCurrency } from './CurrencyInput';

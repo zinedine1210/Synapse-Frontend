@@ -4,7 +4,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
-import { MarkdownRenderer, Button, useToast, useConfirm } from '@/components/ui';
+import { HtmlRenderer, Button, useToast, useConfirm } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { qnaService } from '@/services/qnaService';
 import { ThumbsUp, CheckCircle, MessageSquare, Eye, Clock, ArrowLeft, LogIn, Flag, Loader2, Share2, Hash, HelpCircle, Award } from 'lucide-react';
@@ -376,7 +376,7 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
             {/* Body */}
             {question.body && (
               <div style={{ padding: '20px 24px', background: 'rgb(var(--bg-surface))', borderRadius: 16, border: '1px solid var(--border-default)', marginBottom: 32, lineHeight: 1.8, fontSize: 15 }}>
-                <MarkdownRenderer content={question.body} />
+                <HtmlRenderer content={question.body} />
               </div>
             )}
           </article>
@@ -432,7 +432,7 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
                       </div>
 
                       <div style={{ lineHeight: 1.8, marginBottom: 14, fontSize: 15 }}>
-                        <MarkdownRenderer content={answer.body} />
+                        <HtmlRenderer content={answer.body} />
                       </div>
 
                       {/* Action buttons */}

@@ -14,6 +14,7 @@ import {
   SplittableTransaction,
   HistorySummaryEntry,
 } from '@/services/splitBillService';
+import { useCache } from '@/lib/cache';
 import {
   Receipt, Plus, Loader2, Camera, Check, X, Send, Trash2,
   ChevronLeft, Users, Percent, TrendingUp, Zap, History,
@@ -76,8 +77,7 @@ export default function SplitBillPage() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [bills, setBills] = useState<SplitBill[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: bills = [], loading, revalidate: fetchBills, mutate: mutateBills } = useCache<SplitBill[]>('split-bill:list', () => splitBillService.getAll());
   const [view, setView] = useState<'list' | 'detail' | 'create' | 'history'>('list');
   const [selectedBill, setSelectedBill] = useState<SplitBill | null>(null);
   const [socketLive, setSocketLive] = useState(false);
@@ -104,15 +104,6 @@ export default function SplitBillPage() {
 
   // Socket.IO ref for real-time
   const socketRef = useRef<Socket | null>(null);
-
-  const fetchBills = useCallback(async () => {
-    setLoading(true);
-    try { setBills(await splitBillService.getAll()); }
-    catch (e: any) { showToast(e.message, 'error'); }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchBills(); }, [fetchBills]);
 
   // Socket.IO connection for real-time payment updates
   useEffect(() => {

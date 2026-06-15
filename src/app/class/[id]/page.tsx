@@ -9,11 +9,15 @@ import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Button, Modal, useToast, useConfirm, PasswordInput, TextInput, SelectOption, TextArea } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
-import { ForumTab } from '@/components/ForumTab';
-import { PertemuanTab } from '@/components/PertemuanTab';
-import { KolektifTab } from '@/components/KolektifTab';
-import { TugasTab } from '@/components/TugasTab';
-import { KelompokTab } from '@/components/KelompokTab';
+import dynamic from 'next/dynamic';
+
+const ForumTab = dynamic(() => import('@/components/ForumTab').then(m => ({ default: m.ForumTab })), { ssr: false, loading: () => <TabLoader /> });
+const PertemuanTab = dynamic(() => import('@/components/PertemuanTab').then(m => ({ default: m.PertemuanTab })), { ssr: false, loading: () => <TabLoader /> });
+const KolektifTab = dynamic(() => import('@/components/KolektifTab').then(m => ({ default: m.KolektifTab })), { ssr: false, loading: () => <TabLoader /> });
+const TugasTab = dynamic(() => import('@/components/TugasTab').then(m => ({ default: m.TugasTab })), { ssr: false, loading: () => <TabLoader /> });
+const KelompokTab = dynamic(() => import('@/components/KelompokTab').then(m => ({ default: m.KelompokTab })), { ssr: false, loading: () => <TabLoader /> });
+const PrediksiUjianTab = dynamic(() => import('@/components/PrediksiUjianTab').then(m => ({ default: m.PrediksiUjianTab })), { ssr: false, loading: () => <TabLoader /> });
+
 import {
   Loader2,
   Share2,
@@ -34,7 +38,10 @@ import {
   Plus,
   Check,
 } from 'lucide-react';
-import { PrediksiUjianTab } from '@/components/PrediksiUjianTab';
+
+function TabLoader() {
+  return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '3rem 0', color: 'rgb(var(--text-muted))' }}><Loader2 size={24} className="spin" /> </div>;
+}
 
 function PendingMembersSection({ classId, showToast }: { classId: string; showToast: (msg: string, type: 'success' | 'error') => void }) {
   const [pending, setPending] = useState<any[]>([]);

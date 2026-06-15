@@ -754,18 +754,22 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
-  // Filtered & grouped
-  const filteredPosts = chatSearch.trim()
+  // Filtered & grouped — memoized to avoid recomputing on unrelated state changes
+  const filteredPosts = useMemo(() => chatSearch.trim()
     ? posts.filter(p => p.content.toLowerCase().includes(chatSearch.toLowerCase()) || p.authorName.toLowerCase().includes(chatSearch.toLowerCase()))
-    : posts;
-  const groupedPosts: { date: string; posts: ForumPost[] }[] = [];
-  filteredPosts.forEach((post) => {
-    const dateKey = new Date(post.createdAt).toDateString();
-    const last = groupedPosts[groupedPosts.length - 1];
-    if (last && last.date === dateKey) last.posts.push(post);
-    else groupedPosts.push({ date: dateKey, posts: [post] });
-  });
-  const pinnedPosts = posts.filter((p) => p.isPinned);
+    : posts, [posts, chatSearch]);
+  const groupedPosts = useMemo(() => {
+    const groups: { date: string; posts: ForumPost[] }[] = [];
+    filteredPosts.forEach((post) => {
+      const dateKey = new Date(post.createdAt).toDateString();
+      const last = groups[groups.length - 1];
+      if (last && last.date === dateKey) last.posts.push(post);
+      else groups.push({ date: dateKey, posts: [post] });
+    });
+    return groups;
+  }, [filteredPosts]);
+  const pinnedPosts = useMemo(() => posts.filter((p) => p.isPinned), [posts]);
+  const filteredDiscussions = useMemo(() => discussions.filter(d => !discSearch.trim() || d.title.toLowerCase().includes(discSearch.toLowerCase())), [discussions, discSearch]);
 
   const allAttachments = useMemo(() => {
     const atts: (ForumAttachment & { postAuthor: string; postDate: string; postId: string })[] = [];
@@ -845,7 +849,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
               )}
             </button>
 
-            {discussions.filter(d => !discSearch.trim() || d.title.toLowerCase().includes(discSearch.toLowerCase())).map((disc) => {
+            {filteredDiscussions.map((disc) => {
               const unread = unreadCounts[disc.id] || 0;
               return (
               <div key={disc.id} style={{ position: 'relative' }}>

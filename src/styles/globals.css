@@ -2299,3 +2299,31 @@ body.hide-bottom-nav .quick-action-fab {
   background: #fff;
   color: #111827;
 }
+
+/* ── HTML Renderer (Tiptap content) ── */
+.html-renderer p { margin-bottom: 0.5rem; color: rgb(var(--text-secondary)); }
+.html-renderer h1 { font-size: var(--font-xl); font-weight: 800; color: rgb(var(--color-primary)); margin: 1.25rem 0 0.4rem; }
+.html-renderer h2 { font-size: var(--font-lg); font-weight: 700; color: rgb(var(--color-primary)); margin: 1rem 0 0.35rem; }
+.html-renderer h3 { font-size: var(--font-md); font-weight: 700; color: rgb(var(--color-primary)); margin: 0.75rem 0 0.3rem; }
+.html-renderer ul { list-style-type: disc; padding-left: 1.5rem; margin: 0.4rem 0; }
+.html-renderer ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0.4rem 0; }
+.html-renderer li { margin-bottom: 0.2rem; color: rgb(var(--text-secondary)); }
+.html-renderer blockquote { border-left: 3px solid rgb(var(--color-primary)); padding: 0.5rem 1rem; margin: 0.5rem 0; background: rgba(var(--color-primary) / 0.04); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-style: italic; }
+.html-renderer pre { background: #1e1e2e; color: #cdd6f4; padding: 1rem; border-radius: var(--radius-md); font-size: var(--font-xs); font-family: "Fira Code", monospace; overflow-x: auto; margin: 0.5rem 0; }
+.html-renderer code { font-family: monospace; font-size: 0.85em; padding: 0.1rem 0.35rem; background: var(--input-bg); border: 1px solid var(--border-default); border-radius: 4px; color: rgb(var(--color-primary)); }
+.html-renderer pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+.html-renderer a { color: rgb(var(--color-primary)); text-decoration: underline; text-underline-offset: 2px; }
+.html-renderer img { max-width: 100%; border-radius: var(--radius-md); margin: 0.5rem 0; }
+.html-renderer strong { font-weight: 700; color: rgb(var(--text-primary)); }
+.html-renderer em { font-style: italic; }
+.html-renderer u { text-decoration: underline; }
+.html-renderer s { text-decoration: line-through; }
+.html-renderer hr { border: none; border-top: 1px solid var(--border-default); margin: 1rem 0; }
+.html-renderer table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: var(--font-sm); }
+.html-renderer th, .html-renderer td { border: 1px solid var(--border-default); padding: 0.4rem 0.6rem; text-align: left; }
+.html-renderer th { background: rgba(var(--color-primary) / 0.06); font-weight: 700; }
+
+/* ── Task Modal Mobile Responsive ── */
+@media (max-width: 640px) {
+  .task-modal-grid { grid-template-columns: 1fr !important; }
+}

@@ -63,9 +63,14 @@ export function usePushNotifications() {
           ),
         ]);
       } catch {
-        // SW not registered yet — register manually then retry
+        // SW not registered yet — register manually (try sw.js first, then custom-sw.js)
         try {
-          registration = await navigator.serviceWorker.register('/sw.js');
+          let swUrl = '/sw.js';
+          // Check if sw.js exists (next-pwa disables it in dev)
+          const probe = await fetch('/sw.js', { method: 'HEAD' }).catch(() => null);
+          if (!probe || !probe.ok) swUrl = '/custom-sw.js';
+
+          registration = await navigator.serviceWorker.register(swUrl, { scope: '/' });
           // Wait for it to become active
           await new Promise<void>((resolve, reject) => {
             const timeout = setTimeout(() => reject(new Error('SW activation timeout')), 8000);

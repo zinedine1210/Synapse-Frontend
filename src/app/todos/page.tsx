@@ -9,6 +9,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, useToast, useConfirm, BottomSheet, PullToRefresh, TextInput, SelectOption } from '@/components/ui';
 import { todoService, PersonalTodo, TodoStats } from '@/services/todoService';
+import { useCache, setCache } from '@/lib/cache';
 import { Plus, Loader2, CheckSquare, Sparkles, ChevronLeft, ChevronRight, Flame } from 'lucide-react';
 import { useCelebration } from '@/components/shared/CelebrationOverlay';
 import { CustomCategoryCreator, CustomCategory } from '@/components/todo/CustomCategoryCreator';
@@ -74,11 +75,25 @@ export default function TodosPage() {
   const { confirm } = useConfirm();
   const { triggerConfetti } = useCelebration();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [todos, setTodos] = useState<PersonalTodo[]>([]);
-  const [stats, setStats] = useState<TodoStats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
+
+  // Cache key changes when filters change
+  const todoCacheKey = `todos:list:${statusFilter}:${categoryFilter}`;
+  const todoFetcher = useCallback(async () => {
+    const params: any = { limit: 200 };
+    if (statusFilter) params.status = statusFilter;
+    if (categoryFilter) params.category = categoryFilter;
+    const res = await todoService.getAll(params);
+    return res.data;
+  }, [statusFilter, categoryFilter]);
+
+  const { data: todos = [], loading, revalidate: refetchTodos, mutate: mutateTodos } = useCache<PersonalTodo[]>(todoCacheKey, todoFetcher);
+  const { data: stats, revalidate: refetchStats } = useCache<TodoStats>('todos:stats', () => todoService.getStats());
+
+  const fetchData = useCallback(async () => {
+    await Promise.all([refetchTodos(), refetchStats()]);
+  }, [refetchTodos, refetchStats]);
   const [viewMode, setViewMode] = useState<TodoViewMode>('time');
   const [showSheet, setShowSheet] = useState(false);
   const [editingTodo, setEditingTodo] = useState<PersonalTodo | null>(null);
@@ -104,21 +119,6 @@ export default function TodosPage() {
     () => allCategories.map(c => ({ id: c.id, label: c.label.replace(/^.+?\s/, ''), emoji: c.emoji || c.label.split(' ')[0], color: c.color })),
     [allCategories],
   );
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: any = {};
-      if (statusFilter) params.status = statusFilter;
-      if (categoryFilter) params.category = categoryFilter;
-      params.limit = 200; // todos need full dataset for grouping/calendar/streak
-      const [res, s] = await Promise.all([todoService.getAll(params), todoService.getStats()]);
-      setTodos(res.data); setStats(s);
-    } catch (e: any) { showToast(e.message, 'error'); }
-    finally { setLoading(false); }
-  }, [statusFilter, categoryFilter]);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
 
   // Save custom categories to localStorage
   useEffect(() => {
@@ -258,8 +258,8 @@ export default function TodosPage() {
     reordered.splice(newIndex, 0, moved);
 
     const updated = reordered.map((t, i) => ({ ...t, sortOrder: i }));
-    setTodos(prev => {
-      const doneOnes = prev.filter(t => t.status === 'done');
+    mutateTodos(prev => {
+      const doneOnes = (prev || []).filter(t => t.status === 'done');
       return [...updated, ...doneOnes];
     });
 
@@ -368,7 +368,7 @@ export default function TodosPage() {
   const handleToggle = async (id: string) => {
     const todo = todos.find(t => t.id === id);
     const wasChecking = todo?.status !== 'done';
-    setTodos(prev => prev.map(t => t.id === id ? { ...t, status: t.status === 'done' ? 'pending' as const : 'done' as const, completedAt: t.status === 'done' ? undefined : new Date().toISOString() } : t));
+    mutateTodos(prev => (prev || []).map(t => t.id === id ? { ...t, status: t.status === 'done' ? 'pending' as const : 'done' as const, completedAt: t.status === 'done' ? undefined : new Date().toISOString() } : t));
 
     if (wasChecking) {
       const el = document.querySelector(`[data-todo-check="${id}"]`);
@@ -392,7 +392,7 @@ export default function TodosPage() {
       variant: 'danger',
     });
     if (!confirmed) return;
-    setTodos(prev => prev.filter(t => t.id !== id));
+    mutateTodos(prev => (prev || []).filter(t => t.id !== id));
     try { await todoService.delete(id); showToast('Tugas dihapus', 'success'); }
     catch (e: any) { showToast(e.message, 'error'); fetchData(); }
   };
@@ -400,14 +400,14 @@ export default function TodosPage() {
   // ─── Subtask handlers (inline card expansion) ─────────────────────
   const handleAddSubtask = async (todoId: string, title: string) => {
     const newSub = await todoService.createSubtask(todoId, title);
-    setTodos(prev => prev.map(t => {
+    mutateTodos(prev => (prev || []).map(t => {
       if (t.id !== todoId) return t;
       return { ...t, subtasks: [...(t.subtasks || []), newSub] };
     }));
   };
 
   const handleToggleSubtask = async (todoId: string, subId: string, isDone: boolean) => {
-    setTodos(prev => prev.map(t => {
+    mutateTodos(prev => (prev || []).map(t => {
       if (t.id !== todoId) return t;
       return { ...t, subtasks: (t.subtasks || []).map(s => s.id === subId ? { ...s, isDone } : s) };
     }));
@@ -416,7 +416,7 @@ export default function TodosPage() {
   };
 
   const handleDeleteSubtask = async (todoId: string, subId: string) => {
-    setTodos(prev => prev.map(t => {
+    mutateTodos(prev => (prev || []).map(t => {
       if (t.id !== todoId) return t;
       return { ...t, subtasks: (t.subtasks || []).filter(s => s.id !== subId) };
     }));

@@ -15,7 +15,8 @@ import { SubscriptionCard } from '@/components/duit-tracker/SubscriptionCard';
 import { QuickInputBar } from '@/components/duit-tracker/QuickInputBar';
 import { ParsePreview } from '@/components/duit-tracker/ParsePreview';
 import { FinancialHero } from '@/components/duit-tracker/FinancialHero';
-import { TransactionSheet } from '@/components/duit-tracker/TransactionSheet';
+import { TransactionSheet, ScannedItem } from '@/components/duit-tracker/TransactionSheet';
+import { useCache } from '@/lib/cache';
 import { useCelebration } from '@/components/shared/CelebrationOverlay';
 import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X } from 'lucide-react';
 
@@ -224,10 +225,6 @@ export default function DuitTrackerPage() {
   const { showUndoToast } = useCelebration();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tab, setTab] = useState<'transactions' | 'summary' | 'trees' | 'budget'>('transactions');
-  const [summary, setSummary] = useState<Summary | null>(null);
-  const [trees, setTrees] = useState<SavingTree[]>([]);
-  const [budgets, setBudgets] = useState<CategoryBudget[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -272,29 +269,21 @@ export default function DuitTrackerPage() {
     setItems: setTransactions,
   } = useInfiniteScroll<Transaction>({ fetcher: txFetcher });
 
-  // Fetch non-transaction data (summary, trees, budgets)
-  const fetchSideData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [sum, ts, b] = await Promise.all([
-        duitTrackerService.getSummary(month, year),
-        duitTrackerService.getTrees(),
-        duitTrackerService.getBudgets(month, year),
-      ]);
-      setSummary(sum);
-      setTrees(ts);
-      setBudgets(b);
-    } catch (e: any) { setError(e.message); }
-    finally { setLoading(false); }
-  }, [month, year]);
+  // Cached side data — instant on navigation back
+  const summaryFetcher = useCallback(() => duitTrackerService.getSummary(month, year), [month, year]);
+  const treesFetcher = useCallback(() => duitTrackerService.getTrees(), []);
+  const budgetsFetcher = useCallback(() => duitTrackerService.getBudgets(month, year), [month, year]);
 
-  useEffect(() => { fetchSideData(); }, [fetchSideData]);
+  const { data: summary, loading, revalidate: refetchSummary } = useCache<Summary>(`dt:summary:${month}:${year}`, summaryFetcher);
+  const { data: trees = [], revalidate: refetchTrees, mutate: mutateTrees } = useCache<SavingTree[]>('dt:trees', treesFetcher);
+  const { data: budgets = [], revalidate: refetchBudgets, mutate: mutateBudgets } = useCache<CategoryBudget[]>(`dt:budgets:${month}:${year}`, budgetsFetcher);
 
   const fetchData = useCallback(async () => {
     refreshTx();
-    fetchSideData();
-  }, [refreshTx, fetchSideData]);
+    refetchSummary();
+    refetchTrees();
+    refetchBudgets();
+  }, [refreshTx, refetchSummary, refetchTrees, refetchBudgets]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTreeModal, setShowTreeModal] = useState(false);
   const [showAiInput, setShowAiInput] = useState(false);
@@ -382,6 +371,19 @@ export default function DuitTrackerPage() {
       fetchData();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
+  };
+
+  const handleBulkCreate = async (items: ScannedItem[]) => {
+    for (const item of items) {
+      await duitTrackerService.createTransaction({
+        amount: item.amount,
+        type: item.type as any,
+        category: item.category,
+        label: item.label,
+      });
+    }
+    setShowAddModal(false);
+    fetchData();
   };
 
   const openEdit = (tx: Transaction) => {
@@ -482,14 +484,14 @@ export default function DuitTrackerPage() {
 
     // Optimistic removal
     const prevBudgets = budgets;
-    setBudgets(prev => prev.filter(b => b.id !== budget.id));
+    mutateBudgets(prev => (prev || []).filter(b => b.id !== budget.id));
 
     try {
       await duitTrackerService.deleteBudget(budget.id);
       showToast('Budget berhasil dihapus.', 'success');
     } catch (e: any) {
       // Revert optimistic update on error
-      setBudgets(prevBudgets);
+      mutateBudgets(prevBudgets);
       showToast(e.message || 'Gagal menghapus budget.', 'error');
     }
   };
@@ -1057,6 +1059,7 @@ export default function DuitTrackerPage() {
               editingTx={editingTx}
               submitting={submitting}
               onSubmit={handleAddTransaction}
+              onBulkCreate={handleBulkCreate}
               expenseCategories={EXPENSE_CATEGORIES}
               incomeCategories={INCOME_CATEGORIES}
             />

@@ -43,15 +43,17 @@ function formatCurrency(amount: number): string {
 
 // --- SWR Fetchers ---
 
-const fetchTransactions = (): Promise<Transaction[]> => {
+const fetchTransactions = async (): Promise<Transaction[]> => {
   const now = new Date();
-  return apiFetch<Transaction[]>(
-    `/duit-tracker/transactions?month=${now.getMonth() + 1}&year=${now.getFullYear()}`
+  const res = await apiFetch<{ data: Transaction[] }>(
+    `/duit-tracker/transactions?month=${now.getMonth() + 1}&year=${now.getFullYear()}&limit=100`
   );
+  return Array.isArray(res) ? res : (res?.data ?? []);
 };
 
-const fetchTodos = (): Promise<PersonalTodo[]> => {
-  return apiFetch<PersonalTodo[]>('/todos');
+const fetchTodos = async (): Promise<PersonalTodo[]> => {
+  const res = await apiFetch<{ data: PersonalTodo[] }>('/todos?limit=100');
+  return Array.isArray(res) ? res : (res?.data ?? []);
 };
 
 // --- Component ---

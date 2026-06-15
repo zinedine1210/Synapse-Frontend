@@ -13,6 +13,7 @@ import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { useFeatureAccess } from '@/lib/feature-access';
+import { useCache } from '@/lib/cache';
 import { Card, Button, Alert, Modal, useToast, useConfirm, PullToRefresh, AnimatedNumber, TextInput, TextArea, AIPhotoInput } from '@/components/ui';
 import { TodaysBriefing, BriefingData } from '@/components/dashboard/TodaysBriefing';
 import { AiBriefingCard, AiBriefingSkeleton } from '@/components/dashboard/AiBriefingCard';
@@ -56,18 +57,24 @@ export default function DashboardPage() {
   const { suggestion: contextSuggestion, suggestAction } = useContextualSuggestion();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [summaryLoading, setSummaryLoading] = useState(true);
-  const [briefing, setBriefing] = useState<TodaysBriefingResponse | null>(null);
-  const [briefingLoading, setBriefingLoading] = useState(true);
-  const [aiBriefing, setAiBriefing] = useState<AiBriefingResponse | { exists: false } | null>(null);
-  const [aiBriefingLoading, setAiBriefingLoading] = useState(true);
+
+  // Cached data — shows stale data instantly on navigation, revalidates in background
+  const { data: summary, loading: summaryLoading, revalidate: refetchSummary, mutate: mutateSummary } = useCache<DashboardSummary>('dashboard:summary', () => dashboardService.getSummary());
+  const { data: briefing, loading: briefingLoading, revalidate: refetchBriefing } = useCache<TodaysBriefingResponse>('dashboard:briefing', () => dashboardService.getTodaysBriefing());
+  const { data: aiBriefingRaw, loading: aiBriefingLoading, revalidate: refetchAiBriefing } = useCache<AiBriefingResponse | { exists: false }>('dashboard:ai-briefing', () => dashboardService.getAiBriefing());
+  const aiBriefing = aiBriefingRaw ?? null;
   const [aiBriefingFailed, setAiBriefingFailed] = useState(false);
   const [aiBriefingRefreshing, setAiBriefingRefreshing] = useState(false);
+
+  const { data: classComparisonsRaw } = useCache<{ comparisons: ClassComparison[] }>('dashboard:class-comparison', () => dashboardService.getClassComparison());
+  const classComparisons = classComparisonsRaw?.comparisons || [];
+
+  const { data: trendingQuestions = [] } = useCache<TrendingQuestion[]>('dashboard:trending-qna', () => dashboardService.getTrendingQna());
+
+  const { data: summaryV2 } = useCache<{ weeklyChallenge: WeeklyChallengeData | null }>('dashboard:summary-v2', () => dashboardService.getSummaryV2());
+  const weeklyChallenge = summaryV2?.weeklyChallenge ?? null;
+
   const [patterns, setPatterns] = useState<DayOfWeekPattern[]>([]);
-  const [classComparisons, setClassComparisons] = useState<ClassComparison[]>([]);
-  const [trendingQuestions, setTrendingQuestions] = useState<TrendingQuestion[]>([]);
-  const [weeklyChallenge, setWeeklyChallenge] = useState<WeeklyChallengeData | null>(null);
 
   // Collapsible sections
   const [showDeadlines, setShowDeadlines] = useState(false);
@@ -89,37 +96,6 @@ export default function DashboardPage() {
   const [parsedCourses, setParsedCourses] = useState<ParsedCourse[]>([]);
   const [createdFromParse, setCreatedFromParse] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    dashboardService.getSummary()
-      .then(setSummary)
-      .catch(() => {})
-      .finally(() => setSummaryLoading(false));
-
-    dashboardService.getTodaysBriefing()
-      .then(setBriefing)
-      .catch(() => setBriefing(null))
-      .finally(() => setBriefingLoading(false));
-
-    dashboardService.getAiBriefing()
-      .then((res) => { setAiBriefing(res); setAiBriefingFailed(false); })
-      .catch(() => { setAiBriefing(null); setAiBriefingFailed(true); })
-      .finally(() => setAiBriefingLoading(false));
-
-    // Load social proof data
-    dashboardService.getClassComparison()
-      .then(res => setClassComparisons(res.comparisons || []))
-      .catch(() => setClassComparisons([]));
-
-    dashboardService.getTrendingQna()
-      .then(setTrendingQuestions)
-      .catch(() => setTrendingQuestions([]));
-
-    dashboardService.getSummaryV2()
-      .then(res => setWeeklyChallenge(res.weeklyChallenge))
-      .catch(() => setWeeklyChallenge(null));
-  }, []);
-
-  // Detect contextual patterns from cached transaction data (frontend-only)
   useEffect(() => {
     // Use financial data from summary to build patterns if available
     // In production, this would use the SWR-cached transactions
@@ -146,7 +122,7 @@ export default function DashboardPage() {
     setAiBriefingRefreshing(true);
     try {
       const res = await dashboardService.generateAiBriefing();
-      setAiBriefing(res);
+      refetchAiBriefing();
       setAiBriefingFailed(false);
       showToast('Briefing AI berhasil diperbarui! ✨', 'success');
     } catch (e: any) {
@@ -157,16 +133,16 @@ export default function DashboardPage() {
   }, [showToast]);
 
   const handleGenerateAiBriefing = async () => {
-    setAiBriefingLoading(true);
+    setAiBriefingRefreshing(true);
     try {
-      const res = await dashboardService.generateAiBriefing();
-      setAiBriefing(res);
+      await dashboardService.generateAiBriefing();
+      refetchAiBriefing();
       setAiBriefingFailed(false);
       showToast('Briefing AI berhasil dibuat! ✨', 'success');
     } catch (e: any) {
       showToast(e.message || 'Gagal membuat briefing.', 'error');
     } finally {
-      setAiBriefingLoading(false);
+      setAiBriefingRefreshing(false);
     }
   };
 
@@ -243,14 +219,14 @@ export default function DashboardPage() {
       await todoService.create({ title: parsed.title || quickTodo, dueDate: parsed.dueDate, dueTime: parsed.dueTime, priority: parsed.priority || 'medium', category: parsed.category });
       showToast('Todo ditambahkan! ✅', 'success');
       setQuickTodo('');
-      dashboardService.getSummary().then(setSummary).catch(() => {});
+      refetchSummary();
     } catch { showToast('Gagal menambah todo.', 'error'); }
     finally { setAddingTodo(false); }
   };
 
   const handleToggleTodo = async (id: string) => {
-    setSummary(prev => {
-      if (!prev) return prev;
+    mutateSummary(prev => {
+      if (!prev) return prev as unknown as DashboardSummary;
       const updatedTodos = prev.todosToday.map(t => t.id === id ? { ...t, status: t.status === 'done' ? 'pending' : 'done' } : t);
       const doneCount = updatedTodos.filter(t => t.status === 'done').length;
       return { ...prev, todosToday: updatedTodos, todoStats: { ...prev.todoStats, done: doneCount } };
@@ -267,26 +243,11 @@ export default function DashboardPage() {
           <Appbar title="Dashboard" userName={user?.fullName} userId={user?.id} sidebarCollapsed={sidebarCollapsed} />
           <div className="page-content" style={{ animation: 'fadeSlideIn 0.4s ease-out' }}>
             <PullToRefresh onRefresh={async () => {
-              const [s, b] = await Promise.all([
-                dashboardService.getSummary(),
-                dashboardService.getTodaysBriefing().catch(() => null),
+              await Promise.all([
+                refetchSummary(),
+                refetchBriefing(),
+                refetchAiBriefing(),
               ]);
-              setSummary(s);
-              if (b) setBriefing(b);
-              // Refresh AI briefing
-              dashboardService.getAiBriefing()
-                .then((res) => { setAiBriefing(res); setAiBriefingFailed(false); })
-                .catch(() => setAiBriefingFailed(true));
-              // Refresh social proof data
-              dashboardService.getClassComparison()
-                .then(res => setClassComparisons(res.comparisons || []))
-                .catch(() => {});
-              dashboardService.getTrendingQna()
-                .then(setTrendingQuestions)
-                .catch(() => {});
-              dashboardService.getSummaryV2()
-                .then(res => setWeeklyChallenge(res.weeklyChallenge))
-                .catch(() => {});
             }}>
             {/* ═══════ VERTICAL FEED LAYOUT ═══════ */}
             <div className="dashboard-feed" style={{ maxWidth: 720, width: '100%', margin: '0 auto', display: 'flex', flexDirection: 'column', padding: '0 4px', boxSizing: 'border-box' }}>

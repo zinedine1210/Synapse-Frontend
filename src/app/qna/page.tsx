@@ -13,6 +13,8 @@ import dynamic from 'next/dynamic';
 
 const RichTextEditor = dynamic(() => import('@/components/ui/RichTextEditor').then(m => ({ default: m.RichTextEditor })), { ssr: false });
 import { qnaService, QnaQuestion, QnaPaginated, UserReputation } from '@/services/qnaService';
+import { useCache } from '@/lib/cache';
+import { useDebounce } from '@/lib/useDebounce';
 import { Plus, Loader2, MessageSquare, CheckCircle, Search, Award, Clock, User as UserIcon, Hash, Eye, HelpCircle, Flame, Star, Sparkles, Zap } from 'lucide-react';
 
 const QNA_CATEGORIES = [
@@ -62,10 +64,11 @@ export default function QnaPage() {
   const [questions, setQuestions] = useState<QnaQuestion[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [reputation, setReputation] = useState<UserReputation | null>(null);
+  const { data: reputation } = useCache<UserReputation>('qna:reputation', () => qnaService.getReputation());
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
   const [page, setPage] = useState(1);
 
   const [showAskModal, setShowAskModal] = useState(false);
@@ -91,8 +94,8 @@ export default function QnaPage() {
         const all = await qnaService.getMyQuestions();
         let filtered = all;
         if (selectedCategory !== 'semua') filtered = filtered.filter(q => q.category?.includes(selectedCategory));
-        if (search) {
-          const s = search.toLowerCase();
+        if (debouncedSearch) {
+          const s = debouncedSearch.toLowerCase();
           filtered = filtered.filter(q =>
             q.title.toLowerCase().includes(s) ||
             (q.body || '').toLowerCase().includes(s) ||
@@ -109,7 +112,7 @@ export default function QnaPage() {
       if (tab === 'trending') {
         res = await qnaService.getTrendingQuestions({ page: pageNum, limit: 15 });
       } else {
-        const params: any = { search: search || undefined, page: pageNum, limit: 15 };
+        const params: any = { search: debouncedSearch || undefined, page: pageNum, limit: 15 };
         if (selectedCategory !== 'semua') params.category = selectedCategory;
         res = await qnaService.getQuestions(params);
       }
@@ -124,15 +127,13 @@ export default function QnaPage() {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [search, selectedCategory, tab, showToast]);
+  }, [debouncedSearch, selectedCategory, tab, showToast]);
 
   // Reset and fetch when tab, search, or category changes
   useEffect(() => {
     setPage(1);
     fetchQuestions(1, false);
-  }, [tab, search, selectedCategory]);
-
-  useEffect(() => { qnaService.getReputation().then(setReputation).catch(() => {}); }, []);
+  }, [tab, debouncedSearch, selectedCategory]);
 
   // Load more for infinite scroll (paginated tabs only)
   const handleLoadMore = useCallback(() => {
@@ -177,7 +178,6 @@ export default function QnaPage() {
       setTab('terbaru');
       setPage(1);
       fetchQuestions(1, false);
-      qnaService.getReputation().then(setReputation).catch(() => {});
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };

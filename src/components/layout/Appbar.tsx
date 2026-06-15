@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
 import { Bell, Check, CheckCheck, X, Search } from 'lucide-react';
-import { notificationService, Notification } from '@/services/notificationService';
+import { Notification } from '@/services/notificationService';
+import { useNotifications } from '@/lib/NotificationContext';
 import { useAuth } from '@/lib/AuthContext';
 import { openCommandPalette } from './CommandPalette';
 
@@ -23,51 +23,10 @@ export function Appbar({
   sidebarCollapsed = false,
 }: AppbarProps) {
   const { user: authUser } = useAuth();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const resolvedUserName = userName || authUser?.fullName || 'Sobat';
-  const resolvedUserId = userId || authUser?.id;
   const [showPanel, setShowPanel] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(initialUnread);
-  const [loaded, setLoaded] = useState(false);
-  const socketRef = useRef<Socket | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  // Connect to notification socket
-  useEffect(() => {
-    if (!resolvedUserId) return;
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-    const wsBase = apiUrl.replace(/\/api\/v\d+\/?$/, '');
-    const socket = io(`${wsBase}/notifications`, { transports: ['polling'], withCredentials: true });
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      socket.emit('joinUser', { userId: resolvedUserId });
-    });
-
-    socket.on('newNotification', (notif: Notification) => {
-      setNotifications((prev) => [notif, ...prev].slice(0, 50));
-      setUnreadCount((prev) => prev + 1);
-    });
-
-    socket.on('unreadCount', ({ count }: { count: number }) => {
-      setUnreadCount(count);
-    });
-
-    return () => {
-      socket.emit('leaveUser', { userId: resolvedUserId });
-      socket.disconnect();
-    };
-  }, [resolvedUserId]);
-
-  // Eagerly fetch notifications on mount so they're ready when panel opens
-  useEffect(() => {
-    if (!resolvedUserId) return;
-    notificationService.getNotifications().then((data) => {
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
-      setLoaded(true);
-    }).catch(() => {});
-  }, [resolvedUserId]);
 
   // Close panel on outside click
   useEffect(() => {
@@ -82,15 +41,11 @@ export function Appbar({
   }, [showPanel]);
 
   const handleMarkAsRead = async (id: string) => {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
-    setUnreadCount((prev) => Math.max(0, prev - 1));
-    try { await notificationService.markAsRead(id); } catch { }
+    await markAsRead(id);
   };
 
   const handleMarkAllRead = async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    setUnreadCount(0);
-    try { await notificationService.markAllAsRead(); } catch { }
+    await markAllAsRead();
   };
 
   const timeAgo = (date: string) => {

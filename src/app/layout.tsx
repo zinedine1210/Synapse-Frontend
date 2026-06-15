@@ -4,6 +4,7 @@ import { brand } from '@/config/brand';
 import { AuthProvider } from '@/lib/AuthContext';
 import { FeatureAccessProvider } from '@/lib/feature-access';
 import { ThemeProvider } from '@/lib/ThemeContext';
+import { NotificationProvider } from '@/lib/NotificationContext';
 import { ToastProvider } from '@/components/ui';
 import { ConfirmProvider } from '@/components/ui';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -52,6 +53,7 @@ export default function RootLayout({
         <ThemeProvider>
           <ErrorBoundary>
             <AuthProvider>
+              <NotificationProvider>
               <FeatureAccessProvider>
                 <ToastProvider>
                   <ConfirmProvider>
@@ -63,6 +65,7 @@ export default function RootLayout({
                   </ConfirmProvider>
                 </ToastProvider>
               </FeatureAccessProvider>
+              </NotificationProvider>
             </AuthProvider>
           </ErrorBoundary>
         </ThemeProvider>

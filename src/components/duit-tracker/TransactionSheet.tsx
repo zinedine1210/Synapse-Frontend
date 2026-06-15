@@ -226,7 +226,7 @@ export function TransactionSheet({
           <Button
             type="submit"
             disabled={submitting}
-            style={{ borderRadius: 12, padding: '12px 0', flex: 1 }}
+            style={{ borderRadius: 12, padding: '12px 20px', flex: 1, justifyContent: 'center' }}
           >
             {submitting ? (
               <Loader2 className="spin" size={16} />

@@ -26,5 +26,5 @@ export interface WeeklySummary {
 
 export const insightService = {
   getWeekly: () => apiFetch<WeeklySummary>('/insight/weekly'),
-  getAiInsight: () => apiFetch<WeeklySummary>('/insight/ai'),
+  getAiInsight: () => apiFetch<WeeklySummary>('/insight/ai', { method: 'POST' }),
 };

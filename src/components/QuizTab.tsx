@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Session } from '@/models/Class';
 import { Material } from '@/models/File';
 import { aiService } from '@/services/aiService';
+import { useAiJob } from '@/lib/useAiJob';
 import { Card, Button, useToast } from '@/components/ui';
 import {
   HelpCircle,
@@ -39,7 +40,11 @@ export function QuizTab({
   hasQuizFeature,
 }: QuizTabProps) {
   const { showToast } = useToast();
-  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const quizGenJobQT = useAiJob<any>('generate_quiz', {
+    onComplete: () => { refetchSessionDetails(); showToast('Kuis AI berhasil dibuat!', 'success'); },
+    onError: (err) => showToast(err || 'Gagal menghasilkan kuis.', 'error'),
+  });
+  const isGeneratingQuiz = quizGenJobQT.isProcessing;
   const [quizStarted, setQuizStarted] = useState(false);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
@@ -49,16 +54,8 @@ export function QuizTab({
 
   const handleGenerateQuiz = async () => {
     if (!selectedSession) return;
-    setIsGeneratingQuiz(true);
-    try {
-      await aiService.generateQuiz([selectedSession.id], 5);
-      await refetchSessionDetails();
-      showToast('Kuis AI berhasil dibuat!', 'success');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Gagal menghasilkan kuis.', 'error');
-    } finally {
-      setIsGeneratingQuiz(false);
-    }
+    try { await quizGenJobQT.trigger(() => aiService.generateQuiz([selectedSession.id], 5)); }
+    catch (err) { showToast(err instanceof Error ? err.message : 'Gagal menghasilkan kuis.', 'error'); }
   };
 
   const handleSubmitQuiz = async () => {

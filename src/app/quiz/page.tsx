@@ -10,6 +10,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, Alert, useToast, SelectOption } from '@/components/ui';
 import { useCache } from '@/lib/cache';
+import { useAiJob } from '@/lib/useAiJob';
 import {
   GraduationCap,
   Sparkles,
@@ -52,8 +53,27 @@ export default function QuizPage() {
 
   // Loading & error states
   const [loadingSessions, setLoadingSessions] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // AI Job tracking for quiz generation
+  const quizGenJob = useAiJob<any>('generate_quiz', {
+    onComplete: (res) => {
+      if (res?.quizzes?.length > 0) {
+        setQuizQuizzes(res.quizzes);
+        setQuizIds(res.quizIds || []);
+        setQuizStarted(true);
+        setCurrentIdx(0);
+        setUserAnswers({});
+        setQuizSubmitted(false);
+        showToast('Kuis AI sukses dibuat! 🎯', 'success');
+      } else {
+        setError(res?.message || 'Gagal bikin kuis nih.');
+        showToast(res?.message || 'Gagal bikin kuis nih.', 'error');
+      }
+    },
+    onError: (err) => { setError(err || 'Ada error pas bikin kuis.'); showToast(err || 'Ada error pas bikin kuis.', 'error'); },
+  });
+  const isGenerating = quizGenJob.isProcessing;
 
   // Quiz execution states
   const [quizQuizzes, setQuizQuizzes] = useState<any[]>([]);
@@ -107,28 +127,14 @@ export default function QuizPage() {
     }
 
     setError(null);
-    setIsGenerating(true);
     setQuizQuizzes([]);
     setQuizIds([]);
 
     try {
-      const res = await aiService.generateQuiz(selectedSessionIds, questionCount);
-      if (res.quizzes && res.quizzes.length > 0) {
-        setQuizQuizzes(res.quizzes);
-        setQuizIds(res.quizIds || []);
-        setQuizStarted(true);
-        setCurrentIdx(0);
-        setUserAnswers({});
-        setQuizSubmitted(false);
-        showToast('Kuis AI sukses dibuat! 🎯', 'success');
-      } else {
-        throw new Error(res.message || 'Gagal bikin kuis nih. Pastikan sesi yang lo pilih ada rangkuman AI-nya.');
-      }
+      await quizGenJob.trigger(() => aiService.generateQuiz(selectedSessionIds, questionCount));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ada error pas bikin kuis.');
       showToast(err instanceof Error ? err.message : 'Ada error pas bikin kuis.', 'error');
-    } finally {
-      setIsGenerating(false);
     }
   };
 

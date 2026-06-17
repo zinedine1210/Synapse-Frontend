@@ -42,7 +42,7 @@ export const siBawelService = {
   chat: (message: string) =>
     apiFetch<{ reply: string }>('/si-bawel/chat', { method: 'POST', body: JSON.stringify({ message }) }),
 
-  getWeeklyRoast: () => apiFetch<WeeklyRoast>('/si-bawel/weekly-roast'),
+  generateWeeklyRoast: () => apiFetch<{ status: string; message: string }>('/si-bawel/weekly-roast', { method: 'POST' }),
 
   getComments: (page?: number, limit?: number) => {
     const q = new URLSearchParams();

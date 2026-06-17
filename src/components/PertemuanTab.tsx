@@ -7,6 +7,7 @@ import { aiService } from '@/services/aiService';
 import { classService } from '@/services/classService';
 import { Card, Button, Alert, Modal, useToast, useConfirm, MarkdownRenderer, TextInput } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
+import { useAiJob } from '@/lib/useAiJob';
 import { TugasTab } from '@/components/TugasTab';
 import {
   Upload, FileText, Music, CheckCircle2, XCircle, Loader2, Sparkles, Download,
@@ -145,7 +146,11 @@ export function PertemuanTab({
   };
 
   // Quiz states
-  const [isGeneratingQuiz, setIsGeneratingQuiz] = useState(false);
+  const quizGenJobPT = useAiJob<any>('generate_quiz', {
+    onComplete: () => { refetchSessionDetails(); showToast('Kuis AI berhasil dibuat!', 'success'); },
+    onError: (err) => showToast(err || 'Gagal menghasilkan kuis.', 'error'),
+  });
+  const isGeneratingQuiz = quizGenJobPT.isProcessing;
   const [quizStarted, setQuizStarted] = useState(false);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<number, string>>({});
@@ -219,10 +224,8 @@ export function PertemuanTab({
   // Quiz handlers
   const handleGenerateQuiz = async () => {
     if (!selectedSession) return;
-    setIsGeneratingQuiz(true);
-    try { await aiService.generateQuiz([selectedSession.id], 5); await refetchSessionDetails(); showToast('Kuis AI berhasil dibuat!', 'success'); }
+    try { await quizGenJobPT.trigger(() => aiService.generateQuiz([selectedSession.id], 5)); }
     catch (err) { showToast(err instanceof Error ? err.message : 'Gagal menghasilkan kuis.', 'error'); }
-    finally { setIsGeneratingQuiz(false); }
   };
 
   const handleSubmitQuiz = async () => {

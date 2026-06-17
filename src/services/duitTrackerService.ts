@@ -130,4 +130,20 @@ export const duitTrackerService = {
   // Receipt Scan
   scanReceipt: (base64: string, mimeType: string) =>
     apiFetch<any>('/duit-tracker/scan-receipt', { method: 'POST', body: JSON.stringify({ base64, mimeType }) }),
+
+  // Debt/Hutang
+  getDebts: (isPaid?: boolean) =>
+    apiFetch<any[]>(`/duit-tracker/debts${isPaid !== undefined ? `?isPaid=${isPaid}` : ''}`),
+
+  createDebt: (data: { description: string; amount: number; debtType: string; personName: string; dueDate?: string }) =>
+    apiFetch<any>('/duit-tracker/debts', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateDebt: (id: string, data: { description?: string; amount?: number; debtType?: string; personName?: string; dueDate?: string }) =>
+    apiFetch<any>(`/duit-tracker/debts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  deleteDebt: (id: string) =>
+    apiFetch(`/duit-tracker/debts/${id}`, { method: 'DELETE' }),
+
+  markDebtPaid: (id: string) =>
+    apiFetch<any>(`/duit-tracker/debts/${id}/pay`, { method: 'POST' }),
 };

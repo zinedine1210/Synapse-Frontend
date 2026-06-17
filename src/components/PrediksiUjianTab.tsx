@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button, Modal, useToast, AIPhotoInput, useConfirm, TextInput, SelectOption, NumberInput, TextArea } from './ui';
 import { useFeatureAccess } from '@/lib/feature-access';
+import { useAiJob } from '@/lib/useAiJob';
 import { ExamPrediction, ExamPredictionQuestion, examPredictionService } from '@/services/examPredictionService';
 import { classService } from '@/services/classService';
 import { Session } from '@/models/Class';
@@ -34,6 +35,18 @@ export function PrediksiUjianTab({ classId, memberRole = 'MEMBER', permissions }
   const [countPG, setCountPG] = useState(5);
   const [countEssay, setCountEssay] = useState(2);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // AI Job tracking for exam prediction
+  const examGenJob = useAiJob<any>('exam_prediction', {
+    onComplete: () => {
+      showToast('Soal prediksi berhasil dibuat dengan AI!', 'success');
+      fetchPredictionsAndSessions();
+      setShowCreateModal(false);
+      resetForm();
+      setIsGenerating(false);
+    },
+    onError: (err) => { showToast(err || 'Gagal membuat prediksi ujian.', 'error'); setIsGenerating(false); },
+  });
 
   // Manual questions list
   const [manualQuestions, setManualQuestions] = useState<Array<{
@@ -115,15 +128,20 @@ export function PrediksiUjianTab({ classId, memberRole = 'MEMBER', permissions }
           setIsGenerating(false);
           return;
         }
-        await examPredictionService.generate(classId, {
-          title,
-          description,
-          sessionIds: selectedSessions,
-          type: examType,
-          countPG: examType === 'ESSAY' ? 0 : countPG,
-          countEssay: examType === 'MULTIPLE_CHOICE' ? 0 : countEssay,
-        });
-        showToast('Soal prediksi berhasil dibuat dengan AI!', 'success');
+        try {
+          await examGenJob.trigger(() => examPredictionService.generate(classId, {
+            title,
+            description,
+            sessionIds: selectedSessions,
+            type: examType,
+            countPG: examType === 'ESSAY' ? 0 : countPG,
+            countEssay: examType === 'MULTIPLE_CHOICE' ? 0 : countEssay,
+          }));
+        } catch (err) {
+          showToast(err instanceof Error ? err.message : 'Gagal membuat prediksi ujian.', 'error');
+          setIsGenerating(false);
+        }
+        return; // async — onComplete handles the rest
       } else if (sourceType === 'MANUAL') {
         // Validation
         const invalid = manualQuestions.some(q => !q.question.trim());

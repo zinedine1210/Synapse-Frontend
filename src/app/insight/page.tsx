@@ -11,6 +11,7 @@ import { insightService, WeeklySummary } from '@/services/insightService';
 import { duitTrackerService, Transaction } from '@/services/duitTrackerService';
 import { detectDayOfWeekPatterns, DayOfWeekPattern } from '@/services/contextualIntelligence';
 import { useCache } from '@/lib/cache';
+import { useAiJob } from '@/lib/useAiJob';
 import {
   TimeRange,
   getDateRange,
@@ -106,7 +107,12 @@ export default function InsightPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { data: dataRaw, loading, revalidate: refetchData, mutate: mutateData } = useCache<WeeklySummary>('insight:weekly', () => insightService.getWeekly());
   const data = dataRaw ?? null;
-  const [aiLoading, setAiLoading] = useState(false);
+
+  const aiInsightJob = useAiJob<WeeklySummary>('ai_insight', {
+    onComplete: (result) => { mutateData(result); showToast('AI Insight berhasil dibuat! 🧠', 'success'); },
+    onError: (err) => showToast(err || 'Gagal membuat insight.', 'error'),
+  });
+  const aiLoading = aiInsightJob.isProcessing;
 
   // Enhanced: Time range state
   const [timeRange, setTimeRange] = useState<TimeRange>('this_month');
@@ -164,14 +170,10 @@ export default function InsightPage() {
   }, []);
 
   const loadAiInsight = async () => {
-    setAiLoading(true);
     try {
-      const result = await insightService.getAiInsight();
-      mutateData(result);
+      await aiInsightJob.trigger(() => insightService.getAiInsight());
     } catch (e: any) {
       showToast(e.message, 'error');
-    } finally {
-      setAiLoading(false);
     }
   };
 

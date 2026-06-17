@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, BottomSheet, useToast } from '@/components/ui';
 import { useCache } from '@/lib/cache';
+import { useAiJob } from '@/lib/useAiJob';
 import {
   foodService,
   FoodPreference,
@@ -82,6 +83,16 @@ export default function MakanApaPage() {
   const [menuResult, setMenuResult] = useSessionStorage<MenuResult | null>('makan_menuResult', null);
   const [menuFilter, setMenuFilter] = useSessionStorage('makan_menuFilter', 'hemat');
 
+  // AI Job tracking for food recommendations
+  const fridgeJob = useAiJob<FridgeResult>('food_from_fridge', {
+    onComplete: (result) => { setFridgeResult(result); setLoading(false); refetchBudget(); },
+    onError: (err) => { showToast(err || 'Gagal memproses foto.', 'error'); setLoading(false); },
+  });
+  const menuJob = useAiJob<MenuResult>('food_from_menu', {
+    onComplete: (result) => { setMenuResult(result); setLoading(false); refetchBudget(); },
+    onError: (err) => { showToast(err || 'Gagal memproses foto.', 'error'); setLoading(false); },
+  });
+
   // Cached data fetching
   const budgetFetcher = useCallback(() => foodService.getRemainingBudget().catch(() => null), []);
   const { data: budgetInfo, loading: budgetLoading, revalidate: refetchBudget } = useCache<FoodBudgetInfo | null>('food:budget', budgetFetcher);
@@ -116,17 +127,12 @@ export default function MakanApaPage() {
       const mimeType = file.type;
 
       if (mode === 'fridge') {
-        const result = await foodService.fromFridge(base64, mimeType);
-        setFridgeResult(result);
+        await fridgeJob.trigger(() => foodService.fromFridge(base64, mimeType));
       } else {
-        const result = await foodService.fromMenu(base64, mimeType, menuFilter);
-        setMenuResult(result);
+        await menuJob.trigger(() => foodService.fromMenu(base64, mimeType, menuFilter));
       }
-      // Refresh budget after getting recommendations
-      refetchBudget();
     } catch (e: any) {
       showToast(e.message || 'Gagal memproses foto.', 'error');
-    } finally {
       setLoading(false);
     }
   };

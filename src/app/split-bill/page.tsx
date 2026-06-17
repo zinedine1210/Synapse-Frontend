@@ -15,6 +15,7 @@ import {
   HistorySummaryEntry,
 } from '@/services/splitBillService';
 import { useCache } from '@/lib/cache';
+import { useAiJob } from '@/lib/useAiJob';
 import {
   Receipt, Plus, Loader2, Camera, Check, X, Send, Trash2,
   ChevronLeft, Users, Percent, TrendingUp, Zap, History,
@@ -98,6 +99,27 @@ export default function SplitBillPage() {
   const [creating, setCreating] = useState(false);
   const [scannedItems, setScannedItems] = useState<{ name: string; price: number; quantity: number; checked: boolean }[]>([]);
 
+  // AI Job tracking for receipt scan
+  const scanReceiptJob = useAiJob<any>('split_bill_scan', {
+    onComplete: (result) => {
+      if (result?.error) {
+        showToast(result.error, 'error');
+      } else if (result?.items) {
+        const parsed = result.items.map((i: any) => ({
+          name: i.name || 'Item',
+          price: Number(i.price) || 0,
+          quantity: Number(i.quantity) || 1,
+          checked: true,
+        }));
+        setScannedItems(parsed);
+        if (result.storeName) setEventName(result.storeName);
+        showToast(`${result.items.length} item ketauan di struk! 📸`, 'success');
+      }
+      setScanning(false);
+    },
+    onError: (err) => { showToast(err || 'Gagal scan struk.', 'error'); setScanning(false); },
+  });
+
   // Auto-detect splittable
   const [splittableTransactions, setSplittableTransactions] = useState<SplittableTransaction[]>([]);
   const [loadingSplittable, setLoadingSplittable] = useState(false);
@@ -179,23 +201,9 @@ export default function SplitBillPage() {
         reader.onload = () => resolve((reader.result as string).split(',')[1]);
         reader.readAsDataURL(file);
       });
-      const result = await splitBillService.scanReceipt(base64, file.type);
-      if (result.error) {
-        showToast(result.error, 'error');
-      } else if (result.items) {
-        const parsed = result.items.map(i => ({
-          name: i.name || 'Item',
-          price: Number(i.price) || 0,
-          quantity: Number(i.quantity) || 1,
-          checked: true,
-        }));
-        setScannedItems(parsed);
-        if (result.storeName) setEventName(result.storeName);
-        showToast(`${result.items.length} item ketauan di struk! 📸`, 'success');
-      }
+      await scanReceiptJob.trigger(() => splitBillService.scanReceipt(base64, file.type));
     } catch (e: any) {
       showToast(e.message || 'Gagal scan struk nih.', 'error');
-    } finally {
       setScanning(false);
     }
   };

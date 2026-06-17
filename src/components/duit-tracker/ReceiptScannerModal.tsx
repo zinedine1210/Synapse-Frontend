@@ -3,6 +3,7 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { Modal, Button, useToast } from '@/components/ui';
 import { duitTrackerService } from '@/services/duitTrackerService';
+import { useAiJob } from '@/lib/useAiJob';
 import { Loader2, Camera, Image as ImageIcon, Receipt } from 'lucide-react';
 
 export interface ScannedItem {
@@ -26,6 +27,27 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
   const [scanning, setScanning] = useState(false);
   const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
   const [savingBulk, setSavingBulk] = useState(false);
+
+  const scanReceiptJob = useAiJob<any>('scan_receipt', {
+    onComplete: (result) => {
+      const items: any[] = Array.isArray(result) ? result : result?.items ? result.items : result?.error ? [] : [result];
+      if (items.length > 0 && (items[0].amount || items[0].total)) {
+        const mapped: ScannedItem[] = items.map((it: any) => ({
+          label: it.label || it.merchant || 'Item',
+          amount: it.amount || it.total || 0,
+          category: it.category || 'lainnya',
+          type: it.type || 'expense',
+          checked: true,
+        }));
+        setScannedItems(mapped);
+        showToast(`${mapped.length} item terdeteksi dari struk! 📸`, 'success');
+      } else {
+        showToast('Duh gak kebaca nih, coba foto ulang yang lebih jelas ya! 🔍', 'error');
+      }
+      setScanning(false);
+    },
+    onError: (err) => { showToast(err || 'Yah gagal scan nih, coba lagi ya~', 'error'); setScanning(false); },
+  });
 
   const checkedCount = useMemo(() => scannedItems.filter(i => i.checked).length, [scannedItems]);
   const allChecked = useMemo(() => scannedItems.length > 0 && scannedItems.every(i => i.checked), [scannedItems]);
@@ -51,26 +73,11 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
         reader.readAsDataURL(file);
       });
       const clean = base64.split(',')[1];
-      const res: any = await duitTrackerService.scanReceipt(clean, file.type);
-      const items: any[] = Array.isArray(res) ? res : res?.items ? res.items : res?.error ? [] : [res];
-      
-      if (items.length > 0 && (items[0].amount || items[0].total)) {
-        const mapped: ScannedItem[] = items.map((it: any) => ({
-          label: it.label || it.merchant || 'Item',
-          amount: it.amount || it.total || 0,
-          category: it.category || 'lainnya',
-          type: it.type || 'expense',
-          checked: true,
-        }));
-        setScannedItems(mapped);
-        showToast(`${mapped.length} item terdeteksi dari struk! 📸`, 'success');
-      } else {
-        showToast('Duh gak kebaca nih, coba foto ulang yang lebih jelas ya! 🔍', 'error');
-      }
+      await scanReceiptJob.trigger(() => duitTrackerService.scanReceipt(clean, file.type));
     } catch (err: any) {
       showToast(err.message || 'Yah gagal scan nih, coba lagi ya~', 'error');
-    } finally {
       setScanning(false);
+    } finally {
       if (fileRef.current) fileRef.current.value = '';
       if (cameraRef.current) cameraRef.current.value = '';
     }

@@ -723,56 +723,200 @@ interface CalendarViewProps {
 }
 
 function CalendarView({ calendarData, calendarMonth, setCalendarMonth, customCategories, onDayClick, onTodoClick }: CalendarViewProps) {
+  const [selectedDate, setSelectedDate] = React.useState<string | null>(null);
+  const selectedTodos = selectedDate ? (calendarData.todosByDate[selectedDate] || []) : [];
+
   return (
     <div className="todo-calendar">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <button onClick={() => setCalendarMonth(new Date(calendarData.year, calendarData.month - 1, 1))} style={{ background: 'var(--input-bg)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+      {/* Month navigation */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, padding: '0 4px' }}>
+        <button onClick={() => setCalendarMonth(new Date(calendarData.year, calendarData.month - 1, 1))} style={{ background: 'var(--input-bg)', border: 'none', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
           <ChevronLeft size={16} />
         </button>
-        <h3 style={{ fontSize: 16, fontWeight: 700 }}>
-          {calendarMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
-        </h3>
-        <button onClick={() => setCalendarMonth(new Date(calendarData.year, calendarData.month + 1, 1))} style={{ background: 'var(--input-bg)', border: 'none', borderRadius: 10, padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <h3 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>
+            {calendarMonth.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+          </h3>
+        </div>
+        <button onClick={() => setCalendarMonth(new Date(calendarData.year, calendarData.month + 1, 1))} style={{ background: 'var(--input-bg)', border: 'none', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}>
           <ChevronRight size={16} />
         </button>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
+
+      {/* Day names header */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 0, marginBottom: 8 }}>
         {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'rgb(var(--text-muted))', padding: '6px 0', textTransform: 'uppercase', letterSpacing: 0.5 }}>{d}</div>
+          <div key={d} style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: 'rgb(var(--text-muted))', padding: '8px 0', letterSpacing: 0.3 }}>{d}</div>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
+
+      {/* Calendar grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
         {Array.from({ length: calendarData.firstDay }).map((_, i) => (
-          <div key={`empty-${i}`} style={{ minHeight: 90, borderRadius: 10, background: 'transparent' }} />
+          <div key={`empty-${i}`} style={{ aspectRatio: '1', borderRadius: 12 }} />
         ))}
         {Array.from({ length: calendarData.daysInMonth }).map((_, i) => {
           const day = i + 1;
           const dateKey = `${calendarData.year}-${String(calendarData.month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
           const dayTodos = calendarData.todosByDate[dateKey] || [];
           const isToday = isSameDay(calendarData.today, new Date(calendarData.year, calendarData.month, day));
+          const isSelected = selectedDate === dateKey;
+          const hasPending = dayTodos.some(t => t.status === 'pending');
           const hasOverdue = dayTodos.some(t => t.status === 'pending' && new Date(t.dueDate!) < calendarData.today);
+          const allDone = dayTodos.length > 0 && dayTodos.every(t => t.status === 'done');
+
           return (
-            <div key={day} onClick={() => onDayClick(dateKey)} style={{ minHeight: 90, borderRadius: 10, padding: '6px 8px', cursor: 'pointer', background: isToday ? 'rgba(var(--color-primary), 0.06)' : 'rgb(var(--bg-surface))', border: isToday ? '2px solid rgb(var(--color-primary))' : '1px solid var(--border-default)', transition: 'all 0.15s', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: isToday ? 800 : 600, color: isToday ? 'rgb(var(--color-primary))' : hasOverdue ? 'rgb(var(--color-error))' : 'inherit', width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', background: isToday ? 'rgba(var(--color-primary), 0.12)' : 'transparent' }}>{day}</span>
-                {dayTodos.length > 0 && <span style={{ fontSize: 9, fontWeight: 700, color: 'rgb(var(--text-muted))' }}>{dayTodos.length}</span>}
-              </div>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, overflow: 'hidden' }}>
-                {dayTodos.slice(0, 3).map(todo => {
-                  const ci = getCategoryInfo(todo.category || '', customCategories);
-                  return (
-                    <div key={todo.id} onClick={(e) => { e.stopPropagation(); onTodoClick(todo); }} style={{ fontSize: 10, lineHeight: '14px', padding: '2px 5px', borderRadius: 4, background: todo.status === 'done' ? 'rgba(var(--color-success), 0.1)' : `${ci.color}15`, color: todo.status === 'done' ? 'rgb(var(--color-success))' : ci.color, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: todo.status === 'done' ? 'line-through' : 'none', opacity: todo.status === 'done' ? 0.6 : 1, display: 'flex', alignItems: 'center', gap: 3 }}>
-                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: PRIORITY_DOT[todo.priority] || '#999', flexShrink: 0 }} />
-                      {todo.title}
-                    </div>
-                  );
-                })}
-                {dayTodos.length > 3 && <span style={{ fontSize: 9, color: 'rgb(var(--text-muted))', fontWeight: 600, paddingLeft: 4 }}>+{dayTodos.length - 3} lagi</span>}
-              </div>
+            <div
+              key={day}
+              onClick={() => {
+                setSelectedDate(isSelected ? null : dateKey);
+                if (!dayTodos.length && !isSelected) onDayClick(dateKey);
+              }}
+              style={{
+                aspectRatio: '1',
+                borderRadius: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                position: 'relative',
+                background: isSelected
+                  ? 'rgb(var(--color-primary))'
+                  : isToday
+                    ? 'rgba(var(--color-primary), 0.08)'
+                    : 'transparent',
+                border: isToday && !isSelected ? '2px solid rgb(var(--color-primary))' : '1px solid transparent',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span style={{
+                fontSize: 14,
+                fontWeight: isToday || isSelected ? 800 : 500,
+                color: isSelected
+                  ? '#fff'
+                  : isToday
+                    ? 'rgb(var(--color-primary))'
+                    : 'inherit',
+              }}>
+                {day}
+              </span>
+
+              {/* Dot indicators */}
+              {dayTodos.length > 0 && (
+                <div style={{ display: 'flex', gap: 3, marginTop: 4, position: 'absolute', bottom: 6 }}>
+                  {dayTodos.length <= 3 ? (
+                    dayTodos.map((t, idx) => (
+                      <span key={idx} style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: '50%',
+                        background: isSelected
+                          ? 'rgba(255,255,255,0.8)'
+                          : t.status === 'done'
+                            ? 'rgb(var(--color-success))'
+                            : hasOverdue && t.status === 'pending' && new Date(t.dueDate!) < calendarData.today
+                              ? 'rgb(var(--color-error))'
+                              : 'rgb(var(--color-primary))',
+                      }} />
+                    ))
+                  ) : (
+                    <>
+                      <span style={{ width: 5, height: 5, borderRadius: '50%', background: isSelected ? 'rgba(255,255,255,0.8)' : allDone ? 'rgb(var(--color-success))' : hasOverdue ? 'rgb(var(--color-error))' : 'rgb(var(--color-primary))' }} />
+                      <span style={{ fontSize: 8, fontWeight: 700, color: isSelected ? 'rgba(255,255,255,0.9)' : 'rgb(var(--text-muted))', lineHeight: 1 }}>+{dayTodos.length}</span>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
+
+      {/* Selected date detail panel */}
+      {selectedDate && (
+        <div style={{
+          marginTop: 20,
+          padding: 16,
+          borderRadius: 16,
+          background: 'rgb(var(--bg-surface))',
+          border: '1px solid var(--border-default)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
+              {new Date(selectedDate + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </h4>
+            <button
+              onClick={() => onDayClick(selectedDate)}
+              style={{
+                fontSize: 11, fontWeight: 600, padding: '5px 10px', borderRadius: 8,
+                border: 'none', cursor: 'pointer',
+                background: 'rgba(var(--color-primary), 0.1)',
+                color: 'rgb(var(--color-primary))',
+              }}
+            >
+              + Tambah
+            </button>
+          </div>
+
+          {selectedTodos.length === 0 ? (
+            <p style={{ fontSize: 13, opacity: 0.5, textAlign: 'center', padding: '12px 0', margin: 0 }}>Tidak ada task di tanggal ini</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {selectedTodos.map(todo => {
+                const ci = getCategoryInfo(todo.category || '', customCategories);
+                return (
+                  <div
+                    key={todo.id}
+                    onClick={() => onTodoClick(todo)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '10px 12px', borderRadius: 12, cursor: 'pointer',
+                      background: todo.status === 'done' ? 'rgba(var(--color-success), 0.04)' : 'var(--input-bg)',
+                      border: `1px solid ${todo.status === 'done' ? 'rgba(var(--color-success), 0.2)' : 'var(--border-default)'}`,
+                      transition: 'background 0.15s',
+                    }}
+                  >
+                    {/* Priority dot */}
+                    <span style={{
+                      width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                      background: PRIORITY_DOT[todo.priority] || '#999',
+                    }} />
+
+                    {/* Content */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 13, fontWeight: 600,
+                        textDecoration: todo.status === 'done' ? 'line-through' : 'none',
+                        opacity: todo.status === 'done' ? 0.5 : 1,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {todo.title}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                        {todo.category && (
+                          <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: `${ci.color}15`, color: ci.color, fontWeight: 500 }}>
+                            {ci.emoji} {ci.label.replace(/^.+?\s/, '')}
+                          </span>
+                        )}
+                        {todo.dueTime && (
+                          <span style={{ fontSize: 10, opacity: 0.5 }}>🕐 {todo.dueTime}</span>
+                        )}
+                        {todo.recurrence && (
+                          <span style={{ fontSize: 10, opacity: 0.5 }}>🔄 {todo.recurrence === 'daily' ? 'Harian' : todo.recurrence === 'weekly' ? 'Mingguan' : 'Bulanan'}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status indicator */}
+                    <span style={{ fontSize: 16 }}>{todo.status === 'done' ? '✅' : '⬜'}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

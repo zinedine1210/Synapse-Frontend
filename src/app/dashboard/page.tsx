@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
 import { useDashboard, useContextualSuggestion } from '@/viewmodels/useDashboard';
 import { useDeadlines } from '@/viewmodels/useDeadlines';
-import { aiService } from '@/services/aiService';
 import { todoService } from '@/services/todoService';
 import { dashboardService, DashboardSummary, TodaysBriefingResponse, ClassComparison, TrendingQuestion, WeeklyChallengeData, AiBriefingResponse } from '@/services/dashboardService';
 import { detectDayOfWeekPatterns, DayOfWeekPattern } from '@/services/contextualIntelligence';
@@ -14,6 +13,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { useCache } from '@/lib/cache';
+import { useAiJob } from '@/lib/useAiJob';
 import { Card, Button, Alert, Modal, useToast, useConfirm, PullToRefresh, AnimatedNumber, TextInput, TextArea, AIPhotoInput } from '@/components/ui';
 import { TodaysBriefing, BriefingData } from '@/components/dashboard/TodaysBriefing';
 import { AiBriefingCard, AiBriefingSkeleton } from '@/components/dashboard/AiBriefingCard';
@@ -23,10 +23,10 @@ import { TrendingQnA } from '@/components/dashboard/TrendingQnA';
 import { WeeklyChallengeCard } from '@/components/dashboard/WeeklyChallengeCard';
 import { SiBawelAvatar } from '@/components/shared/SiBawelAvatar';
 import {
-  Plus, BookOpen, Trash2, Calendar, Upload, Loader2, Check, Sparkles,
-  Clock, AlertTriangle, Wallet, TrendingUp, TrendingDown, Target, TreePine,
+  Plus, BookOpen, Loader2, Check, Sparkles,
+  AlertTriangle, Wallet, Target, TreePine,
   CheckSquare, Square, ChevronDown, ChevronUp, Flame, Trophy, ArrowRight,
-  Zap, Star, Award, MessageCircle, HelpCircle, CalendarDays
+  Star, Award, MessageCircle, HelpCircle, CalendarDays
 } from 'lucide-react';
 
 interface ParsedCourse {
@@ -54,7 +54,7 @@ export default function DashboardPage() {
   const { hasFeature } = useFeatureAccess();
   const { classes, isLoading, error, isCreating, createClass, deleteClass } = useDashboard();
   const { deadlines, isLoading: deadlinesLoading } = useDeadlines();
-  const { suggestion: contextSuggestion, suggestAction } = useContextualSuggestion();
+  const { suggestion: contextSuggestion } = useContextualSuggestion();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
@@ -65,6 +65,18 @@ export default function DashboardPage() {
   const aiBriefing = aiBriefingRaw ?? null;
   const [aiBriefingFailed, setAiBriefingFailed] = useState(false);
   const [aiBriefingRefreshing, setAiBriefingRefreshing] = useState(false);
+
+  // AI Job tracking for AI briefing generation
+  const aiBriefingJob = useAiJob<AiBriefingResponse>('ai_briefing', {
+    onComplete: (result) => {
+      refetchAiBriefing();
+      setAiBriefingFailed(false);
+      showToast('Briefing AI berhasil dibuat! ✨', 'success');
+    },
+    onError: (err) => showToast(err || 'Gagal membuat briefing.', 'error'),
+  });
+  const aiBriefingGenerating = aiBriefingJob.isProcessing;
+  const aiBriefingPersisted = aiBriefingJob.result;
 
   const { data: classComparisonsRaw } = useCache<{ comparisons: ClassComparison[] }>('dashboard:class-comparison', () => dashboardService.getClassComparison());
   const classComparisons = classComparisonsRaw?.comparisons || [];
@@ -91,8 +103,6 @@ export default function DashboardPage() {
   const [createError, setCreateError] = useState<string | null>(null);
 
   // Schedule parser
-  const [isParsing, setIsParsing] = useState(false);
-  const [parseError, setParseError] = useState<string | null>(null);
   const [parsedCourses, setParsedCourses] = useState<ParsedCourse[]>([]);
   const [createdFromParse, setCreatedFromParse] = useState<Record<string, boolean>>({});
 
@@ -119,30 +129,33 @@ export default function DashboardPage() {
   const greeting = getGreeting(user?.fullName || 'Sobat');
 
   const handleRefreshAiBriefing = useCallback(async () => {
+    if (aiBriefingGenerating) return;
     setAiBriefingRefreshing(true);
     try {
-      const res = await dashboardService.generateAiBriefing();
+      await aiBriefingJob.trigger(() => dashboardService.generateAiBriefing());
       refetchAiBriefing();
       setAiBriefingFailed(false);
       showToast('Briefing AI berhasil diperbarui! ✨', 'success');
     } catch (e: any) {
-      showToast(e.message || 'Gagal memuat ulang briefing.', 'error');
+      if (!e.message?.includes('sedang memproses')) {
+        showToast(e.message || 'Gagal memuat ulang briefing.', 'error');
+      }
     } finally {
       setAiBriefingRefreshing(false);
     }
-  }, [showToast]);
+  }, [showToast, aiBriefingGenerating]);
 
   const handleGenerateAiBriefing = async () => {
-    setAiBriefingRefreshing(true);
+    if (aiBriefingGenerating) return;
     try {
-      await dashboardService.generateAiBriefing();
+      await aiBriefingJob.trigger(() => dashboardService.generateAiBriefing());
       refetchAiBriefing();
       setAiBriefingFailed(false);
       showToast('Briefing AI berhasil dibuat! ✨', 'success');
     } catch (e: any) {
-      showToast(e.message || 'Gagal membuat briefing.', 'error');
-    } finally {
-      setAiBriefingRefreshing(false);
+      if (!e.message?.includes('sedang memproses')) {
+        showToast(e.message || 'Gagal membuat briefing.', 'error');
+      }
     }
   };
 
@@ -190,15 +203,6 @@ export default function DashboardPage() {
     await deleteClass(classId);
   };
 
-  const handleScheduleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsParsing(true); setParseError(null); setParsedCourses([]);
-    try { const result = await aiService.parseSchedule(file); setParsedCourses(result); }
-    catch (err) { setParseError(err instanceof Error ? err.message : 'Gagal nge-scan gambar jadwalnya nih.'); }
-    finally { setIsParsing(false); }
-  };
-
   const handleCreateFromParse = async (course: ParsedCourse) => {
     const key = `${course.courseName}-${course.day}`;
     if (createdFromParse[key]) return;
@@ -214,13 +218,34 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!quickTodo.trim()) return;
     setAddingTodo(true);
+    const tempTitle = quickTodo.trim();
+    setQuickTodo('');
+    // Optimistic add — create a temporary todo in the summary state immediately
+    const tempId = `temp-${Date.now()}`;
+    mutateSummary(prev => {
+      if (!prev) return prev as unknown as DashboardSummary;
+      const tempTodo = { id: tempId, title: tempTitle, status: 'pending' as const, priority: 'medium' as const, dueDate: null, dueTime: null };
+      return { ...prev, todosToday: [tempTodo, ...prev.todosToday], todoStats: { ...prev.todoStats, total: prev.todoStats.total + 1 } };
+    });
     try {
-      const parsed = await todoService.parseNaturalInput(quickTodo);
-      await todoService.create({ title: parsed.title || quickTodo, dueDate: parsed.dueDate, dueTime: parsed.dueTime, priority: parsed.priority || 'medium', category: parsed.category });
+      const parsed = await todoService.parseNaturalInput(tempTitle);
+      const created = await todoService.create({ title: parsed.title || tempTitle, dueDate: parsed.dueDate, dueTime: parsed.dueTime, priority: parsed.priority || 'medium', category: parsed.category });
       showToast('Todo udah masuk! ✅', 'success');
-      setQuickTodo('');
-      refetchSummary();
-    } catch { showToast('Gagal nambahin todo.', 'error'); }
+      // Replace temp with real
+      mutateSummary(prev => {
+        if (!prev) return prev as unknown as DashboardSummary;
+        const updated = prev.todosToday.map(t => t.id === tempId ? { ...t, id: created.id, title: created.title } : t);
+        return { ...prev, todosToday: updated };
+      });
+    } catch {
+      showToast('Gagal nambahin todo.', 'error');
+      // Rollback
+      mutateSummary(prev => {
+        if (!prev) return prev as unknown as DashboardSummary;
+        return { ...prev, todosToday: prev.todosToday.filter(t => t.id !== tempId), todoStats: { ...prev.todoStats, total: Math.max(0, prev.todoStats.total - 1) } };
+      });
+      setQuickTodo(tempTitle);
+    }
     finally { setAddingTodo(false); }
   };
 
@@ -282,7 +307,12 @@ export default function DashboardPage() {
 
               {/* ═══════ SECTION 2: TODAY'S BRIEFING (AI-powered) ═══════ */}
               {hasFeature('daily_briefing') && (
-                aiBriefingLoading ? (
+                aiBriefingGenerating ? (
+                  <div>
+                    {aiBriefingPersisted && <AiBriefingCard briefing={aiBriefingPersisted} onRefresh={handleRefreshAiBriefing} isRefreshing={false} />}
+                    <AiBriefingSkeleton />
+                  </div>
+                ) : aiBriefingLoading ? (
                   <AiBriefingSkeleton />
                 ) : (aiBriefing && (aiBriefing as any).exists !== false) ? (
                   <AiBriefingCard
@@ -290,6 +320,34 @@ export default function DashboardPage() {
                     onRefresh={handleRefreshAiBriefing}
                     isRefreshing={aiBriefingRefreshing}
                   />
+                ) : (aiBriefingPersisted) ? (
+                  <div>
+                    <AiBriefingCard briefing={aiBriefingPersisted} onRefresh={handleRefreshAiBriefing} isRefreshing={aiBriefingRefreshing} />
+                    <div className="ai-briefing-cta" style={{
+                      position: 'relative',
+                      overflow: 'hidden',
+                      borderRadius: '20px',
+                      marginBottom: '24px',
+                      padding: '24px',
+                      background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.08) 0%, rgba(var(--color-accent-purple), 0.05) 100%)',
+                      border: '1px solid rgba(var(--color-primary), 0.15)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      gap: '16px'
+                    }}>
+                      <Button
+                        type="button"
+                        onClick={handleGenerateAiBriefing}
+                        disabled={aiBriefingGenerating}
+                        className="flex items-center gap-2 border border-indigo-200 hover:border-indigo-400 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 text-indigo-700 font-medium py-2 px-4 rounded-xl shadow-md hover:shadow-lg active:scale-95"
+                      >
+                        {aiBriefingGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />}
+                        <span>{aiBriefingGenerating ? 'Loading...' : 'Update Briefing AI 🔄'}</span>
+                      </Button>
+                    </div>
+                  </div>
                 ) : (aiBriefing && (aiBriefing as any).exists === false) ? (
                   <div className="ai-briefing-cta" style={{
                     position: 'relative',
@@ -315,11 +373,11 @@ export default function DashboardPage() {
                     <Button
                       type="button"
                       onClick={handleGenerateAiBriefing}
-                      disabled={aiBriefingLoading}
+                      disabled={aiBriefingGenerating}
                       className="flex items-center gap-2 border border-indigo-200 hover:border-indigo-400 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 text-indigo-700 font-medium py-2 px-4 rounded-xl shadow-md hover:shadow-lg active:scale-95"
                     >
-                      <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />
-                      <span>Gas Briefing AI 🚀</span>
+                      {aiBriefingGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />}
+                      <span>{aiBriefingGenerating ? 'Loading...' : 'Gas Briefing AI 🚀'}</span>
                     </Button>
                   </div>
                 ) : aiBriefingFailed && briefingData ? (
@@ -402,13 +460,17 @@ export default function DashboardPage() {
                     )}
 
                     {summary.trees && summary.trees.length > 0 && (
-                      <div style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <TreePine size={14} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
-                        <span style={{ opacity: 0.7 }}>{summary.trees[0].name}</span>
-                        <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--input-bg)', overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${Math.min(summary.trees[0].progress, 100)}%`, background: 'var(--color-success)', borderRadius: 3, transition: 'width 0.6s ease' }} />
-                        </div>
-                        <span style={{ fontWeight: 600, opacity: 0.7 }}>{summary.trees[0].progress}%</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {summary.trees.map((tree, idx) => (
+                          <div key={idx} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <TreePine size={14} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
+                            <span style={{ opacity: 0.7, minWidth: 80 }}>{tree.name}</span>
+                            <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--input-bg)', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${Math.min(tree.progress, 100)}%`, background: 'rgb(var(--color-success))', borderRadius: 3, transition: 'width 0.6s ease' }} />
+                            </div>
+                            <span style={{ fontWeight: 600, opacity: 0.7, minWidth: 35 }}>{tree.progress}%</span>
+                          </div>
+                        ))}
                       </div>
                     )}
 
@@ -717,8 +779,6 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     )}
-
-                    {parseError && <Alert type="error" message={parseError} />}
 
                     {parsedCourses.length > 0 && (
                       <div style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 6 }}>

@@ -12,13 +12,11 @@ import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { duitTrackerService, Transaction, Summary, SavingTree, CategoryBudget } from '@/services/duitTrackerService';
 import { siBawelService, BawelSetting, WeeklyRoast } from '@/services/siBawelService';
 import { SubscriptionCard } from '@/components/duit-tracker/SubscriptionCard';
-import { QuickInputBar } from '@/components/duit-tracker/QuickInputBar';
-import { ParsePreview } from '@/components/duit-tracker/ParsePreview';
 import { FinancialHero } from '@/components/duit-tracker/FinancialHero';
 import { TransactionSheet } from '@/components/duit-tracker/TransactionSheet';
 import { ReceiptScannerModal, ScannedItem } from '@/components/duit-tracker/ReceiptScannerModal';
 import { useCache } from '@/lib/cache';
-import { useCelebration } from '@/components/shared/CelebrationOverlay';
+import { useAiJob } from '@/lib/useAiJob';
 import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X, Camera } from 'lucide-react';
 
 type PeriodPreset = 'today' | 'yesterday' | '2days' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'custom';
@@ -75,7 +73,7 @@ function getPeriodRange(preset: PeriodPreset): { startDate: string; endDate: str
 }
 
 const EXPENSE_CATEGORIES = [
-  { id: 'makanan', emoji: '�️', label: 'Makan & Minum' },
+  { id: 'makanan', emoji: '🍽️', label: 'Makan & Minum' },
   { id: 'transportasi', emoji: '🚗', label: 'Transport' },
   { id: 'belanja', emoji: '🛒', label: 'Belanja' },
   { id: 'hiburan', emoji: '🎮', label: 'Hiburan' },
@@ -223,9 +221,8 @@ export default function DuitTrackerPage() {
   const { hasFeature } = useFeatureAccess();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
-  const { showUndoToast } = useCelebration();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [tab, setTab] = useState<'transactions' | 'summary' | 'trees' | 'budget'>('transactions');
+  const [tab, setTab] = useState<'transactions' | 'summary' | 'trees' | 'budget' | 'debts'>('transactions');
   const [error, setError] = useState<string | null>(null);
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -301,13 +298,74 @@ export default function DuitTrackerPage() {
   const [depositAmount, setDepositAmount] = useState('');
   const [depositType, setDepositType] = useState<'deposit' | 'withdrawal'>('deposit');
   const [bawelSetting, setBawelSetting] = useState<BawelSetting | null>(null);
-  const [weeklyRoast, setWeeklyRoast] = useState<WeeklyRoast | null>(null);
   const [showBawelSettings, setShowBawelSettings] = useState(false);
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
-  const [quickInputText, setQuickInputText] = useState('');
-  const [quickInputSubmitting, setQuickInputSubmitting] = useState(false);
   const [commentLoading, setCommentLoading] = useState<Record<string, boolean>>({});
-  const [roastLoading, setRoastLoading] = useState(false);
+
+  // Debts
+  const [debts, setDebts] = useState<any[]>([]);
+  const [debtsLoading, setDebtsLoading] = useState(false);
+  const [showDebtModal, setShowDebtModal] = useState(false);
+  const [debtForm, setDebtForm] = useState({ description: '', amount: '', debtType: 'owed_by_me', personName: '', dueDate: '' });
+  const [debtFilter, setDebtFilter] = useState<'all' | 'active' | 'paid'>('active');
+
+  const fetchDebts = useCallback(async () => {
+    setDebtsLoading(true);
+    try {
+      const isPaid = debtFilter === 'all' ? undefined : debtFilter === 'paid';
+      const data = await duitTrackerService.getDebts(isPaid);
+      setDebts(data);
+    } catch { }
+    finally { setDebtsLoading(false); }
+  }, [debtFilter]);
+
+  useEffect(() => { if (tab === 'debts') fetchDebts(); }, [tab, fetchDebts]);
+
+  const handleDebtSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = parseCurrency(debtForm.amount);
+    if (!debtForm.description || !amount || !debtForm.personName) return;
+    setSubmitting(true);
+    try {
+      await duitTrackerService.createDebt({
+        description: debtForm.description,
+        amount,
+        debtType: debtForm.debtType,
+        personName: debtForm.personName,
+        dueDate: debtForm.dueDate || undefined,
+      });
+      showToast('Hutang dicatat! 📝', 'success');
+      setShowDebtModal(false);
+      setDebtForm({ description: '', amount: '', debtType: 'owed_by_me', personName: '', dueDate: '' });
+      fetchDebts();
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setSubmitting(false); }
+  };
+
+  const handleMarkDebtPaid = async (debtId: string) => {
+    try {
+      await duitTrackerService.markDebtPaid(debtId);
+      showToast('Hutang lunas! Transaksi tercatat otomatis 🎉', 'success');
+      fetchDebts();
+      refreshTx();
+    } catch (e: any) { showToast(e.message, 'error'); }
+  };
+
+  const handleDeleteDebt = async (debtId: string) => {
+    try {
+      await duitTrackerService.deleteDebt(debtId);
+      showToast('Hutang dihapus', 'success');
+      fetchDebts();
+    } catch (e: any) { showToast(e.message, 'error'); }
+  };
+
+  // AI Job tracking for weekly roast
+  const weeklyRoastJob = useAiJob<WeeklyRoast>('weekly_roast', {
+    onComplete: (roast) => showToast('Weekly Roast udah siap! Siap-siap di-roast 🔥', 'success'),
+    onError: (err) => showToast(err || 'Gagal bikin Weekly Roast nih.', 'error'),
+  });
+  const weeklyRoast = weeklyRoastJob.result;
+  const roastLoading = weeklyRoastJob.isProcessing;
 
   const handleGenerateComment = async (txId: string) => {
     setCommentLoading(prev => ({ ...prev, [txId]: true }));
@@ -323,29 +381,19 @@ export default function DuitTrackerPage() {
   };
 
   const handleGenerateWeeklyRoast = async () => {
-    setRoastLoading(true);
+    if (roastLoading) return;
     try {
-      const roast = await siBawelService.getWeeklyRoast();
-      setWeeklyRoast(roast);
-      localStorage.setItem('synapse_weekly_roast', JSON.stringify(roast));
-      showToast('Weekly Roast udah siap! Siap-siap di-roast 🔥', 'success');
+      await weeklyRoastJob.trigger(() => siBawelService.generateWeeklyRoast());
+      showToast('Weekly Roast sedang diproses AI... tunggu ya~ 🔥', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Gagal bikin Weekly Roast nih.', 'error');
-    } finally {
-      setRoastLoading(false);
+      if (!err.message?.includes('sedang memproses')) {
+        showToast(err.message || 'Gagal bikin Weekly Roast nih.', 'error');
+      }
     }
   };
 
   useEffect(() => {
     siBawelService.getSetting().then(setBawelSetting).catch(() => {});
-    const cachedRoast = localStorage.getItem('synapse_weekly_roast');
-    if (cachedRoast) {
-      try {
-        setWeeklyRoast(JSON.parse(cachedRoast));
-      } catch {
-        localStorage.removeItem('synapse_weekly_roast');
-      }
-    }
   }, []);
 
   const handleBawelToggle = async (field: string, value: any) => {
@@ -361,19 +409,43 @@ export default function DuitTrackerPage() {
     const amt = parseCurrency(form.amount);
     if (!amt || !form.label) return;
     setSubmitting(true);
+    const now = new Date().toISOString();
     try {
       if (editingTx) {
-        await duitTrackerService.updateTransaction(editingTx.id, { amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || undefined });
-        showToast('Transaksi udah di-update! ✅', 'success');
+        // Optimistic update
+        const optimistic: Transaction = { ...editingTx, amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || editingTx.date };
+        updateTx(tx => tx.id === editingTx.id, () => optimistic);
+        setShowAddModal(false); setEditingTx(null);
+        setForm({ amount: '', type: 'expense', category: 'lainnya', label: '', note: '', date: '' });
+        try {
+          const updated = await duitTrackerService.updateTransaction(editingTx.id, { amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || undefined });
+          updateTx(tx => tx.id === editingTx.id, () => updated);
+          showToast('Transaksi udah di-update! ✅', 'success');
+        } catch (e: any) {
+          updateTx(tx => tx.id === editingTx.id, () => editingTx);
+          showToast(e.message || 'Gagal update transaksi.', 'error');
+        }
       } else {
-        await duitTrackerService.createTransaction({ amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || undefined });
-        showToast('Transaksi udah ditambahin! ✅', 'success');
+        // Optimistic create
+        const tempId = `temp-${Date.now()}`;
+        const tempTx: Transaction = { id: tempId, amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || now, createdAt: now, updatedAt: now, bawelComment: undefined, bawelLevel: undefined } as any;
+        setTransactions(prev => [tempTx, ...prev]);
+        // Optimistically update summary balance
+        refetchSummary();
+        setShowAddModal(false); setEditingTx(null);
+        setForm({ amount: '', type: 'expense', category: 'lainnya', label: '', note: '', date: '' });
+        try {
+          const created = await duitTrackerService.createTransaction({ amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || undefined });
+          // Replace temp with real
+          updateTx(tx => tx.id === tempId, () => created);
+          showToast('Transaksi udah ditambahin! ✅', 'success');
+          refetchSummary();
+        } catch (e: any) {
+          removeTx(tx => tx.id === tempId);
+          showToast(e.message || 'Gagal tambah transaksi.', 'error');
+        }
       }
-      setShowAddModal(false); setEditingTx(null);
-      setForm({ amount: '', type: 'expense', category: 'lainnya', label: '', note: '', date: '' });
-      fetchData();
-    } catch (e: any) { showToast(e.message, 'error'); }
-    finally { setSubmitting(false); }
+    } finally { setSubmitting(false); }
   };
 
   const handleBulkCreate = async (items: ScannedItem[]) => {
@@ -410,9 +482,13 @@ export default function DuitTrackerPage() {
     if (!confirmed) return;
 
     removeTx(t => t.id === id);
+    // Optimistically update summary balance
+    const isIncome = tx.type === 'income';
+    refetchSummary();
     try {
       await duitTrackerService.deleteTransaction(id);
       showToast('Transaksi udah dihapus! 🗑️', 'success');
+      refetchSummary();
     } catch (e: any) {
       showToast(e.message, 'error');
       refreshTx();
@@ -425,26 +501,18 @@ export default function DuitTrackerPage() {
     try {
       const p = await duitTrackerService.parseNaturalInput(aiText);
       if (p.amount) {
-        setForm({ amount: String(p.amount), type: p.type || 'expense', category: p.category || 'lainnya', label: p.label || aiText, note: p.note || '', date: '' });
-        setShowAiInput(false); setShowAddModal(true);
-        showToast('Berhasil di-parse! Cek datanya ya~', 'success');
+        if (p.isDebt) {
+          setDebtForm({ description: p.label || aiText, amount: String(p.amount), debtType: p.debtType || 'owed_by_me', personName: p.personName || '', dueDate: '' });
+          setShowAiInput(false); setShowDebtModal(true);
+          showToast('Terdeteksi sebagai hutang! Cek datanya ya 🤝', 'success');
+        } else {
+          setForm({ amount: String(p.amount), type: p.type || 'expense', category: p.category || 'lainnya', label: p.label || aiText, note: p.note || '', date: p.date || '' });
+          setShowAiInput(false); setShowAddModal(true);
+          showToast('Berhasil di-parse! Cek datanya ya~', 'success');
+        }
       } else { showToast('Hmm, gak bisa di-parse nih. Coba tulis ulang!', 'error'); }
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); setAiText(''); }
-  };
-
-  const handleQuickInputSubmit = async (text: string) => {
-    setQuickInputSubmitting(true);
-    try {
-      const p = await duitTrackerService.parseNaturalInput(text);
-      if (p.amount) {
-        setForm({ amount: String(p.amount), type: p.type || 'expense', category: p.category || 'lainnya', label: p.label || text, note: p.note || '', date: '' });
-        setQuickInputText('');
-        setShowAddModal(true);
-        showToast('Berhasil di-parse! 🎉', 'success');
-      } else { showToast('Gak bisa di-parse nih. Coba lagi!', 'error'); }
-    } catch (e: any) { showToast(e.message, 'error'); }
-    finally { setQuickInputSubmitting(false); }
   };
 
   const handleAddTree = async (e: React.FormEvent) => {
@@ -561,6 +629,7 @@ export default function DuitTrackerPage() {
                   { key: 'summary', label: '📊 Ringkasan', feature: 'duit_tracker_summary' },
                   { key: 'budget', label: '🎯 Budget', feature: 'duit_tracker_budget' },
                   { key: 'trees', label: '🌳 Tabungan', feature: 'duit_tracker_saving_tree' },
+                  { key: 'debts', label: '🤝 Hutang' },
                 ].filter(t => !t.feature || hasFeature(t.feature)).map(t => (
                   <button key={t.key} onClick={() => setTab(t.key as any)} style={{
                     padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
@@ -680,19 +749,6 @@ export default function DuitTrackerPage() {
                 </div>
               )}
 
-              {/* QuickInputBar — Sticky natural language input */}
-              {tab === 'transactions' && hasFeature('duit_tracker_quick_input') && (
-                <>
-                  <QuickInputBar
-                    value={quickInputText}
-                    onChange={setQuickInputText}
-                    onSubmit={handleQuickInputSubmit}
-                    submitting={quickInputSubmitting}
-                  />
-                  <ParsePreview inputText={quickInputText} debounceMs={300} />
-                </>
-              )}
-
               {loading && !transactions.length ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {[1, 2, 3].map(n => <div key={n} className="skeleton" style={{ height: 80, borderRadius: 14 }} />)}
@@ -750,8 +806,8 @@ export default function DuitTrackerPage() {
                                   <button onClick={(e) => { e.stopPropagation(); handleDelete(tx.id); }} className="tx-action-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 5, borderRadius: 8, transition: 'all 0.2s', color: 'var(--dt-text-secondary)' }}><Trash2 size={13} /></button>
                                 </div>
                               </div>
-                              {/* Si Bawel comment */}
-                              {tx.bawelComment ? (
+                              {/* Si Bawel comment — only show if already generated */}
+                              {tx.bawelComment && (
                                 <div style={{
                                   marginTop: 8, fontSize: 12, lineHeight: 1.5, padding: '8px 12px', borderRadius: 10,
                                   background: tx.bawelLevel === 'warning' ? 'rgba(245, 158, 11, 0.06)' : tx.bawelLevel === 'praise' ? 'rgba(16, 185, 129, 0.06)' : 'var(--input-bg)',
@@ -760,34 +816,6 @@ export default function DuitTrackerPage() {
                                 }}>
                                   <span style={{ flexShrink: 0 }}>🗣️</span>
                                   <span style={{ opacity: 0.7 }}>{tx.bawelComment}</span>
-                                </div>
-                              ) : (
-                                <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-start' }}>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleGenerateComment(tx.id)}
-                                    disabled={commentLoading[tx.id]}
-                                    style={{
-                                      fontSize: '11px',
-                                      padding: '4px 10px',
-                                      borderRadius: '8px',
-                                      borderColor: 'rgba(var(--color-primary), 0.3)',
-                                      background: 'rgba(var(--color-primary), 0.02)',
-                                      color: 'rgb(var(--color-primary))',
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                      cursor: 'pointer'
-                                    }}
-                                  >
-                                    {commentLoading[tx.id] ? (
-                                      <Loader2 size={10} className="spin" />
-                                    ) : (
-                                      <span>🗣️</span>
-                                    )}
-                                    <span>Tanya Si Bawel</span>
-                                  </Button>
                                 </div>
                               )}
                             </div>
@@ -836,6 +864,7 @@ export default function DuitTrackerPage() {
                           </div>
                         )}
                         <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+                          {!roastLoading && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -843,8 +872,14 @@ export default function DuitTrackerPage() {
                             disabled={roastLoading}
                             style={{ fontSize: 12, padding: '6px 12px', borderRadius: 10, cursor: 'pointer' }}
                           >
-                            {roastLoading ? <Loader2 size={12} className="spin" /> : 'Roast Ulang 🔥'}
+                            Roast Ulang 🔥
                           </Button>
+                          )}
+                          {roastLoading && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.6 }}>
+                              <Loader2 size={12} className="spin" /> Lagi diproses AI...
+                            </div>
+                          )}
                         </div>
                       </div>
                     ) : (
@@ -871,16 +906,22 @@ export default function DuitTrackerPage() {
                           onClick={handleGenerateWeeklyRoast}
                           disabled={roastLoading}
                           style={{
-                            background: 'linear-gradient(135deg, #ff6b35 0%, #ff4f00 100%)',
+                            background: roastLoading ? 'rgba(255,100,0,0.3)' : 'linear-gradient(135deg, #ff6b35 0%, #ff4f00 100%)',
                             border: 'none',
                             color: '#fff',
                             fontWeight: 600,
                             borderRadius: 12,
                             padding: '10px 20px',
-                            cursor: 'pointer'
+                            cursor: roastLoading ? 'not-allowed' : 'pointer',
+                            display: 'flex', alignItems: 'center', gap: 8,
                           }}
                         >
-                          {roastLoading ? <Loader2 size={14} className="spin" /> : 'Minta Roast 🔥'}
+                          {roastLoading ? (
+                            <>
+                              <Loader2 size={14} className="spin" />
+                              <span>Lagi diproses AI...</span>
+                            </>
+                          ) : 'Minta Roast 🔥'}
                         </Button>
                       </div>
                     )
@@ -1004,39 +1045,88 @@ export default function DuitTrackerPage() {
                       <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Tanem pohon buat nabung sambil have fun! 🌱</p>
                     </div>
                   ) : (
-                    <div className="duit-trees-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+                    <div className="duit-trees-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
                       {trees.map(tree => {
                         const pct = tree.targetAmount > 0 ? Math.min(Math.round((tree.currentAmount / tree.targetAmount) * 100), 100) : 0;
                         const stage = getTreeStage(pct);
+                        const remaining = tree.targetAmount - tree.currentAmount;
                         return (
                           <div key={tree.id} style={{
-                            padding: '20px 22px', borderRadius: 18, background: 'var(--card-bg)',
+                            borderRadius: 20, background: 'var(--card-bg)',
                             border: pct >= 100 ? '2px solid #FFD700' : '1px solid var(--dt-card-border)',
                             position: 'relative', overflow: 'hidden',
+                            boxShadow: pct >= 100 ? '0 4px 24px rgba(255,215,0,0.18)' : '0 2px 12px rgba(0,0,0,0.06)',
+                            transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                           }} className="hover-lift">
-                            {pct >= 100 && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #FFD700, #FFA500, #FFD700)' }} />}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                              <div>
-                                <h3 style={{ fontSize: 16, fontWeight: 700 }}>{tree.name}</h3>
-                                {tree.deadline && <div style={{ fontSize: 11, opacity: 0.4, marginTop: 2 }}>🎯 {new Date(tree.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</div>}
+                            {/* Top gradient accent strip */}
+                            <div style={{ height: 4, background: pct >= 100 ? 'linear-gradient(90deg, #FFD700, #FFA500, #FFD700)' : `linear-gradient(90deg, ${stage.color}, ${stage.color}aa)`, borderRadius: '20px 20px 0 0' }} />
+                            
+                            <div style={{ padding: '18px 20px 20px' }}>
+                              {/* Header */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                                <div>
+                                  <h3 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>{tree.name}</h3>
+                                  {tree.deadline && (
+                                    <div style={{ fontSize: 11, opacity: 0.5, marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      🎯 Deadline: {new Date(tree.deadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </div>
+                                  )}
+                                </div>
+                                <button onClick={() => handleDeleteTree(tree.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.25, padding: 6, borderRadius: 8, transition: 'opacity 0.2s' }}
+                                  onMouseEnter={e => (e.currentTarget.style.opacity = '0.6')} onMouseLeave={e => (e.currentTarget.style.opacity = '0.25')}>
+                                  <Trash2 size={14} />
+                                </button>
                               </div>
-                              <button onClick={() => handleDeleteTree(tree.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 4 }}><Trash2 size={14} /></button>
-                            </div>
-                            <div style={{ textAlign: 'center', padding: '20px 0', borderRadius: 14, background: 'var(--input-bg)', marginBottom: 14 }}>
-                              <TreeStageSvg pct={pct} />
-                              <div style={{ fontSize: 13, fontWeight: 600, color: stage.color, transition: 'color 0.4s ease' }}>{stage.label}</div>
-                              <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4, transition: 'all 0.4s ease' }}>{pct}%</div>
-                            </div>
-                            <div style={{ fontSize: 14, marginBottom: 10, textAlign: 'center' }}>
-                              <span style={{ fontWeight: 700 }}>{fmt(tree.currentAmount)}</span>
-                              <span style={{ opacity: 0.4 }}> / {fmt(tree.targetAmount)}</span>
-                            </div>
-                            <div style={{ height: 8, borderRadius: 4, background: 'var(--input-bg)', overflow: 'hidden', marginBottom: 14 }}>
-                              <div style={{ height: '100%', borderRadius: 4, width: `${pct}%`, background: pct >= 100 ? 'linear-gradient(90deg, #FFD700, #FFA500)' : `linear-gradient(90deg, ${stage.color}, ${stage.color}dd)`, transition: 'width 0.5s ease' }} />
-                            </div>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                              <Button size="sm" style={{ flex: 1, borderRadius: 10 }} onClick={() => { setDepositTreeId(tree.id); setDepositType('deposit'); }}>+ Setor</Button>
-                              <Button size="sm" variant="secondary" style={{ flex: 1, borderRadius: 10 }} onClick={() => { setDepositTreeId(tree.id); setDepositType('withdrawal'); }}>- Tarik</Button>
+
+                              {/* Tree visualization — centered */}
+                              <div style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                padding: '16px 0 8px',
+                                borderRadius: 14,
+                                background: pct >= 100
+                                  ? 'linear-gradient(135deg, rgba(255,215,0,0.08), rgba(255,165,0,0.06))'
+                                  : `linear-gradient(135deg, ${stage.color}0d, ${stage.color}06)`,
+                                marginBottom: 16,
+                                border: `1px solid ${stage.color}22`,
+                              }}>
+                                <TreeStageSvg pct={pct} />
+                                <div style={{ fontSize: 12, fontWeight: 700, color: stage.color, letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 4 }}>{stage.label}</div>
+                                <div style={{ fontSize: 32, fontWeight: 900, marginTop: 2, color: stage.color, lineHeight: 1 }}>{pct}%</div>
+                              </div>
+
+                              {/* Progress bar */}
+                              <div style={{ height: 10, borderRadius: 99, background: 'var(--input-bg)', overflow: 'hidden', marginBottom: 10 }}>
+                                <div style={{
+                                  height: '100%', borderRadius: 99,
+                                  width: `${pct}%`,
+                                  background: pct >= 100 ? 'linear-gradient(90deg, #FFD700, #FFA500)' : `linear-gradient(90deg, ${stage.color}, ${stage.color}cc)`,
+                                  transition: 'width 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                                }} />
+                              </div>
+
+                              {/* Amount info */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13, marginBottom: 16 }}>
+                                <div>
+                                  <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 1 }}>Terkumpul</div>
+                                  <div style={{ fontWeight: 700, fontSize: 15 }}>{fmt(tree.currentAmount)}</div>
+                                </div>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 1 }}>Target</div>
+                                  <div style={{ fontWeight: 600, opacity: 0.7 }}>{fmt(tree.targetAmount)}</div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 1 }}>{pct >= 100 ? '🎉 Tercapai!' : 'Kurang'}</div>
+                                  <div style={{ fontWeight: 700, color: pct >= 100 ? '#FFD700' : stage.color, fontSize: 13 }}>
+                                    {pct >= 100 ? 'LUNAS!' : fmt(Math.max(0, remaining))}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Actions */}
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <Button size="sm" style={{ flex: 1, borderRadius: 12, fontWeight: 700 }} onClick={() => { setDepositTreeId(tree.id); setDepositType('deposit'); }}>💰 Setor</Button>
+                                <Button size="sm" variant="secondary" style={{ flex: 1, borderRadius: 12 }} onClick={() => { setDepositTreeId(tree.id); setDepositType('withdrawal'); }}>↩️ Tarik</Button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -1045,6 +1135,71 @@ export default function DuitTrackerPage() {
                   )}
                 </div>
               )}
+
+              {/* ─── Debts Tab ─── */}
+              {tab === 'debts' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {(['active', 'paid', 'all'] as const).map(f => (
+                        <button key={f} onClick={() => setDebtFilter(f)} style={{
+                          padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                          fontSize: 12, fontWeight: debtFilter === f ? 600 : 400,
+                          background: debtFilter === f ? 'rgb(var(--color-primary))' : 'var(--input-bg)',
+                          color: debtFilter === f ? '#fff' : 'inherit',
+                        }}>{f === 'active' ? 'Belum Lunas' : f === 'paid' ? 'Lunas' : 'Semua'}</button>
+                      ))}
+                    </div>
+                    <Button onClick={() => setShowDebtModal(true)} size="sm"><Plus size={14} /> Catat Hutang</Button>
+                  </div>
+
+                  {debtsLoading ? (
+                    <div style={{ textAlign: 'center', padding: 48, opacity: 0.5 }}>Memuat...</div>
+                  ) : debts.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 48 }}>
+                      <span style={{ fontSize: 56, display: 'block', marginBottom: 12 }}>🤝</span>
+                      <p style={{ opacity: 0.6, fontSize: 15, fontWeight: 500 }}>Belum ada catatan hutang</p>
+                      <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Catat hutang biar gak lupa! 📝</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {debts.map(debt => (
+                        <Card key={debt.id} style={{ padding: 16, borderRadius: 16, border: debt.isPaid ? '1px solid #4ade8044' : debt.debtType === 'owed_by_me' ? '1px solid #f8717144' : '1px solid #60a5fa44' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <span style={{ fontSize: 18 }}>{debt.debtType === 'owed_by_me' ? '📤' : '📥'}</span>
+                                <span style={{ fontSize: 14, fontWeight: 700 }}>{debt.description}</span>
+                                {debt.isPaid && <span style={{ fontSize: 10, background: '#4ade8022', color: '#4ade80', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>LUNAS</span>}
+                              </div>
+                              <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 6 }}>
+                                {debt.debtType === 'owed_by_me' ? 'Saya hutang ke' : 'Piutang dari'}: <strong>{debt.personName}</strong>
+                              </div>
+                              <div style={{ fontSize: 18, fontWeight: 800, color: debt.debtType === 'owed_by_me' ? '#f87171' : '#60a5fa' }}>
+                                {fmt(debt.amount)}
+                              </div>
+                              {debt.dueDate && (
+                                <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>
+                                  ⏰ Jatuh tempo: {new Date(debt.dueDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              {!debt.isPaid && (
+                                <Button size="sm" onClick={() => handleMarkDebtPaid(debt.id)} style={{ fontSize: 12, borderRadius: 8 }}>✅ Lunas</Button>
+                              )}
+                              <button onClick={() => handleDeleteDebt(debt.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 6 }}>
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               </>}
             </div>
 
@@ -1222,6 +1377,23 @@ export default function DuitTrackerPage() {
                   </div>
                 </div>
               </div>
+            </Modal>
+
+            {/* Debt Modal */}
+            <Modal isOpen={showDebtModal} onClose={() => setShowDebtModal(false)} title="Catat Hutang">
+              <form onSubmit={handleDebtSubmit}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <TextInput label="Deskripsi" value={debtForm.description} onChange={v => setDebtForm(f => ({ ...f, description: v }))} placeholder="Hutang buat apa..." required />
+                  <CurrencyInput label="Jumlah" value={debtForm.amount} onChange={v => setDebtForm(f => ({ ...f, amount: v }))} />
+                  <TextInput label="Nama Orang" value={debtForm.personName} onChange={v => setDebtForm(f => ({ ...f, personName: v }))} placeholder="Siapa..." required />
+                  <SelectOption label="Tipe" value={debtForm.debtType} onChange={v => setDebtForm(f => ({ ...f, debtType: v }))} options={[{ value: 'owed_by_me', label: '📤 Saya yang hutang' }, { value: 'owed_to_me', label: '📥 Orang hutang ke saya' }]} />
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, display: 'block' }}>Jatuh Tempo (opsional)</label>
+                    <DateTimePicker mode="date" value={debtForm.dueDate} onChange={v => setDebtForm(f => ({ ...f, dueDate: v }))} placeholder="Pilih tanggal jatuh tempo" />
+                  </div>
+                  <Button type="submit" disabled={submitting} style={{ marginTop: 8 }}>{submitting ? 'Menyimpan...' : 'Simpan Hutang'}</Button>
+                </div>
+              </form>
             </Modal>
 
             </PullToRefresh>

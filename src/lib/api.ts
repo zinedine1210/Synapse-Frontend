@@ -43,7 +43,14 @@ export async function apiFetch<T>(
   // Handle 204 No Content
   if (response.status === 204) return null as T;
 
-  return response.json() as Promise<T>;
+  // Handle empty body gracefully
+  const text = await response.text();
+  if (!text) return null as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null as T;
+  }
 }
 
 /**

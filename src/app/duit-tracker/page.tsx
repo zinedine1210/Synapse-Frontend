@@ -838,9 +838,21 @@ export default function DuitTrackerPage() {
               {tab === 'summary' && summary && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {/* Weekly Roast */}
-                  {/* Weekly Roast */}
                   {hasFeature('si_bawel') && (
-                    weeklyRoast ? (
+                    roastLoading ? (
+                      <div style={{
+                        padding: '24px', borderRadius: 16,
+                        background: 'linear-gradient(135deg, rgba(255, 100, 0, 0.08) 0%, rgba(255, 50, 0, 0.02) 100%)',
+                        border: '1px solid rgba(255, 100, 0, 0.15)',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16, marginBottom: 16,
+                      }}>
+                        <Loader2 size={32} className="spin" style={{ color: '#ff6b35' }} />
+                        <div>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 6px' }}>Weekly Roast</h3>
+                          <p style={{ fontSize: 13, opacity: 0.7, margin: 0 }}>Si Bawel lagi mikir keras buat roasting kamu... 🔥</p>
+                        </div>
+                      </div>
+                    ) : weeklyRoast ? (
                       <div style={{
                         padding: '20px 22px', borderRadius: 16,
                         background: 'linear-gradient(135deg, rgba(255, 100, 0, 0.04) 0%, rgba(255, 50, 0, 0.02) 100%)',
@@ -864,7 +876,6 @@ export default function DuitTrackerPage() {
                           </div>
                         )}
                         <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
-                          {!roastLoading && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -874,12 +885,6 @@ export default function DuitTrackerPage() {
                           >
                             Roast Ulang 🔥
                           </Button>
-                          )}
-                          {roastLoading && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, opacity: 0.6 }}>
-                              <Loader2 size={12} className="spin" /> Lagi diproses AI...
-                            </div>
-                          )}
                         </div>
                       </div>
                     ) : (
@@ -887,12 +892,7 @@ export default function DuitTrackerPage() {
                         padding: '24px', borderRadius: 16,
                         background: 'linear-gradient(135deg, rgba(255, 100, 0, 0.08) 0%, rgba(255, 50, 0, 0.02) 100%)',
                         border: '1px solid rgba(255, 100, 0, 0.15)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        textAlign: 'center',
-                        gap: 16,
-                        marginBottom: 16,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16, marginBottom: 16,
                       }}>
                         <span style={{ fontSize: 32 }}>🔥</span>
                         <div>
@@ -904,24 +904,13 @@ export default function DuitTrackerPage() {
                         <Button
                           type="button"
                           onClick={handleGenerateWeeklyRoast}
-                          disabled={roastLoading}
                           style={{
-                            background: roastLoading ? 'rgba(255,100,0,0.3)' : 'linear-gradient(135deg, #ff6b35 0%, #ff4f00 100%)',
-                            border: 'none',
-                            color: '#fff',
-                            fontWeight: 600,
-                            borderRadius: 12,
-                            padding: '10px 20px',
-                            cursor: roastLoading ? 'not-allowed' : 'pointer',
-                            display: 'flex', alignItems: 'center', gap: 8,
+                            background: 'linear-gradient(135deg, #ff6b35 0%, #ff4f00 100%)',
+                            border: 'none', color: '#fff', fontWeight: 600, borderRadius: 12, padding: '10px 20px',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
                           }}
                         >
-                          {roastLoading ? (
-                            <>
-                              <Loader2 size={14} className="spin" />
-                              <span>Lagi diproses AI...</span>
-                            </>
-                          ) : 'Minta Roast 🔥'}
+                          Minta Roast 🔥
                         </Button>
                       </div>
                     )

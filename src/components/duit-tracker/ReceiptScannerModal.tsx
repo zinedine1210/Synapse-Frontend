@@ -24,11 +24,11 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
   const { showToast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
-  const [scanning, setScanning] = useState(false);
   const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
   const [savingBulk, setSavingBulk] = useState(false);
 
   const scanReceiptJob = useAiJob<any>('scan_receipt', {
+    enabled: isOpen, // only poll when modal is open
     onComplete: (result) => {
       const items: any[] = Array.isArray(result) ? result : result?.items ? result.items : result?.error ? [] : [result];
       if (items.length > 0 && (items[0].amount || items[0].total)) {
@@ -44,10 +44,10 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
       } else {
         showToast('Duh gak kebaca nih, coba foto ulang yang lebih jelas ya! 🔍', 'error');
       }
-      setScanning(false);
     },
-    onError: (err) => { showToast(err || 'Yah gagal scan nih, coba lagi ya~', 'error'); setScanning(false); },
+    onError: (err) => showToast(err || 'Yah gagal scan nih, coba lagi ya~', 'error'),
   });
+  const scanning = scanReceiptJob.isProcessing;
 
   const checkedCount = useMemo(() => scannedItems.filter(i => i.checked).length, [scannedItems]);
   const allChecked = useMemo(() => scannedItems.length > 0 && scannedItems.every(i => i.checked), [scannedItems]);
@@ -63,7 +63,6 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
       showToast('Kegedean nih fotonya, maks 5MB ya! 📏', 'error');
       return;
     }
-    setScanning(true);
     setScannedItems([]);
     try {
       const base64 = await new Promise<string>((resolve, reject) => {
@@ -76,7 +75,6 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
       await scanReceiptJob.trigger(() => duitTrackerService.scanReceipt(clean, file.type));
     } catch (err: any) {
       showToast(err.message || 'Yah gagal scan nih, coba lagi ya~', 'error');
-      setScanning(false);
     } finally {
       if (fileRef.current) fileRef.current.value = '';
       if (cameraRef.current) cameraRef.current.value = '';

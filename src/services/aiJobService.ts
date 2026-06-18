@@ -12,8 +12,10 @@ export interface AiJobStatus<T = any> {
 
 export const aiJobService = {
   /** Check current status of an AI job for the given type */
-  getStatus: <T = any>(jobType: string) =>
-    apiFetch<AiJobStatus<T> | null>(`/ai-jobs/status?type=${encodeURIComponent(jobType)}`),
+  getStatus: async <T = any>(jobType: string): Promise<AiJobStatus<T> | null> => {
+    const res = await apiFetch<{ data: AiJobStatus<T> | null }>(`/ai-jobs/status?type=${encodeURIComponent(jobType)}`);
+    return res?.data ?? null;
+  },
 
   /** Dismiss a completed/failed job so it no longer shows up */
   dismiss: (jobId: string) =>

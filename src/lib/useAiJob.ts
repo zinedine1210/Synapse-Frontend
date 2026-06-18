@@ -3,11 +3,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { aiJobService, AiJobStatus } from '@/services/aiJobService';
 
-const POLL_INTERVAL = 5000; // 5 seconds
+const POLL_INTERVAL = 4000; // 4 seconds
 const MAX_POLL_DURATION = 3 * 60 * 1000; // 3 minutes
 
 interface UseAiJobOptions<T> {
-  /** Callback when job completes (from polling, not from direct trigger) */
+  /** Callback when job completes */
   onComplete?: (result: T) => void;
   /** Callback when job fails */
   onError?: (error: string) => void;
@@ -29,7 +29,7 @@ interface UseAiJobReturn<T> {
    * then automatically starts polling for the result.
    */
   trigger: (apiFn: () => Promise<any>) => Promise<void>;
-  /** Dismiss the current job result (hide from future status checks) */
+  /** Dismiss the current job result */
   dismiss: () => Promise<void>;
   /** Reset local state */
   reset: () => void;
@@ -40,13 +40,21 @@ export function useAiJob<T = any>(
   options: UseAiJobOptions<T> = {},
 ): UseAiJobReturn<T> {
   const { onComplete, onError, enabled = true } = options;
+
   const [status, setStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
   const [result, setResult] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollStartRef = useRef<number>(0);
   const jobIdRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
+
+  // Use refs for callbacks to avoid stale closure issues in setInterval
+  const onCompleteRef = useRef(onComplete);
+  const onErrorRef = useRef(onError);
+  onCompleteRef.current = onComplete;
+  onErrorRef.current = onError;
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -55,118 +63,176 @@ export function useAiJob<T = any>(
     }
   }, []);
 
+  const handleCompleted = useCallback((jobResult: T | null) => {
+    if (!mountedRef.current) return;
+    stopPolling();
+    setStatus('completed');
+    setResult(jobResult);
+    if (jobResult) {
+      onCompleteRef.current?.(jobResult);
+    }
+  }, [stopPolling]);
+
+  const handleFailed = useCallback((errMsg: string) => {
+    if (!mountedRef.current) return;
+    stopPolling();
+    setStatus('failed');
+    setError(errMsg);
+    onErrorRef.current?.(errMsg);
+  }, [stopPolling]);
+
+  const pollOnce = useCallback(async (): Promise<boolean> => {
+    try {
+      const updated = await aiJobService.getStatus<T>(jobType);
+      if (!mountedRef.current) return true;
+
+      if (!updated) {
+        // null = no job found. Do NOT treat as completed.
+        // Keep polling — the job row might not be visible yet due to timing.
+        return false;
+      }
+
+      jobIdRef.current = updated.id;
+
+      if (updated.status === 'COMPLETED') {
+        handleCompleted(updated.result);
+        return true;
+      } else if (updated.status === 'FAILED') {
+        handleFailed(updated.error || 'AI gagal memproses.');
+        return true;
+      }
+      // Still PROCESSING — continue polling
+      return false;
+    } catch {
+      // Ignore transient errors, keep polling
+      return false;
+    }
+  }, [jobType, handleCompleted, handleFailed]);
+
   const startPolling = useCallback(() => {
     if (pollRef.current) return; // already polling
     pollStartRef.current = Date.now();
+
+    // Immediately do first poll (don't wait 4s)
+    pollOnce();
+
+    // Then continue at regular interval
     pollRef.current = setInterval(async () => {
+      if (!pollRef.current) return; // polling was stopped
       if (Date.now() - pollStartRef.current > MAX_POLL_DURATION) {
-        stopPolling();
-        if (mountedRef.current) {
-          setStatus('failed');
-          setError('Request timeout — coba lagi nanti.');
-          onError?.('Request timeout');
-        }
+        handleFailed('Request timeout — coba lagi nanti.');
         return;
       }
-      try {
-        const updated = await aiJobService.getStatus<T>(jobType);
-        if (!mountedRef.current) return;
-        if (!updated || updated.status === 'COMPLETED') {
-          stopPolling();
-          setStatus('completed');
-          setResult(updated?.result ?? null);
-          if (updated?.result) onComplete?.(updated.result);
-        } else if (updated.status === 'FAILED') {
-          stopPolling();
-          setStatus('failed');
-          setError(updated.error);
-          onError?.(updated.error || 'AI gagal memproses.');
-        }
-        // else still PROCESSING, continue polling
-      } catch {
-        // Ignore polling errors, will retry next interval
-      }
+      await pollOnce();
     }, POLL_INTERVAL);
-  }, [jobType, onComplete, onError, stopPolling]);
+  }, [pollOnce, handleFailed]);
 
-  const checkStatus = useCallback(async () => {
-    try {
-      const job = await aiJobService.getStatus<T>(jobType);
-      if (!mountedRef.current) return;
-
-      if (!job) {
-        setStatus('idle');
-        stopPolling();
-        return;
-      }
-
-      jobIdRef.current = job.id;
-
-      if (job.status === 'PROCESSING') {
-        setStatus('processing');
-        startPolling();
-      } else if (job.status === 'COMPLETED') {
-        setStatus('completed');
-        setResult(job.result);
-        stopPolling();
-      } else if (job.status === 'FAILED') {
-        setStatus('failed');
-        setError(job.error);
-        stopPolling();
-      } else {
-        // DISMISSED or unknown
-        setStatus('idle');
-        stopPolling();
-      }
-    } catch {
-      // Ignore initial check errors (e.g., no auth yet)
-    }
-  }, [jobType, startPolling, stopPolling]);
-
-  // Check status on mount (only once)
+  // Check status on mount
   useEffect(() => {
     mountedRef.current = true;
-    if (enabled) {
-      checkStatus();
+
+    if (!enabled) {
+      return () => { mountedRef.current = false; stopPolling(); };
     }
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const job = await aiJobService.getStatus<T>(jobType);
+        if (cancelled || !mountedRef.current) return;
+
+        if (!job) {
+          setStatus('idle');
+          return;
+        }
+
+        jobIdRef.current = job.id;
+
+        if (job.status === 'PROCESSING') {
+          setStatus('processing');
+          startPolling();
+        } else if (job.status === 'COMPLETED') {
+          // Job already completed — show result immediately
+          handleCompleted(job.result);
+        } else if (job.status === 'FAILED') {
+          setStatus('failed');
+          setError(job.error);
+          // Don't call onError on mount for stale failed jobs
+        } else {
+          setStatus('idle');
+        }
+      } catch {
+        // Ignore initial check errors
+      }
+    })();
+
     return () => {
+      cancelled = true;
       mountedRef.current = false;
       stopPolling();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+  }, [jobType, enabled]);
 
   const trigger = useCallback(
     async (apiFn: () => Promise<any>): Promise<void> => {
+      stopPolling();
       setStatus('processing');
       setError(null);
       setResult(null);
+
+      // Dismiss old completed job so pollOnce won't find stale results
+      if (jobIdRef.current) {
+        aiJobService.dismiss(jobIdRef.current).catch(() => {});
+        jobIdRef.current = null;
+      }
+
       try {
-        await apiFn();
-        // API accepted the job — start polling for result
-        if (mountedRef.current) {
-          startPolling();
+        const response = await apiFn();
+
+        if (!mountedRef.current) return;
+
+        // If backend returned COMPLETED synchronously (DB fallback mode),
+        // use the result directly instead of polling
+        if (response && response.status === 'COMPLETED') {
+          try {
+            const parsed = typeof response.message === 'string'
+              ? JSON.parse(response.message)
+              : response.message;
+            handleCompleted(parsed);
+          } catch {
+            handleCompleted(response as T);
+          }
+          return;
         }
+
+        // Otherwise, backend accepted the async job — start polling
+        startPolling();
       } catch (err: any) {
         if (!mountedRef.current) return;
-        // 409 Conflict or "sedang memproses" = already processing, start polling
+
+        // 409 or "sedang memproses" = already processing — just poll
         if (
           err.message?.includes('sedang memproses') ||
-          err.message?.includes('409')
+          err.message?.includes('409') ||
+          err.message?.includes('Tunggu')
         ) {
           setStatus('processing');
           startPolling();
           return;
         }
+
         setStatus('failed');
         setError(err.message || 'Terjadi kesalahan.');
         throw err;
       }
     },
-    [startPolling],
+    [startPolling, stopPolling, handleCompleted],
   );
 
   const dismiss = useCallback(async () => {
+    stopPolling();
     if (jobIdRef.current) {
       await aiJobService.dismiss(jobIdRef.current).catch(() => {});
     }
@@ -174,13 +240,13 @@ export function useAiJob<T = any>(
     setResult(null);
     setError(null);
     jobIdRef.current = null;
-  }, []);
+  }, [stopPolling]);
 
   const reset = useCallback(() => {
+    stopPolling();
     setStatus('idle');
     setResult(null);
     setError(null);
-    stopPolling();
   }, [stopPolling]);
 
   return {

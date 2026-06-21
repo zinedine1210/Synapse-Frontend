@@ -58,6 +58,29 @@ export interface Summary {
   categoryReport: { category: string; spent: number; budget: number | null; percentage: number | null }[];
 }
 
+export interface RecurringBill {
+  id: string;
+  name: string;
+  amount: number;
+  category: string;
+  dueDay: number;
+  isActive: boolean;
+  lastPaidAt?: string;
+  lastPaidFor?: string;
+  notes?: string;
+  isPaidThisMonth?: boolean;
+  isDueSoon?: boolean;
+}
+
+export interface FinancialOverview {
+  unpaidBills: { id: string; name: string; amount: number; dueDay: number }[];
+  totalUnpaidBills: number;
+  debtsOwed: { id: string; description: string; amount: number; personName: string }[];
+  totalDebtOwed: number;
+  debtsLent: { id: string; description: string; amount: number; personName: string }[];
+  totalDebtLent: number;
+}
+
 export const duitTrackerService = {
   // Transactions
   createTransaction: (data: Partial<Transaction>) =>
@@ -146,4 +169,22 @@ export const duitTrackerService = {
 
   markDebtPaid: (id: string) =>
     apiFetch<any>(`/duit-tracker/debts/${id}/pay`, { method: 'POST' }),
+
+  // Recurring Bills / Tagihan
+  getBills: () => apiFetch<RecurringBill[]>('/duit-tracker/bills'),
+
+  createBill: (data: { name: string; amount: number; dueDay: number; category?: string; notes?: string }) =>
+    apiFetch<RecurringBill>('/duit-tracker/bills', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateBill: (id: string, data: { name?: string; amount?: number; dueDay?: number; isActive?: boolean; notes?: string }) =>
+    apiFetch<RecurringBill>(`/duit-tracker/bills/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  deleteBill: (id: string) =>
+    apiFetch(`/duit-tracker/bills/${id}`, { method: 'DELETE' }),
+
+  markBillPaid: (id: string) =>
+    apiFetch<any>(`/duit-tracker/bills/${id}/pay`, { method: 'POST' }),
+
+  // Financial Overview
+  getFinancialOverview: () => apiFetch<FinancialOverview>('/duit-tracker/financial-overview'),
 };

@@ -139,31 +139,6 @@
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
-/* Light mode: summary/ringkasan card text */
-[data-theme="light"] .duit-tracker [style*="var(--input-bg)"] {
-  background-color: #f4f6fb !important;
-}
-[data-theme="light"] .duit-tracker [style*="rgba(255, 100, 0"] {
-  color: inherit;
-}
-/* Light mode: weekly roast text */
-[data-theme="light"] .duit-tracker p[style*="fontStyle: italic"] {
-  color: #1f2937;
-}
-/* Light mode: budget progress bar container */
-[data-theme="light"] .duit-tracker [style*="border: '1px solid var(--dt-card-border)'"] {
-  background: #fff !important;
-}
-/* Light mode: category report bars bg */
-[data-theme="light"] .duit-tracker [style*="height: 8, borderRadius: 4"] {
-  background: #e8ecf2 !important;
-}
-/* Light mode: savings tree card */
-[data-theme="light"] .duit-tracker .duit-trees-grid > div {
-  background: #fff !important;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
-}
-
 /* ─── Light Mode Global Readability Fixes ────────────────────────────── */
 [data-theme="light"] [style*="opacity: 0.3"],
 [data-theme="light"] [style*="opacity:0.3"] {
@@ -1600,7 +1575,16 @@ body.hide-bottom-nav .quick-action-fab {
   }
   .todo-segmented::-webkit-scrollbar { display: none; }
   .todo-calendar {
-    font-size: 12px;
+    font-size: 11px;
+  }
+  .todo-calendar > div:last-child > div {
+    min-height: 60px !important;
+    padding: 4px 4px !important;
+    border-radius: 8px !important;
+  }
+  .todo-calendar > div:last-child > div > div:last-child > div {
+    font-size: 9px !important;
+    padding: 1px 3px !important;
   }
 
   /* ═══ Class Page (Forum/Chat) ═══ */
@@ -1857,10 +1841,11 @@ body.hide-bottom-nav .quick-action-fab {
     font-size: 13px !important;
   }
 
-  /* ── Todo calendar nav buttons ── */
+  /* ── Todo smaller ── */
   .todo-calendar button {
-    width: 32px !important;
-    height: 32px !important;
+    width: 24px !important;
+    height: 24px !important;
+    font-size: 10px !important;
   }
 }
 

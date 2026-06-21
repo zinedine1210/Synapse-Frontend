@@ -9,10 +9,14 @@ export interface WeeklySummary {
     changeDirection: 'more' | 'less' | 'same';
     topCategories: { category: string; amount: number }[];
   };
-  productivity: {
-    todosCompleted: number;
-    todosTotal: number;
-    completionRate: number;
+  engagement?: {
+    qnaAnswers: number;
+    qnaApproved: number;
+    forumPosts: number;
+    forumReplies: number;
+    loginStreak: number;
+    longestStreak: number;
+    totalTransactions: number;
   };
   gamification: {
     totalXp: number;
@@ -25,6 +29,6 @@ export interface WeeklySummary {
 }
 
 export const insightService = {
-  getWeekly: () => apiFetch<WeeklySummary>('/insight/weekly'),
+  getWeekly: (range?: string) => apiFetch<WeeklySummary>(`/insight/weekly${range ? `?range=${range}` : ''}`),
   getAiInsight: () => apiFetch<WeeklySummary>('/insight/ai', { method: 'POST' }),
 };

@@ -11,6 +11,9 @@ export interface WeeklyRoast {
   roast: string;
   tip: string;
   biggestSpend: string;
+  unnecessarySpending?: { item: string; amount: number; reason: string }[];
+  advice?: string[];
+  savingPotential?: number;
 }
 
 export interface BawelComment {
@@ -43,6 +46,8 @@ export const siBawelService = {
     apiFetch<{ reply: string }>('/si-bawel/chat', { method: 'POST', body: JSON.stringify({ message }) }),
 
   generateWeeklyRoast: () => apiFetch<{ status: string; message: string }>('/si-bawel/weekly-roast', { method: 'POST' }),
+
+  getWeeklyRoast: () => apiFetch<WeeklyRoast>('/si-bawel/weekly-roast'),
 
   getComments: (page?: number, limit?: number) => {
     const q = new URLSearchParams();

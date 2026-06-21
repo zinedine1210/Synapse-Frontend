@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Check, CheckCheck, X, Search } from 'lucide-react';
-import { Notification } from '@/services/notificationService';
-import { useNotifications } from '@/lib/NotificationContext';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { io, Socket } from 'socket.io-client';
+import { Bell, User, Check, CheckCheck, X, Search } from 'lucide-react';
+import { notificationService, Notification } from '@/services/notificationService';
 import { useAuth } from '@/lib/AuthContext';
 import { openCommandPalette } from './CommandPalette';
 
@@ -23,10 +23,64 @@ export function Appbar({
   sidebarCollapsed = false,
 }: AppbarProps) {
   const { user: authUser } = useAuth();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
-  const resolvedUserName = userName || authUser?.fullName || 'Sobat';
+  const resolvedUserName = userName || authUser?.fullName || 'Mahasiswa';
+  const resolvedUserId = userId || authUser?.id;
   const [showPanel, setShowPanel] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(initialUnread);
+  const [loaded, setLoaded] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // Connect to notification socket
+  useEffect(() => {
+    if (!resolvedUserId) return;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+    const wsBase = apiUrl.replace(/\/api\/v\d+\/?$/, '');
+    const socket = io(`${wsBase}/notifications`, { transports: ['polling'], withCredentials: true });
+    socketRef.current = socket;
+
+    socket.on('connect', () => {
+      socket.emit('joinUser', { userId: resolvedUserId });
+    });
+
+    socket.on('newNotification', (notif: Notification) => {
+      setNotifications((prev) => [notif, ...prev].slice(0, 50));
+      setUnreadCount((prev) => prev + 1);
+    });
+
+    socket.on('unreadCount', ({ count }: { count: number }) => {
+      setUnreadCount(count);
+    });
+
+    return () => {
+      socket.emit('leaveUser', { userId: resolvedUserId });
+      socket.disconnect();
+    };
+  }, [resolvedUserId]);
+
+  // Fetch notifications when panel opens
+  const fetchNotifications = useCallback(async () => {
+    if (loaded) return;
+    try {
+      const data = await notificationService.getNotifications();
+      setNotifications(data.notifications);
+      setUnreadCount(data.unreadCount);
+      setLoaded(true);
+    } catch { }
+  }, [loaded]);
+
+  useEffect(() => {
+    if (showPanel && !loaded) fetchNotifications();
+  }, [showPanel, loaded, fetchNotifications]);
+
+  // Fetch initial unread count
+  useEffect(() => {
+    if (!resolvedUserId) return;
+    notificationService.getNotifications().then((data) => {
+      setUnreadCount(data.unreadCount);
+    }).catch(() => {});
+  }, [resolvedUserId]);
 
   // Close panel on outside click
   useEffect(() => {
@@ -41,11 +95,15 @@ export function Appbar({
   }, [showPanel]);
 
   const handleMarkAsRead = async (id: string) => {
-    await markAsRead(id);
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
+    setUnreadCount((prev) => Math.max(0, prev - 1));
+    try { await notificationService.markAsRead(id); } catch { }
   };
 
   const handleMarkAllRead = async () => {
-    await markAllAsRead();
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setUnreadCount(0);
+    try { await notificationService.markAllAsRead(); } catch { }
   };
 
   const timeAgo = (date: string) => {
@@ -79,7 +137,7 @@ export function Appbar({
         transition: 'left 0.3s ease',
       }}
     >
-      <h1 className="appbar-title" style={{ fontSize: 'var(--font-sm)', fontWeight: 600, margin: 0, color: 'rgb(var(--text-primary))', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 }}>
+      <h1 style={{ fontSize: 'var(--font-md)', fontWeight: 600, margin: 0, color: 'rgb(var(--text-primary))' }}>
         {title}
       </h1>
 
@@ -102,8 +160,7 @@ export function Appbar({
             color: 'rgb(var(--text-muted))',
             fontSize: 'var(--font-xs)',
             transition: 'var(--transition-fast)',
-            minWidth: 120,
-            maxWidth: 180,
+            minWidth: 180,
           }}
         >
           <Search size={14} />
@@ -243,44 +300,26 @@ export function Appbar({
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            padding: '0.3rem',
+            padding: '0.3rem 0.65rem 0.3rem 0.3rem',
             background: 'var(--input-bg)',
             border: '1px solid var(--border-default)',
             borderRadius: 'var(--radius-sm)',
           }}
         >
-          {authUser?.avatarUrl ? (
-            <img
-              src={authUser.avatarUrl}
-              alt={resolvedUserName}
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 'var(--radius-sm)',
-                objectFit: 'cover',
-                flexShrink: 0,
-              }}
-            />
-          ) : (
-            <div
-              style={{
-                width: 26,
-                height: 26,
-                borderRadius: 'var(--radius-sm)',
-                background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                fontSize: 11,
-                fontWeight: 700,
-                color: 'white',
-              }}
-            >
-              {resolvedUserName.charAt(0).toUpperCase()}
-            </div>
-          )}
-          <span className="appbar-username" style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))', paddingRight: '0.35rem' }}>
+          <div
+            style={{
+              width: 26,
+              height: 26,
+              borderRadius: 'var(--radius-sm)',
+              background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <User size={13} color="white" />
+          </div>
+          <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>
             {resolvedUserName}
           </span>
         </div>

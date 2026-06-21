@@ -2,24 +2,31 @@
 
 import React, { useMemo } from 'react';
 import { AnimatedNumber } from '@/components/ui';
-import { Transaction, Summary } from '@/services/duitTrackerService';
-import { TrendingUp, TrendingDown, Wallet, Receipt } from 'lucide-react';
+import { Transaction, Summary, FinancialOverview } from '@/services/duitTrackerService';
+import { TrendingUp, TrendingDown, Wallet, Receipt, AlertCircle, HandCoins } from 'lucide-react';
 
 interface FinancialHeroProps {
   summary: Summary;
   transactions: Transaction[];
   month: number;
   year: number;
+  periodLabel?: string;
+  overview?: FinancialOverview | null;
 }
 
 /**
- * FinancialHero — bold financial overview for the month.
- * Shows the balance as a large count-up number, income/expense pills,
- * and a compact daily-expense bar trend derived from existing transactions.
- * Respects prefers-reduced-motion (AnimatedNumber handles count-up; bars
- * have their grow animation disabled via a media query).
+ * FinancialHero — bold financial overview.
+ * Computes income/expense/balance from the filtered transactions so it
+ * always reflects the active period filter (today, this week, this month).
  */
-export function FinancialHero({ summary, transactions, month, year }: FinancialHeroProps) {
+export function FinancialHero({ summary, transactions, month, year, periodLabel, overview }: FinancialHeroProps) {
+  // Compute from filtered transactions for accuracy with period filters
+  const { filteredIncome, filteredExpense, filteredBalance } = useMemo(() => {
+    const inc = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const exp = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    return { filteredIncome: inc, filteredExpense: exp, filteredBalance: inc - exp };
+  }, [transactions]);
+
   // Build per-day expense totals for the selected month
   const { bars, maxVal, daysInMonth } = useMemo(() => {
     const dim = new Date(year, month, 0).getDate();
@@ -40,7 +47,8 @@ export function FinancialHero({ summary, transactions, month, year }: FinancialH
   const isCurrentMonth =
     new Date().getMonth() + 1 === month && new Date().getFullYear() === year;
 
-  const positive = summary.balance >= 0;
+  const positive = filteredBalance >= 0;
+  const label = periodLabel || 'Saldo bulan ini';
 
   return (
     <div className="duit-hero">
@@ -48,10 +56,10 @@ export function FinancialHero({ summary, transactions, month, year }: FinancialH
         {/* Balance block */}
         <div className="duit-hero__balance">
           <div className="duit-hero__label">
-            <Wallet size={14} /> Saldo bulan ini
+            <Wallet size={14} /> {label}
           </div>
           <AnimatedNumber
-            value={summary.balance}
+            value={filteredBalance}
             prefix="Rp "
             countUp
             duration={900}
@@ -60,7 +68,7 @@ export function FinancialHero({ summary, transactions, month, year }: FinancialH
           />
           <div className="duit-hero__meta">
             <Receipt size={12} />
-            <AnimatedNumber value={summary.transactionCount} countUp duration={700} />
+            <AnimatedNumber value={transactions.length} countUp duration={700} />
             <span>transaksi</span>
           </div>
         </div>
@@ -74,7 +82,7 @@ export function FinancialHero({ summary, transactions, month, year }: FinancialH
             <div>
               <div className="duit-hero__pill-label">Pemasukan</div>
               <AnimatedNumber
-                value={summary.income}
+                value={filteredIncome}
                 prefix="Rp "
                 countUp
                 duration={800}
@@ -89,7 +97,7 @@ export function FinancialHero({ summary, transactions, month, year }: FinancialH
             <div>
               <div className="duit-hero__pill-label">Pengeluaran</div>
               <AnimatedNumber
-                value={summary.expense}
+                value={filteredExpense}
                 prefix="Rp "
                 countUp
                 duration={800}
@@ -99,6 +107,32 @@ export function FinancialHero({ summary, transactions, month, year }: FinancialH
           </div>
         </div>
       </div>
+
+      {/* Bills & Debt Info */}
+      {overview && (overview.totalUnpaidBills > 0 || overview.totalDebtOwed > 0) && (
+        <div className="duit-hero__obligations">
+          {overview.totalUnpaidBills > 0 && (
+            <div className="duit-hero__oblig-item">
+              <AlertCircle size={13} />
+              <span>Tagihan: Rp {overview.totalUnpaidBills.toLocaleString('id-ID')}</span>
+              <span className="duit-hero__oblig-detail">({overview.unpaidBills.length} belum bayar)</span>
+            </div>
+          )}
+          {overview.totalDebtOwed > 0 && (
+            <div className="duit-hero__oblig-item">
+              <HandCoins size={13} />
+              <span>Hutang: Rp {overview.totalDebtOwed.toLocaleString('id-ID')}</span>
+              <span className="duit-hero__oblig-detail">({overview.debtsOwed.length} aktif)</span>
+            </div>
+          )}
+          {overview.totalDebtLent > 0 && (
+            <div className="duit-hero__oblig-item duit-hero__oblig-item--lent">
+              <HandCoins size={13} />
+              <span>Piutang: Rp {overview.totalDebtLent.toLocaleString('id-ID')}</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Mini daily-expense trend */}
       <div className="duit-hero__trend">
@@ -309,6 +343,32 @@ export function FinancialHero({ summary, transactions, month, year }: FinancialH
           .duit-hero__pill {
             flex: 1;
           }
+        }
+        .duit-hero__obligations {
+          position: relative;
+          z-index: 1;
+          margin-top: 14px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .duit-hero__oblig-item {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 6px 12px;
+          border-radius: 10px;
+          background: rgba(255, 70, 70, 0.2);
+          backdrop-filter: blur(6px);
+          font-size: 11px;
+          font-weight: 600;
+        }
+        .duit-hero__oblig-item--lent {
+          background: rgba(34, 197, 94, 0.2);
+        }
+        .duit-hero__oblig-detail {
+          opacity: 0.7;
+          font-weight: 400;
         }
       `}</style>
     </div>

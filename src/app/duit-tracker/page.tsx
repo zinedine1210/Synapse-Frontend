@@ -9,7 +9,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, Alert, Modal, useToast, useConfirm, CurrencyInput, parseCurrency, DateTimePicker, PullToRefresh, SelectOption, TextInput, TextArea } from '@/components/ui';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
-import { duitTrackerService, Transaction, Summary, SavingTree, CategoryBudget } from '@/services/duitTrackerService';
+import { duitTrackerService, Transaction, Summary, SavingTree, CategoryBudget, FinancialOverview } from '@/services/duitTrackerService';
 import { siBawelService, BawelSetting, WeeklyRoast } from '@/services/siBawelService';
 import { SubscriptionCard } from '@/components/duit-tracker/SubscriptionCard';
 import { FinancialHero } from '@/components/duit-tracker/FinancialHero';
@@ -276,6 +276,18 @@ export default function DuitTrackerPage() {
   const { data: summary, loading, revalidate: refetchSummary } = useCache<Summary>(`dt:summary:${month}:${year}`, summaryFetcher);
   const { data: trees = [], revalidate: refetchTrees, mutate: mutateTrees } = useCache<SavingTree[]>('dt:trees', treesFetcher);
   const { data: budgets = [], revalidate: refetchBudgets, mutate: mutateBudgets } = useCache<CategoryBudget[]>(`dt:budgets:${month}:${year}`, budgetsFetcher);
+
+  // Financial overview (debts + bills summary for hero card)
+  const [overview, setOverview] = useState<FinancialOverview | null>(null);
+  useEffect(() => {
+    duitTrackerService.getFinancialOverview().then(setOverview).catch(() => {});
+  }, []);
+
+  // Period label for hero card
+  const periodLabel = useMemo(() => {
+    const found = PERIOD_PRESETS.find(p => p.key === periodPreset);
+    return found ? `Saldo ${found.label.toLowerCase()}` : 'Saldo';
+  }, [periodPreset]);
 
   const fetchData = useCallback(async () => {
     refreshTx();
@@ -619,7 +631,7 @@ export default function DuitTrackerPage() {
 
               {/* Financial Hero — bold overview with count-up + daily trend */}
               {summary && (
-                <FinancialHero summary={summary} transactions={transactions} month={month} year={year} />
+                <FinancialHero summary={summary} transactions={transactions} month={month} year={year} periodLabel={periodLabel} overview={overview} />
               )}
 
               {/* Tabs — pill style */}
@@ -873,6 +885,39 @@ export default function DuitTrackerPage() {
                         {weeklyRoast.tip && (
                           <div style={{ fontSize: 13, padding: '10px 14px', borderRadius: 10, background: 'rgba(var(--color-primary), 0.05)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
                             <span>💡</span> <span style={{ opacity: 0.7 }}>{weeklyRoast.tip}</span>
+                          </div>
+                        )}
+                        {/* Unnecessary Spending */}
+                        {weeklyRoast.unnecessarySpending && weeklyRoast.unnecessarySpending.length > 0 && (
+                          <div style={{ marginTop: 14 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.6, marginBottom: 8 }}>⚠️ Pengeluaran yang bisa dihindari:</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {weeklyRoast.unnecessarySpending.map((item, i) => (
+                                <div key={i} style={{ fontSize: 13, padding: '8px 12px', borderRadius: 8, background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div>
+                                    <span style={{ fontWeight: 600 }}>{item.item}</span>
+                                    <span style={{ opacity: 0.5, marginLeft: 6, fontSize: 11 }}>{item.reason}</span>
+                                  </div>
+                                  <span style={{ fontWeight: 700, color: 'var(--dt-expense)', fontSize: 12 }}>Rp {item.amount.toLocaleString('id-ID')}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {/* Advice */}
+                        {weeklyRoast.advice && weeklyRoast.advice.length > 0 && (
+                          <div style={{ marginTop: 14 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.6, marginBottom: 8 }}>📝 Saran:</div>
+                            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13, lineHeight: 1.8, opacity: 0.8 }}>
+                              {weeklyRoast.advice.map((a, i) => <li key={i}>{a}</li>)}
+                            </ul>
+                          </div>
+                        )}
+                        {/* Saving Potential */}
+                        {weeklyRoast.savingPotential && weeklyRoast.savingPotential > 0 && (
+                          <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.15)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span>💰</span>
+                            <span>Potensi hemat: <strong style={{ color: 'var(--dt-income)' }}>Rp {weeklyRoast.savingPotential.toLocaleString('id-ID')}</strong>/minggu</span>
                           </div>
                         )}
                         <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>

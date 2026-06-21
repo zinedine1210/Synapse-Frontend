@@ -77,7 +77,6 @@ export default function MakanApaPage() {
   const [mode, setMode] = useSessionStorage<TabMode>('makan_mode', 'fridge');
   const [pref, setPref] = useState<FoodPreference | null>(null);
   const [showPrefModal, setShowPrefModal] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [fridgeResult, setFridgeResult] = useSessionStorage<FridgeResult | null>('makan_fridgeResult', null);
   const [menuResult, setMenuResult] = useSessionStorage<MenuResult | null>('makan_menuResult', null);
@@ -85,13 +84,16 @@ export default function MakanApaPage() {
 
   // AI Job tracking for food recommendations
   const fridgeJob = useAiJob<FridgeResult>('food_from_fridge', {
-    onComplete: (result) => { setFridgeResult(result); setLoading(false); refetchBudget(); },
-    onError: (err) => { showToast(err || 'Gagal memproses foto.', 'error'); setLoading(false); },
+    onComplete: (result) => { setFridgeResult(result); refetchBudget(); },
+    onError: (err) => { showToast(err || 'Gagal memproses foto.', 'error'); },
   });
   const menuJob = useAiJob<MenuResult>('food_from_menu', {
-    onComplete: (result) => { setMenuResult(result); setLoading(false); refetchBudget(); },
-    onError: (err) => { showToast(err || 'Gagal memproses foto.', 'error'); setLoading(false); },
+    onComplete: (result) => { setMenuResult(result); refetchBudget(); },
+    onError: (err) => { showToast(err || 'Gagal memproses foto.', 'error'); },
   });
+
+  // Derive loading from the active job status — block ALL uploads if ANY job is processing
+  const loading = fridgeJob.isProcessing || menuJob.isProcessing;
 
   // Cached data fetching
   const budgetFetcher = useCallback(() => foodService.getRemainingBudget().catch(() => null), []);
@@ -115,9 +117,7 @@ export default function MakanApaPage() {
   );
 
   const handleImageUpload = async (file: File) => {
-    setLoading(true);
-    setFridgeResult(null);
-    setMenuResult(null);
+    if (loading) return; // prevent double upload
     try {
       const reader = new FileReader();
       const base64 = await new Promise<string>((resolve) => {
@@ -127,13 +127,14 @@ export default function MakanApaPage() {
       const mimeType = file.type;
 
       if (mode === 'fridge') {
+        setFridgeResult(null);
         await fridgeJob.trigger(() => foodService.fromFridge(base64, mimeType));
       } else {
+        setMenuResult(null);
         await menuJob.trigger(() => foodService.fromMenu(base64, mimeType, menuFilter));
       }
     } catch (e: any) {
       showToast(e.message || 'Gagal memproses foto.', 'error');
-      setLoading(false);
     }
   };
 
@@ -709,8 +710,8 @@ export default function MakanApaPage() {
                     </Card>
                   )}
 
-                  {/* Fridge Results */}
-                  {fridgeResult && (
+                  {/* Fridge Results — only show on fridge tab */}
+                  {mode === 'fridge' && !loading && fridgeResult && (
                     <div className="animate-fade-in">
                       {fridgeResult.detectedIngredients.length > 0 && (
                         <Card style={{ marginBottom: 16 }}>
@@ -756,11 +757,20 @@ export default function MakanApaPage() {
                     </div>
                   )}
 
-                  {/* Menu Results */}
-                  {menuResult && (
+                  {/* Menu Results — only show on menu tab */}
+                  {mode === 'menu' && !loading && menuResult && (
                     <div className="animate-fade-in">
+                      {/* Error from AI */}
+                      {(menuResult as any).error && (
+                        <Card style={{ marginBottom: 12, padding: '16px', background: 'rgba(var(--color-error) / 0.06)', borderLeft: '3px solid rgb(var(--color-error))' }}>
+                          <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--color-error))', fontWeight: 600 }}>
+                            ⚠️ {(menuResult as any).error}
+                          </p>
+                        </Card>
+                      )}
+
                       {/* Budget filter notice */}
-                      {budgetInfo?.remaining && budgetInfo.remaining > 0 && filteredMenuRecs.length < menuResult.recommendations.length && (
+                      {budgetInfo?.remaining && budgetInfo.remaining > 0 && filteredMenuRecs.length < (menuResult.recommendations?.length ?? 0) && (
                         <Card style={{ marginBottom: 12, padding: '10px 14px', background: 'rgba(var(--color-warning) / 0.08)', borderLeft: '3px solid rgb(var(--color-warning))' }}>
                           <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-secondary))' }}>
                             ⚡ Menampilkan {filteredMenuRecs.length} dari {menuResult.recommendations.length} rekomendasi yang sesuai budget ({fmt(budgetInfo.remaining)})
@@ -768,48 +778,79 @@ export default function MakanApaPage() {
                         </Card>
                       )}
 
-                      <h3 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Sparkles size={18} style={{ color: 'rgb(var(--color-primary))' }} /> Rekomendasi
-                      </h3>
-                      {filteredMenuRecs.length === 0 && menuResult.recommendations.length > 0 ? (
-                        <Card style={{ padding: '1.5rem', textAlign: 'center' }}>
-                          <p style={{ color: 'rgb(var(--text-muted))', fontSize: 'var(--font-sm)' }}>
-                            Semua menu melebihi sisa budget ({fmt(budgetInfo?.remaining ?? 0)}).
-                          </p>
-                        </Card>
-                      ) : (
-                        <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                          {filteredMenuRecs.map((rec, i) => (
-                            <Card key={i} style={{ padding: 0, overflow: 'hidden' }}>
-                              <div style={{ display: 'flex', borderLeft: '4px solid rgb(var(--color-primary))' }}>
-                                <div style={{ flex: 1, padding: '14px 16px' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 6 }}>
-                                    <h4 style={{ fontWeight: 800, fontSize: 'var(--font-md)' }}>{rec.name}</h4>
-                                    <span style={{ fontWeight: 800, color: 'rgb(var(--color-primary))', whiteSpace: 'nowrap' }}>{fmt(rec.price)}</span>
-                                  </div>
-                                  <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', marginBottom: 8 }}>{rec.reason}</p>
-                                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                    {rec.tags.map(t => <span key={t} className="tag-chip" style={{ fontSize: '10px' }}>#{t}</span>)}
+                      {/* Recommendations */}
+                      {filteredMenuRecs.length > 0 && (
+                        <>
+                          <h3 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Sparkles size={18} style={{ color: 'rgb(var(--color-primary))' }} /> Rekomendasi AI
+                          </h3>
+                          <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {filteredMenuRecs.map((rec, i) => (
+                              <Card key={i} style={{ padding: 0, overflow: 'hidden' }}>
+                                <div style={{ display: 'flex', borderLeft: '4px solid rgb(var(--color-primary))' }}>
+                                  <div style={{ flex: 1, padding: '14px 16px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 6 }}>
+                                      <h4 style={{ fontWeight: 800, fontSize: 'var(--font-md)' }}>{rec.name}</h4>
+                                      <span style={{ fontWeight: 800, color: 'rgb(var(--color-primary))', whiteSpace: 'nowrap' }}>{fmt(rec.price)}</span>
+                                    </div>
+                                    <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', marginBottom: 8 }}>{rec.reason}</p>
+                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                      {rec.tags?.map(t => <span key={t} className="tag-chip" style={{ fontSize: '10px' }}>#{t}</span>)}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            </Card>
-                          ))}
-                        </div>
+                              </Card>
+                            ))}
+                          </div>
+                        </>
                       )}
 
-                      {menuResult.menuItems.length > 0 && (
-                        <details style={{ marginTop: 20 }}>
-                          <summary style={{ cursor: 'pointer', fontWeight: 600, color: 'rgb(var(--text-muted))' }}>Semua menu ({menuResult.menuItems.length} item)</summary>
-                          <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+                      {/* Budget over message */}
+                      {filteredMenuRecs.length === 0 && (menuResult.recommendations?.length ?? 0) > 0 && (
+                        <Card style={{ padding: '1.5rem', textAlign: 'center', marginBottom: 12 }}>
+                          <p style={{ color: 'rgb(var(--text-muted))', fontSize: 'var(--font-sm)' }}>
+                            Semua rekomendasi melebihi sisa budget ({fmt(budgetInfo?.remaining ?? 0)}).
+                          </p>
+                        </Card>
+                      )}
+
+                      {/* All menu items — always show if available */}
+                      {menuResult.menuItems?.length > 0 && (
+                        <div style={{ marginTop: filteredMenuRecs.length > 0 ? 20 : 0 }}>
+                          <h3 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <ScrollText size={18} style={{ color: 'rgb(var(--color-primary))' }} /> Semua Menu ({menuResult.menuItems.length} item)
+                          </h3>
+                          <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {menuResult.menuItems.map((item, i) => (
-                              <div key={i} className="item-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px' }}>
-                                <span style={{ fontSize: 'var(--font-sm)' }}>{item.name}</span>
-                                <span style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>{fmt(item.price)}</span>
+                              <div key={i} style={{
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                padding: '10px 14px', borderRadius: 'var(--radius-md)',
+                                background: i % 2 === 0 ? 'rgb(var(--bg-elevated))' : 'transparent',
+                              }}>
+                                <div style={{ minWidth: 0 }}>
+                                  <span style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>{item.name}</span>
+                                  {item.description && (
+                                    <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: '2px 0 0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      {item.description}
+                                    </p>
+                                  )}
+                                </div>
+                                <span style={{ fontSize: 'var(--font-sm)', fontWeight: 700, color: 'rgb(var(--color-primary))', whiteSpace: 'nowrap', marginLeft: 12 }}>
+                                  {fmt(item.price)}
+                                </span>
                               </div>
                             ))}
                           </div>
-                        </details>
+                        </div>
+                      )}
+
+                      {/* No results at all */}
+                      {(!menuResult.menuItems || menuResult.menuItems.length === 0) && (!menuResult.recommendations || menuResult.recommendations.length === 0) && !(menuResult as any).error && (
+                        <Card style={{ padding: '1.5rem', textAlign: 'center' }}>
+                          <p style={{ color: 'rgb(var(--text-muted))', fontSize: 'var(--font-sm)' }}>
+                            AI tidak bisa membaca menu dari foto ini. Coba foto ulang dengan pencahayaan yang lebih baik.
+                          </p>
+                        </Card>
                       )}
                     </div>
                   )}

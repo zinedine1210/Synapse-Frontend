@@ -70,7 +70,8 @@ export function PhotoDropzone({ loading, title, hint, onFile }: PhotoDropzonePro
         gap: 12,
         padding: '2.4rem 1.25rem',
         marginBottom: 20,
-        cursor: loading ? 'progress' : 'pointer',
+        cursor: loading ? 'not-allowed' : 'pointer',
+        pointerEvents: loading ? 'none' : 'auto',
         borderRadius: 'var(--radius-xl)',
         border: `2px dashed ${dragging ? 'rgb(var(--color-primary))' : 'var(--border-strong)'}`,
         background: dragging
@@ -130,6 +131,7 @@ export function PhotoDropzone({ loading, title, hint, onFile }: PhotoDropzonePro
         ref={inputRef}
         type="file"
         accept="image/*"
+        disabled={loading}
         style={{ display: 'none' }}
         onChange={e => { pick(e.target.files); e.target.value = ''; }}
       />
@@ -138,6 +140,7 @@ export function PhotoDropzone({ loading, title, hint, onFile }: PhotoDropzonePro
         type="file"
         accept="image/*"
         capture="environment"
+        disabled={loading}
         style={{ display: 'none' }}
         onChange={e => { pick(e.target.files); e.target.value = ''; }}
       />

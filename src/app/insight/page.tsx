@@ -38,7 +38,6 @@ import {
   Wallet,
   ArrowDownRight,
   ArrowUpRight,
-  CheckCircle2,
 } from 'lucide-react';
 
 // --- Time Range Labels ---
@@ -105,7 +104,7 @@ export default function InsightPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { data: dataRaw, loading, revalidate: refetchData, mutate: mutateData } = useCache<WeeklySummary>('insight:weekly', () => insightService.getWeekly());
+  const { data: dataRaw, loading, revalidate: refetchData, mutate: mutateData } = useCache<WeeklySummary>('insight:weekly', () => insightService.getWeekly('this_month'));
   const data = dataRaw ?? null;
 
   const aiInsightJob = useAiJob<WeeklySummary>('ai_insight', {
@@ -300,7 +299,7 @@ export default function InsightPage() {
         ctx.fillText(`🔥 Streak: ${data.gamification.streak} hari`, cardX + 60, finY + 140);
       }
 
-      ctx.fillText(`✅ Todo: ${data?.productivity.todosCompleted}/${data?.productivity.todosTotal}`, cardX + 60, finY + 210);
+      ctx.fillText(`💬 QnA: ${data?.engagement?.qnaAnswers ?? 0} jawaban | 📝 Forum: ${data?.engagement?.forumPosts ?? 0} post`, cardX + 60, finY + 210);
     }
 
     // Divider + branding
@@ -393,7 +392,7 @@ export default function InsightPage() {
                 </div>
                 <div>
                   <h1 className="insight-title">Insight</h1>
-                  <p className="insight-subtitle">Cek statistik duit &amp; produktivitas kamu di sini! 📊</p>
+                  <p className="insight-subtitle">Cek statistik duit &amp; engagement kamu di sini! 📊</p>
                 </div>
               </div>
 
@@ -615,16 +614,38 @@ export default function InsightPage() {
                     </Card>
                   )}
 
-                  {/* Productivity + Gamification */}
+                  {/* Engagement + Gamification */}
                   <div className="pg-grid">
                     <Card className="ins-card pg-card">
-                      <div className="pg-head"><CheckCircle2 size={16} style={{ color: 'rgb(var(--color-primary))' }} /> Produktivitas</div>
-                      <div className="pg-ring" style={{ ['--pct' as any]: data.productivity.completionRate }}>
-                        <div className="pg-pct">
-                          <AnimatedNumber value={data.productivity.completionRate} suffix="%" countUp />
+                      <div className="pg-head"><Sparkles size={16} style={{ color: 'rgb(var(--color-primary))' }} /> Engagement</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, opacity: 0.7 }}>💬 QnA Jawaban</span>
+                          <span style={{ fontSize: 14, fontWeight: 700 }}>{data.engagement?.qnaAnswers ?? 0}</span>
                         </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, opacity: 0.7 }}>✅ Disetujui</span>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: 'rgb(var(--color-secondary))' }}>{data.engagement?.qnaApproved ?? 0}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, opacity: 0.7 }}>📝 Forum Post</span>
+                          <span style={{ fontSize: 14, fontWeight: 700 }}>{data.engagement?.forumPosts ?? 0}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, opacity: 0.7 }}>💬 Forum Reply</span>
+                          <span style={{ fontSize: 14, fontWeight: 700 }}>{data.engagement?.forumReplies ?? 0}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, opacity: 0.7 }}>📊 Transaksi</span>
+                          <span style={{ fontSize: 14, fontWeight: 700 }}>{data.engagement?.totalTransactions ?? 0}</span>
+                        </div>
+                        {(data.engagement?.loginStreak ?? 0) > 0 && (
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 12, opacity: 0.7 }}>🔥 Login Streak</span>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: 'rgb(var(--color-warning, 255 159 64))' }}>{data.engagement?.loginStreak} hari</span>
+                          </div>
+                        )}
                       </div>
-                      <p className="pg-note">{data.productivity.todosCompleted}/{data.productivity.todosTotal} todo selesai</p>
                     </Card>
                     <Card className="ins-card pg-card">
                       <div className="pg-head"><Trophy size={16} style={{ color: 'rgb(var(--color-accent-yellow, 255 214 80))' }} /> Gamifikasi</div>

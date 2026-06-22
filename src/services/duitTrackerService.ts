@@ -81,6 +81,22 @@ export interface FinancialOverview {
   totalDebtLent: number;
 }
 
+export interface WishlistItem {
+  id: string;
+  name: string;
+  estimatedPrice: number;
+  priority: 'high' | 'medium' | 'low';
+  category?: string;
+  targetDate?: string;
+  notes?: string;
+  url?: string;
+  isPurchased: boolean;
+  purchasedAt?: string;
+  linkedTransactionId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const duitTrackerService = {
   // Transactions
   createTransaction: (data: Partial<Transaction>) =>
@@ -187,4 +203,19 @@ export const duitTrackerService = {
 
   // Financial Overview
   getFinancialOverview: () => apiFetch<FinancialOverview>('/duit-tracker/financial-overview'),
+
+  // Wishlist / Rencana Belanja
+  getWishlist: () => apiFetch<WishlistItem[]>('/duit-tracker/wishlist'),
+
+  createWishlistItem: (data: { name: string; estimatedPrice: number; priority?: string; category?: string; targetDate?: string; notes?: string; url?: string }) =>
+    apiFetch<WishlistItem>('/duit-tracker/wishlist', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateWishlistItem: (id: string, data: { name?: string; estimatedPrice?: number; priority?: string; category?: string; targetDate?: string; notes?: string; url?: string }) =>
+    apiFetch<WishlistItem>(`/duit-tracker/wishlist/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  deleteWishlistItem: (id: string) =>
+    apiFetch(`/duit-tracker/wishlist/${id}`, { method: 'DELETE' }),
+
+  markWishlistPurchased: (id: string, linkedTransactionId?: string) =>
+    apiFetch<WishlistItem>(`/duit-tracker/wishlist/${id}/purchase`, { method: 'POST', body: JSON.stringify({ linkedTransactionId }) }),
 };

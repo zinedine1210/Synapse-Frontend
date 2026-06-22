@@ -9,7 +9,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, Alert, Modal, useToast, useConfirm, CurrencyInput, parseCurrency, DateTimePicker, PullToRefresh, SelectOption, TextInput, TextArea } from '@/components/ui';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
-import { duitTrackerService, Transaction, Summary, SavingTree, CategoryBudget, FinancialOverview } from '@/services/duitTrackerService';
+import { duitTrackerService, Transaction, Summary, SavingTree, CategoryBudget, FinancialOverview, WishlistItem, RecurringBill } from '@/services/duitTrackerService';
 import { siBawelService, BawelSetting, WeeklyRoast } from '@/services/siBawelService';
 import { SubscriptionCard } from '@/components/duit-tracker/SubscriptionCard';
 import { FinancialHero } from '@/components/duit-tracker/FinancialHero';
@@ -17,7 +17,7 @@ import { TransactionSheet } from '@/components/duit-tracker/TransactionSheet';
 import { ReceiptScannerModal, ScannedItem } from '@/components/duit-tracker/ReceiptScannerModal';
 import { useCache } from '@/lib/cache';
 import { useAiJob } from '@/lib/useAiJob';
-import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X, Camera } from 'lucide-react';
+import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X, Camera, ShoppingBag, ExternalLink, Check, Bell, CalendarClock, ToggleLeft, ToggleRight, TrendingDown, TrendingUp } from 'lucide-react';
 
 type PeriodPreset = 'today' | 'yesterday' | '2days' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'custom';
 
@@ -222,7 +222,7 @@ export default function DuitTrackerPage() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [tab, setTab] = useState<'transactions' | 'summary' | 'trees' | 'budget' | 'debts'>('transactions');
+  const [tab, setTab] = useState<'transactions' | 'summary' | 'trees' | 'budget' | 'debts' | 'wishlist' | 'bills'>('transactions');
   const [error, setError] = useState<string | null>(null);
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -279,9 +279,10 @@ export default function DuitTrackerPage() {
 
   // Financial overview (debts + bills summary for hero card)
   const [overview, setOverview] = useState<FinancialOverview | null>(null);
-  useEffect(() => {
+  const refetchOverview = useCallback(() => {
     duitTrackerService.getFinancialOverview().then(setOverview).catch(() => {});
   }, []);
+  useEffect(() => { refetchOverview(); }, [refetchOverview]);
 
   // Period label for hero card
   const periodLabel = useMemo(() => {
@@ -294,7 +295,8 @@ export default function DuitTrackerPage() {
     refetchSummary();
     refetchTrees();
     refetchBudgets();
-  }, [refreshTx, refetchSummary, refetchTrees, refetchBudgets]);
+    refetchOverview();
+  }, [refreshTx, refetchSummary, refetchTrees, refetchBudgets, refetchOverview]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
   const [showTreeModal, setShowTreeModal] = useState(false);
@@ -314,22 +316,116 @@ export default function DuitTrackerPage() {
   const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
   const [commentLoading, setCommentLoading] = useState<Record<string, boolean>>({});
 
+  // Recurring Bills / Tagihan
+  const [bills, setBills] = useState<RecurringBill[]>([]);
+  const [billsLoading, setBillsLoading] = useState(false);
+  const [billsLoaded, setBillsLoaded] = useState(false);
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [billForm, setBillForm] = useState({ name: '', amount: '', dueDay: '1', category: 'tagihan', notes: '' });
+  const [billFilter, setBillFilter] = useState<'all' | 'active' | 'inactive'>('active');
+
+  const fetchBills = useCallback(async () => {
+    if (!billsLoaded) setBillsLoading(true);
+    try {
+      const data = await duitTrackerService.getBills();
+      setBills(data);
+      setBillsLoaded(true);
+    } catch { }
+    finally { setBillsLoading(false); }
+  }, [billsLoaded]);
+
+  useEffect(() => { if (tab === 'bills') fetchBills(); }, [tab, fetchBills]);
+
+  const filteredBills = useMemo(() => {
+    if (billFilter === 'all') return bills;
+    return bills.filter(b => billFilter === 'active' ? b.isActive : !b.isActive);
+  }, [bills, billFilter]);
+
+  const billsSummary = useMemo(() => {
+    const active = bills.filter(b => b.isActive);
+    const totalMonthly = active.reduce((sum, b) => sum + b.amount, 0);
+    const unpaid = active.filter(b => !b.isPaidThisMonth);
+    const totalUnpaid = unpaid.reduce((sum, b) => sum + b.amount, 0);
+    const dueSoon = active.filter(b => b.isDueSoon);
+    return { totalMonthly, unpaidCount: unpaid.length, totalUnpaid, dueSoonCount: dueSoon.length };
+  }, [bills]);
+
+  const handleBillSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amount = parseCurrency(billForm.amount);
+    if (!billForm.name || !amount) return;
+    setSubmitting(true);
+    try {
+      const created = await duitTrackerService.createBill({
+        name: billForm.name,
+        amount,
+        dueDay: parseInt(billForm.dueDay) || 1,
+        category: billForm.category || 'tagihan',
+        notes: billForm.notes || undefined,
+      });
+      setBills(prev => [created, ...prev]);
+      showToast('Tagihan ditambahkan! \ud83d\udcdd', 'success');
+      setShowBillModal(false);
+      setBillForm({ name: '', amount: '', dueDay: '1', category: 'tagihan', notes: '' });
+      refetchOverview();
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setSubmitting(false); }
+  };
+
+  const handleMarkBillPaid = async (id: string) => {
+    try {
+      await duitTrackerService.markBillPaid(id);
+      setBills(prev => prev.map(b => b.id === id ? { ...b, isPaidThisMonth: true, isDueSoon: false, lastPaidAt: new Date().toISOString() } : b));
+      showToast('Tagihan dibayar bulan ini! \u2705', 'success');
+      refetchOverview();
+      refreshTx();
+    } catch (e: any) { showToast(e.message, 'error'); }
+  };
+
+  const handleToggleBillActive = async (bill: RecurringBill) => {
+    setBills(prev => prev.map(b => b.id === bill.id ? { ...b, isActive: !b.isActive } : b));
+    try {
+      await duitTrackerService.updateBill(bill.id, { isActive: !bill.isActive });
+      showToast(bill.isActive ? 'Tagihan dinonaktifkan' : 'Tagihan diaktifkan kembali', 'success');
+      refetchOverview();
+    } catch (e: any) {
+      setBills(prev => prev.map(b => b.id === bill.id ? { ...b, isActive: bill.isActive } : b));
+      showToast(e.message, 'error');
+    }
+  };
+
+  const handleDeleteBill = async (id: string) => {
+    if (!await confirm({ message: 'Yakin hapus tagihan ini?', variant: 'danger' })) return;
+    const prev = bills;
+    setBills(p => p.filter(b => b.id !== id));
+    try {
+      await duitTrackerService.deleteBill(id);
+      showToast('Tagihan dihapus', 'success');
+      refetchOverview();
+    } catch (e: any) {
+      setBills(prev);
+      showToast(e.message, 'error');
+    }
+  };
+
   // Debts
   const [debts, setDebts] = useState<any[]>([]);
   const [debtsLoading, setDebtsLoading] = useState(false);
+  const [debtsLoaded, setDebtsLoaded] = useState(false);
   const [showDebtModal, setShowDebtModal] = useState(false);
   const [debtForm, setDebtForm] = useState({ description: '', amount: '', debtType: 'owed_by_me', personName: '', dueDate: '' });
   const [debtFilter, setDebtFilter] = useState<'all' | 'active' | 'paid'>('active');
 
   const fetchDebts = useCallback(async () => {
-    setDebtsLoading(true);
+    if (!debtsLoaded) setDebtsLoading(true);
     try {
       const isPaid = debtFilter === 'all' ? undefined : debtFilter === 'paid';
       const data = await duitTrackerService.getDebts(isPaid);
       setDebts(data);
+      setDebtsLoaded(true);
     } catch { }
     finally { setDebtsLoading(false); }
-  }, [debtFilter]);
+  }, [debtFilter, debtsLoaded]);
 
   useEffect(() => { if (tab === 'debts') fetchDebts(); }, [tab, fetchDebts]);
 
@@ -339,36 +435,175 @@ export default function DuitTrackerPage() {
     if (!debtForm.description || !amount || !debtForm.personName) return;
     setSubmitting(true);
     try {
-      await duitTrackerService.createDebt({
+      const created = await duitTrackerService.createDebt({
         description: debtForm.description,
         amount,
         debtType: debtForm.debtType,
         personName: debtForm.personName,
         dueDate: debtForm.dueDate || undefined,
       });
+      setDebts(prev => [created, ...prev]);
       showToast('Hutang dicatat! 📝', 'success');
       setShowDebtModal(false);
       setDebtForm({ description: '', amount: '', debtType: 'owed_by_me', personName: '', dueDate: '' });
-      fetchDebts();
+      refetchOverview();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
 
   const handleMarkDebtPaid = async (debtId: string) => {
+    setDebts(prev => prev.map(d => d.id === debtId ? { ...d, isPaid: true, paidAt: new Date().toISOString() } : d));
     try {
       await duitTrackerService.markDebtPaid(debtId);
       showToast('Hutang lunas! Transaksi tercatat otomatis 🎉', 'success');
-      fetchDebts();
+      refetchOverview();
       refreshTx();
-    } catch (e: any) { showToast(e.message, 'error'); }
+      refetchSummary();
+    } catch (e: any) {
+      fetchDebts();
+      showToast(e.message, 'error');
+    }
   };
 
   const handleDeleteDebt = async (debtId: string) => {
+    const prev = debts;
+    setDebts(p => p.filter(d => d.id !== debtId));
     try {
       await duitTrackerService.deleteDebt(debtId);
       showToast('Hutang dihapus', 'success');
-      fetchDebts();
+      refetchOverview();
+    } catch (e: any) {
+      setDebts(prev);
+      showToast(e.message, 'error');
+    }
+  };
+
+  // Wishlist / Rencana Belanja
+  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [wishlistLoaded, setWishlistLoaded] = useState(false);
+  const [showWishlistModal, setShowWishlistModal] = useState(false);
+  const [wishlistForm, setWishlistForm] = useState({ name: '', estimatedPrice: '', priority: 'medium', category: '', targetDate: '', notes: '', url: '' });
+  const [wishlistFilter, setWishlistFilter] = useState<'pending' | 'purchased' | 'all'>('pending');
+
+  const fetchWishlist = useCallback(async () => {
+    if (!wishlistLoaded) setWishlistLoading(true);
+    try {
+      const data = await duitTrackerService.getWishlist();
+      setWishlist(data);
+      setWishlistLoaded(true);
+    } catch { }
+    finally { setWishlistLoading(false); }
+  }, [wishlistLoaded]);
+
+  useEffect(() => { if (tab === 'wishlist') fetchWishlist(); }, [tab, fetchWishlist]);
+
+  const filteredWishlist = useMemo(() => {
+    if (wishlistFilter === 'all') return wishlist;
+    return wishlist.filter(w => wishlistFilter === 'purchased' ? w.isPurchased : !w.isPurchased);
+  }, [wishlist, wishlistFilter]);
+
+  const wishlistSummary = useMemo(() => {
+    const pending = wishlist.filter(w => !w.isPurchased);
+    const totalNeeded = pending.reduce((sum, w) => sum + w.estimatedPrice, 0);
+    const highPriority = pending.filter(w => w.priority === 'high');
+    const highTotal = highPriority.reduce((sum, w) => sum + w.estimatedPrice, 0);
+    return { totalNeeded, highPriorityCount: highPriority.length, highTotal, pendingCount: pending.length };
+  }, [wishlist]);
+
+  // Spending Insights computation
+  const spendingInsights = useMemo(() => {
+    const expenses = transactions.filter(t => t.type === 'expense');
+    if (expenses.length === 0) return null;
+
+    const totalExpense = expenses.reduce((s, t) => s + t.amount, 0);
+
+    // Group by day of week
+    const dayNames = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const byDay: Record<number, number> = {};
+    expenses.forEach(t => {
+      const d = new Date(t.date).getDay();
+      byDay[d] = (byDay[d] || 0) + t.amount;
+    });
+    const busiestDayIdx = Object.entries(byDay).sort((a, b) => Number(b[1]) - Number(a[1]))[0];
+    const busiestDay = busiestDayIdx ? { name: dayNames[Number(busiestDayIdx[0])], amount: Number(busiestDayIdx[1]) } : null;
+
+    // Group by week number
+    const byWeek: Record<number, number> = {};
+    expenses.forEach(t => {
+      const d = new Date(t.date);
+      const weekNum = Math.ceil(d.getDate() / 7);
+      byWeek[weekNum] = (byWeek[weekNum] || 0) + t.amount;
+    });
+    const weeks = Object.values(byWeek);
+    const avgWeekly = weeks.length > 0 ? weeks.reduce((s, v) => s + v, 0) / weeks.length : 0;
+
+    // Unique days with transactions
+    const uniqueDays = new Set(expenses.map(t => new Date(t.date).toDateString())).size;
+    const avgDaily = uniqueDays > 0 ? totalExpense / uniqueDays : 0;
+
+    // Biggest single expense
+    const biggestTx = expenses.reduce((max, t) => t.amount > max.amount ? t : max, expenses[0]);
+
+    // Current week vs previous week
+    const now = new Date();
+    const startOfThisWeek = new Date(now);
+    startOfThisWeek.setDate(now.getDate() - now.getDay());
+    startOfThisWeek.setHours(0, 0, 0, 0);
+    const startOfLastWeek = new Date(startOfThisWeek);
+    startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
+
+    const thisWeekExpense = expenses.filter(t => new Date(t.date) >= startOfThisWeek).reduce((s, t) => s + t.amount, 0);
+    const lastWeekExpense = expenses.filter(t => { const d = new Date(t.date); return d >= startOfLastWeek && d < startOfThisWeek; }).reduce((s, t) => s + t.amount, 0);
+    const weekChange = lastWeekExpense > 0 ? Math.round(((thisWeekExpense - lastWeekExpense) / lastWeekExpense) * 100) : null;
+
+    return { totalExpense, avgDaily, avgWeekly, busiestDay, biggestTx, thisWeekExpense, lastWeekExpense, weekChange, txCount: expenses.length };
+  }, [transactions]);
+
+  const handleWishlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const estimatedPrice = parseCurrency(wishlistForm.estimatedPrice);
+    if (!wishlistForm.name || !estimatedPrice) return;
+    setSubmitting(true);
+    try {
+      await duitTrackerService.createWishlistItem({
+        name: wishlistForm.name,
+        estimatedPrice,
+        priority: wishlistForm.priority,
+        category: wishlistForm.category || undefined,
+        targetDate: wishlistForm.targetDate || undefined,
+        notes: wishlistForm.notes || undefined,
+        url: wishlistForm.url || undefined,
+      });
+      showToast('Wishlist ditambahkan! 🛒', 'success');
+      setShowWishlistModal(false);
+      setWishlistForm({ name: '', estimatedPrice: '', priority: 'medium', category: '', targetDate: '', notes: '', url: '' });
+      fetchWishlist();
     } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setSubmitting(false); }
+  };
+
+  const handleMarkWishlistPurchased = async (id: string) => {
+    setWishlist(prev => prev.map(w => w.id === id ? { ...w, isPurchased: true, purchasedAt: new Date().toISOString() } as WishlistItem : w));
+    try {
+      await duitTrackerService.markWishlistPurchased(id);
+      showToast('Item sudah dibeli! ✅', 'success');
+    } catch (e: any) {
+      fetchWishlist();
+      showToast(e.message, 'error');
+    }
+  };
+
+  const handleDeleteWishlistItem = async (id: string) => {
+    const prev = wishlist;
+    setWishlist(p => p.filter(w => w.id !== id));
+    try {
+      await duitTrackerService.deleteWishlistItem(id);
+      showToast('Item dihapus dari wishlist', 'success');
+    } catch (e: any) {
+      setWishlist(prev);
+      showToast(e.message, 'error');
+    }
   };
 
   // AI Job tracking for weekly roast
@@ -433,6 +668,7 @@ export default function DuitTrackerPage() {
           const updated = await duitTrackerService.updateTransaction(editingTx.id, { amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || undefined });
           updateTx(tx => tx.id === editingTx.id, () => updated);
           showToast('Transaksi udah di-update! ✅', 'success');
+          refetchOverview();
         } catch (e: any) {
           updateTx(tx => tx.id === editingTx.id, () => editingTx);
           showToast(e.message || 'Gagal update transaksi.', 'error');
@@ -452,6 +688,7 @@ export default function DuitTrackerPage() {
           updateTx(tx => tx.id === tempId, () => created);
           showToast('Transaksi udah ditambahin! ✅', 'success');
           refetchSummary();
+          refetchOverview();
         } catch (e: any) {
           removeTx(tx => tx.id === tempId);
           showToast(e.message || 'Gagal tambah transaksi.', 'error');
@@ -501,6 +738,7 @@ export default function DuitTrackerPage() {
       await duitTrackerService.deleteTransaction(id);
       showToast('Transaksi udah dihapus! 🗑️', 'success');
       refetchSummary();
+      refetchOverview();
     } catch (e: any) {
       showToast(e.message, 'error');
       refreshTx();
@@ -517,6 +755,14 @@ export default function DuitTrackerPage() {
           setDebtForm({ description: p.label || aiText, amount: String(p.amount), debtType: p.debtType || 'owed_by_me', personName: p.personName || '', dueDate: '' });
           setShowAiInput(false); setShowDebtModal(true);
           showToast('Terdeteksi sebagai hutang! Cek datanya ya 🤝', 'success');
+        } else if (p.isBill) {
+          setBillForm({ name: p.label || aiText, amount: String(p.amount), dueDay: String(p.dueDay || 1), category: p.category || 'tagihan', notes: p.note || '' });
+          setShowAiInput(false); setShowBillModal(true);
+          showToast('Terdeteksi sebagai tagihan rutin! Cek datanya ya 💳', 'success');
+        } else if (p.isWishlist) {
+          setWishlistForm({ name: p.label || aiText, estimatedPrice: String(p.amount), priority: p.priority || 'medium', category: p.category || '', targetDate: '', notes: p.note || '', url: '' });
+          setShowAiInput(false); setShowWishlistModal(true);
+          showToast('Terdeteksi sebagai wishlist! Cek datanya ya 🛒', 'success');
         } else {
           setForm({ amount: String(p.amount), type: p.type || 'expense', category: p.category || 'lainnya', label: p.label || aiText, note: p.note || '', date: p.date || '' });
           setShowAiInput(false); setShowAddModal(true);
@@ -641,7 +887,9 @@ export default function DuitTrackerPage() {
                   { key: 'summary', label: '📊 Ringkasan', feature: 'duit_tracker_summary' },
                   { key: 'budget', label: '🎯 Budget', feature: 'duit_tracker_budget' },
                   { key: 'trees', label: '🌳 Tabungan', feature: 'duit_tracker_saving_tree' },
+                  { key: 'bills', label: '💳 Tagihan' },
                   { key: 'debts', label: '🤝 Hutang' },
+                  { key: 'wishlist', label: '🛒 Wishlist' },
                 ].filter(t => !t.feature || hasFeature(t.feature)).map(t => (
                   <button key={t.key} onClick={() => setTab(t.key as any)} style={{
                     padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
@@ -654,112 +902,98 @@ export default function DuitTrackerPage() {
                 ))}
               </div>
 
-              {/* Date filters */}
-              {tab !== 'trees' && (
-                <div style={{ marginBottom: 20 }}>
-                  {tab === 'transactions' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {/* Row 1: Period dropdown + Type chips */}
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ minWidth: 160 }}>
-                          <SelectOption
-                            value={periodPreset}
-                            onChange={(v) => { setPeriodPreset(v as PeriodPreset); if (v !== 'custom') setAppliedRange(null); }}
-                            options={PERIOD_PRESETS.map(p => ({ value: p.key, label: `${p.emoji} ${p.label}` }))}
-                            placeholder="Pilih Periode"
-                          />
-                        </div>
-                        {/* Type filter chips */}
-                        {[{ v: '', l: 'Semua' }, { v: 'income', l: '↑ Masuk' }, { v: 'expense', l: '↓ Keluar' }].map(f => (
-                          <button key={f.v} onClick={() => setTypeFilter(f.v)} className="dt-filter-chip" style={{
-                            padding: '7px 12px', borderRadius: 8, border: typeFilter === f.v ? '1.5px solid rgb(var(--color-primary))' : '1px solid var(--border-default)',
-                            cursor: 'pointer', fontSize: 12, fontWeight: 500,
-                            background: typeFilter === f.v ? 'rgba(var(--color-primary) / 0.08)' : 'transparent',
-                            color: typeFilter === f.v ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))', transition: 'all 0.2s',
-                          }}>{f.l}</button>
-                        ))}
-                      </div>
+              {/* Global Period Filter — shown on all tabs */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {/* Row 1: Period dropdown + Type chips (type chips only for transactions) */}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ minWidth: 160 }}>
+                      <SelectOption
+                        value={periodPreset}
+                        onChange={(v) => { setPeriodPreset(v as PeriodPreset); if (v !== 'custom') setAppliedRange(null); }}
+                        options={PERIOD_PRESETS.map(p => ({ value: p.key, label: `${p.emoji} ${p.label}` }))}
+                        placeholder="Pilih Periode"
+                      />
+                    </div>
+                    {/* Type filter chips — transactions only */}
+                    {tab === 'transactions' && [{ v: '', l: 'Semua' }, { v: 'income', l: '↑ Masuk' }, { v: 'expense', l: '↓ Keluar' }].map(f => (
+                      <button key={f.v} onClick={() => setTypeFilter(f.v)} className="dt-filter-chip" style={{
+                        padding: '7px 12px', borderRadius: 8, border: typeFilter === f.v ? '1.5px solid rgb(var(--color-primary))' : '1px solid var(--border-default)',
+                        cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                        background: typeFilter === f.v ? 'rgba(var(--color-primary) / 0.08)' : 'transparent',
+                        color: typeFilter === f.v ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))', transition: 'all 0.2s',
+                      }}>{f.l}</button>
+                    ))}
+                  </div>
 
-                      {/* Row 2: Custom date range (only when custom is selected) */}
-                      {periodPreset === 'custom' && (
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                          <div style={{ flex: 1, minWidth: 120 }}>
-                            <DateTimePicker
-                              mode="date"
-                              value={customStart}
-                              onChange={setCustomStart}
-                              placeholder="Dari tanggal"
-                            />
-                          </div>
-                          <span style={{ fontSize: 12, color: 'rgb(var(--text-muted))', flexShrink: 0 }}>—</span>
-                          <div style={{ flex: 1, minWidth: 120 }}>
-                            <DateTimePicker
-                              mode="date"
-                              value={customEnd}
-                              onChange={setCustomEnd}
-                              placeholder="Sampai tanggal"
-                              min={customStart || undefined}
-                            />
-                          </div>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              if (!customStart || !customEnd) { showToast('Pilih tanggal awal dan akhir dulu dong!', 'error'); return; }
-                              setAppliedRange({ start: customStart, end: customEnd });
-                            }}
-                            disabled={!customStart || !customEnd}
-                            style={{ flexShrink: 0, borderRadius: 10 }}
-                          >
-                            🔍 Cari
-                          </Button>
-                        </div>
-                      )}
-
-                      {/* Row 3: Category filter */}
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ minWidth: 160 }}>
-                          <SelectOption
-                            value={categoryFilter}
-                            onChange={setCategoryFilter}
-                            placeholder="📂 Semua Kategori"
-                            options={[
-                              { value: '', label: '📂 Semua Kategori' },
-                              ...[...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES]
-                                .filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i)
-                                .map(c => ({ value: c.id, label: `${c.emoji} ${c.label}` })),
-                            ]}
-                          />
-                        </div>
-                        {/* Clear all filters */}
-                        {(typeFilter || categoryFilter || appliedRange) && (
-                          <button
-                            onClick={() => { setTypeFilter(''); setCategoryFilter(''); setPeriodPreset('this_month'); setAppliedRange(null); setCustomStart(''); setCustomEnd(''); }}
-                            style={{
-                              padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                              fontSize: 11.5, color: 'rgb(var(--color-error))', background: 'rgba(var(--color-error) / 0.08)',
-                              display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500,
-                            }}
-                          >
-                            <X size={12} /> Reset Filter
-                          </button>
-                        )}
+                  {/* Row 2: Custom date range (only when custom is selected) */}
+                  {periodPreset === 'custom' && (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 120 }}>
+                        <DateTimePicker
+                          mode="date"
+                          value={customStart}
+                          onChange={setCustomStart}
+                          placeholder="Dari tanggal"
+                        />
                       </div>
+                      <span style={{ fontSize: 12, color: 'rgb(var(--text-muted))', flexShrink: 0 }}>—</span>
+                      <div style={{ flex: 1, minWidth: 120 }}>
+                        <DateTimePicker
+                          mode="date"
+                          value={customEnd}
+                          onChange={setCustomEnd}
+                          placeholder="Sampai tanggal"
+                          min={customStart || undefined}
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (!customStart || !customEnd) { showToast('Pilih tanggal awal dan akhir dulu dong!', 'error'); return; }
+                          setAppliedRange({ start: customStart, end: customEnd });
+                        }}
+                        disabled={!customStart || !customEnd}
+                        style={{ flexShrink: 0, borderRadius: 10 }}
+                      >
+                        🔍 Cari
+                      </Button>
                     </div>
                   )}
 
-                  {/* Budget/Summary tabs keep the old month/year selectors */}
-                  {tab !== 'transactions' && (
-                    <div className="duit-date-filters" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <div style={{ width: 160 }}>
-                        <SelectOption value={String(month)} onChange={v => setMonth(parseInt(v))} options={Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1), label: new Date(2000, i).toLocaleDateString('id-ID', { month: 'long' }) }))} />
+                  {/* Row 3: Category filter — transactions only */}
+                  {tab === 'transactions' && (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ minWidth: 160 }}>
+                        <SelectOption
+                          value={categoryFilter}
+                          onChange={setCategoryFilter}
+                          placeholder="📂 Semua Kategori"
+                          options={[
+                            { value: '', label: '📂 Semua Kategori' },
+                            ...[...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES]
+                              .filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i)
+                              .map(c => ({ value: c.id, label: `${c.emoji} ${c.label}` })),
+                          ]}
+                        />
                       </div>
-                      <div style={{ width: 110 }}>
-                        <SelectOption value={String(year)} onChange={v => setYear(parseInt(v))} options={[2024, 2025, 2026, 2027].map(y => ({ value: String(y), label: String(y) }))} />
-                      </div>
+                      {/* Clear all filters */}
+                      {(typeFilter || categoryFilter || appliedRange) && (
+                        <button
+                          onClick={() => { setTypeFilter(''); setCategoryFilter(''); setPeriodPreset('this_month'); setAppliedRange(null); setCustomStart(''); setCustomEnd(''); }}
+                          style={{
+                            padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                            fontSize: 11.5, color: 'rgb(var(--color-error))', background: 'rgba(var(--color-error) / 0.08)',
+                            display: 'flex', alignItems: 'center', gap: 3, fontWeight: 500,
+                          }}
+                        >
+                          <X size={12} /> Reset Filter
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
+              </div>
 
               {loading && !transactions.length ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -959,6 +1193,52 @@ export default function DuitTrackerPage() {
                         </Button>
                       </div>
                     )
+                  )}
+
+                  {/* Spending Insights */}
+                  {spendingInsights && (
+                    <Card style={{ padding: '20px 22px' }}>
+                      <h3 style={{ marginBottom: 16, fontSize: 16, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <TrendingDown size={18} /> Insight Pengeluaran
+                      </h3>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--input-bg)' }}>
+                          <div style={{ fontSize: 11, color: 'var(--dt-text-secondary)', marginBottom: 4 }}>Rata-rata / Hari</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--dt-expense)' }}>{fmt(Math.round(spendingInsights.avgDaily))}</div>
+                        </div>
+                        <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--input-bg)' }}>
+                          <div style={{ fontSize: 11, color: 'var(--dt-text-secondary)', marginBottom: 4 }}>Rata-rata / Minggu</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--dt-expense)' }}>{fmt(Math.round(spendingInsights.avgWeekly))}</div>
+                        </div>
+                        {spendingInsights.busiestDay && (
+                          <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--input-bg)' }}>
+                            <div style={{ fontSize: 11, color: 'var(--dt-text-secondary)', marginBottom: 4 }}>Hari Paling Boros</div>
+                            <div style={{ fontSize: 14, fontWeight: 700 }}>{spendingInsights.busiestDay.name}</div>
+                            <div style={{ fontSize: 11, color: 'var(--dt-text-secondary)' }}>{fmt(spendingInsights.busiestDay.amount)}</div>
+                          </div>
+                        )}
+                        {spendingInsights.biggestTx && (
+                          <div style={{ padding: '14px 16px', borderRadius: 12, background: 'var(--input-bg)' }}>
+                            <div style={{ fontSize: 11, color: 'var(--dt-text-secondary)', marginBottom: 4 }}>Pengeluaran Terbesar</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--dt-expense)' }}>{fmt(spendingInsights.biggestTx.amount)}</div>
+                            <div style={{ fontSize: 11, color: 'var(--dt-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{spendingInsights.biggestTx.label}</div>
+                          </div>
+                        )}
+                      </div>
+                      {spendingInsights.weekChange !== null && (
+                        <div style={{ marginTop: 14, padding: '12px 16px', borderRadius: 12, background: spendingInsights.weekChange > 0 ? 'rgba(239,68,68,0.06)' : 'rgba(16,185,129,0.06)', border: `1px solid ${spendingInsights.weekChange > 0 ? 'rgba(239,68,68,0.15)' : 'rgba(16,185,129,0.15)'}` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {spendingInsights.weekChange > 0 ? <TrendingUp size={16} style={{ color: 'var(--dt-expense)' }} /> : <TrendingDown size={16} style={{ color: 'var(--dt-income)' }} />}
+                            <span style={{ fontSize: 13, fontWeight: 600 }}>
+                              {spendingInsights.weekChange > 0 ? `Minggu ini kamu lebih boros ${spendingInsights.weekChange}% dari minggu lalu` : `Minggu ini kamu lebih hemat ${Math.abs(spendingInsights.weekChange)}% dari minggu lalu`}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--dt-text-secondary)', marginTop: 6 }}>
+                            Minggu ini: {fmt(spendingInsights.thisWeekExpense)} vs Minggu lalu: {fmt(spendingInsights.lastWeekExpense)}
+                          </div>
+                        </div>
+                      )}
+                    </Card>
                   )}
 
                   {/* Category Breakdown */}
@@ -1163,6 +1443,197 @@ export default function DuitTrackerPage() {
                               </div>
                             </div>
                           </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ─── Bills/Tagihan Tab ─── */}
+              {tab === 'bills' && (
+                <div>
+                  {/* Summary Banner */}
+                  {billsSummary.unpaidCount > 0 && (
+                    <Card style={{ padding: '16px 20px', marginBottom: 16, borderRadius: 16, background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.06) 0%, rgba(251, 191, 36, 0.04) 100%)', border: '1px solid rgba(239, 68, 68, 0.12)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: 28 }}>💳</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 2 }}>Total tagihan bulan ini</div>
+                          <div style={{ fontSize: 20, fontWeight: 800 }}>{fmt(billsSummary.totalMonthly)}</div>
+                          <div style={{ fontSize: 11, opacity: 0.5, marginTop: 2 }}>
+                            {billsSummary.unpaidCount} belum bayar ({fmt(billsSummary.totalUnpaid)})
+                            {billsSummary.dueSoonCount > 0 && <span style={{ color: '#ef4444', fontWeight: 600 }}> • {billsSummary.dueSoonCount} jatuh tempo!</span>}
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {(['active', 'inactive', 'all'] as const).map(f => (
+                        <button key={f} onClick={() => setBillFilter(f)} style={{
+                          padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                          fontSize: 12, fontWeight: billFilter === f ? 600 : 400,
+                          background: billFilter === f ? 'rgb(var(--color-primary))' : 'var(--input-bg)',
+                          color: billFilter === f ? '#fff' : 'inherit',
+                        }}>{f === 'active' ? 'Aktif' : f === 'inactive' ? 'Nonaktif' : 'Semua'}</button>
+                      ))}
+                    </div>
+                    <Button onClick={() => setShowBillModal(true)} size="sm"><Plus size={14} /> Tambah Tagihan</Button>
+                  </div>
+
+                  {billsLoading ? (
+                    <div style={{ textAlign: 'center', padding: 48, opacity: 0.5 }}>Memuat...</div>
+                  ) : filteredBills.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 48 }}>
+                      <span style={{ fontSize: 56, display: 'block', marginBottom: 12 }}>💳</span>
+                      <p style={{ opacity: 0.6, fontSize: 15, fontWeight: 500 }}>Belum ada tagihan rutin</p>
+                      <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Catat tagihan bulanan biar gak kelewat bayar! ⏰</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {filteredBills.map(bill => {
+                        const today = new Date().getDate();
+                        const daysUntilDue = bill.dueDay - today;
+                        const statusColor = bill.isPaidThisMonth ? '#4ade80' : bill.isDueSoon ? '#ef4444' : daysUntilDue <= 7 && daysUntilDue > 0 ? '#f59e0b' : 'var(--border-default)';
+                        return (
+                          <Card key={bill.id} style={{
+                            padding: 16, borderRadius: 16, opacity: bill.isActive ? 1 : 0.5,
+                            border: `1px solid ${statusColor}44`,
+                            background: bill.isDueSoon && !bill.isPaidThisMonth ? 'rgba(239, 68, 68, 0.03)' : undefined,
+                          }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                  <span style={{ fontSize: 16 }}>{bill.isPaidThisMonth ? '✅' : bill.isDueSoon ? '🔴' : '💳'}</span>
+                                  <span style={{ fontSize: 14, fontWeight: 700 }}>{bill.name}</span>
+                                  {bill.isPaidThisMonth && <span style={{ fontSize: 10, background: '#4ade8022', color: '#4ade80', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>LUNAS</span>}
+                                  {bill.isDueSoon && !bill.isPaidThisMonth && <span style={{ fontSize: 10, background: '#ef444422', color: '#ef4444', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>JATUH TEMPO!</span>}
+                                  {!bill.isActive && <span style={{ fontSize: 10, background: 'var(--input-bg)', color: 'var(--dt-text-secondary)', padding: '2px 8px', borderRadius: 6, fontWeight: 600 }}>NONAKTIF</span>}
+                                </div>
+                                <div style={{ fontSize: 18, fontWeight: 800, color: bill.isPaidThisMonth ? '#4ade80' : 'rgb(var(--color-primary))' }}>
+                                  {fmt(bill.amount)}
+                                </div>
+                                <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: 11, opacity: 0.5, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <CalendarClock size={10} /> Jatuh tempo: Tanggal {bill.dueDay} setiap bulan
+                                  </span>
+                                  {bill.category && bill.category !== 'tagihan' && (
+                                    <span style={{ fontSize: 10, background: 'var(--input-bg)', padding: '2px 8px', borderRadius: 6 }}>{bill.category}</span>
+                                  )}
+                                </div>
+                                {bill.notes && <div style={{ fontSize: 11, opacity: 0.5, marginTop: 4 }}>📝 {bill.notes}</div>}
+                                {bill.lastPaidAt && (
+                                  <div style={{ fontSize: 11, opacity: 0.4, marginTop: 4 }}>
+                                    Terakhir bayar: {new Date(bill.lastPaidAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                  </div>
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {bill.isActive && !bill.isPaidThisMonth && (
+                                  <Button size="sm" onClick={() => handleMarkBillPaid(bill.id)} style={{ fontSize: 12, borderRadius: 8 }}>✅ Bayar</Button>
+                                )}
+                                <button onClick={() => handleToggleBillActive(bill)} title={bill.isActive ? 'Nonaktifkan' : 'Aktifkan'} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, padding: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {bill.isActive ? <ToggleRight size={18} style={{ color: 'rgb(var(--color-primary))' }} /> : <ToggleLeft size={18} />}
+                                </button>
+                                <button onClick={() => handleDeleteBill(bill.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 6 }}>
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ─── Wishlist Tab ─── */}
+              {tab === 'wishlist' && (
+                <div>
+                  {/* Summary Banner */}
+                  {wishlistSummary.pendingCount > 0 && (
+                    <Card style={{ padding: '16px 20px', marginBottom: 16, borderRadius: 16, background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.06) 0%, rgba(var(--color-accent-yellow, 255 214 80), 0.04) 100%)', border: '1px solid rgba(var(--color-primary), 0.12)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span style={{ fontSize: 28 }}>🎯</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 2 }}>Total rencana belanja</div>
+                          <div style={{ fontSize: 20, fontWeight: 800 }}>{fmt(wishlistSummary.totalNeeded)}</div>
+                          <div style={{ fontSize: 11, opacity: 0.5, marginTop: 2 }}>
+                            {wishlistSummary.pendingCount} item belum dibeli
+                            {wishlistSummary.highPriorityCount > 0 && ` • ${wishlistSummary.highPriorityCount} prioritas tinggi (${fmt(wishlistSummary.highTotal)})`}
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {(['pending', 'purchased', 'all'] as const).map(f => (
+                        <button key={f} onClick={() => setWishlistFilter(f)} style={{
+                          padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                          fontSize: 12, fontWeight: wishlistFilter === f ? 600 : 400,
+                          background: wishlistFilter === f ? 'rgb(var(--color-primary))' : 'var(--input-bg)',
+                          color: wishlistFilter === f ? '#fff' : 'inherit',
+                        }}>{f === 'pending' ? 'Belum Beli' : f === 'purchased' ? 'Sudah Beli' : 'Semua'}</button>
+                      ))}
+                    </div>
+                    <Button onClick={() => setShowWishlistModal(true)} size="sm"><Plus size={14} /> Tambah</Button>
+                  </div>
+
+                  {wishlistLoading ? (
+                    <div style={{ textAlign: 'center', padding: 48, opacity: 0.5 }}>Memuat...</div>
+                  ) : filteredWishlist.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: 48 }}>
+                      <span style={{ fontSize: 56, display: 'block', marginBottom: 12 }}>🛒</span>
+                      <p style={{ opacity: 0.6, fontSize: 15, fontWeight: 500 }}>Belum ada rencana belanja</p>
+                      <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Catat barang yang ingin kamu beli supaya bisa plan keuanganmu! 💡</p>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {filteredWishlist.map(item => {
+                        const priorityConfig = { high: { color: '#ef4444', label: 'Tinggi', emoji: '🔴' }, medium: { color: '#f59e0b', label: 'Sedang', emoji: '🟡' }, low: { color: '#6b7280', label: 'Rendah', emoji: '⚪' } };
+                        const p = priorityConfig[item.priority] || priorityConfig.medium;
+                        return (
+                          <Card key={item.id} style={{ padding: 16, borderRadius: 16, opacity: item.isPurchased ? 0.6 : 1, border: item.isPurchased ? '1px solid #4ade8044' : `1px solid ${p.color}22` }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                  <span style={{ fontSize: 16 }}>{item.isPurchased ? '✅' : p.emoji}</span>
+                                  <span style={{ fontSize: 14, fontWeight: 700, textDecoration: item.isPurchased ? 'line-through' : 'none' }}>{item.name}</span>
+                                  {item.category && <span style={{ fontSize: 10, background: 'var(--input-bg)', padding: '2px 8px', borderRadius: 6, fontWeight: 500 }}>{item.category}</span>}
+                                </div>
+                                <div style={{ fontSize: 18, fontWeight: 800, color: item.isPurchased ? '#4ade80' : 'rgb(var(--color-primary))' }}>
+                                  {fmt(item.estimatedPrice)}
+                                </div>
+                                <div style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
+                                  {item.targetDate && (
+                                    <span style={{ fontSize: 11, opacity: 0.5 }}>
+                                      🎯 Target: {new Date(item.targetDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                    </span>
+                                  )}
+                                  {item.notes && <span style={{ fontSize: 11, opacity: 0.5 }}>📝 {item.notes}</span>}
+                                </div>
+                                {item.url && (
+                                  <a href={item.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'rgb(var(--color-primary))', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4, textDecoration: 'none' }}>
+                                    <ExternalLink size={10} /> Lihat produk
+                                  </a>
+                                )}
+                              </div>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                {!item.isPurchased && (
+                                  <Button size="sm" onClick={() => handleMarkWishlistPurchased(item.id)} style={{ fontSize: 12, borderRadius: 8 }}><Check size={12} /> Beli</Button>
+                                )}
+                                <button onClick={() => handleDeleteWishlistItem(item.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 6 }}>
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          </Card>
                         );
                       })}
                     </div>
@@ -1411,6 +1882,58 @@ export default function DuitTrackerPage() {
                   </div>
                 </div>
               </div>
+            </Modal>
+
+            {/* Bill Modal */}
+            <Modal isOpen={showBillModal} onClose={() => setShowBillModal(false)} title="💳 Tambah Tagihan Rutin">
+              <form onSubmit={handleBillSubmit}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <TextInput label="Nama Tagihan" value={billForm.name} onChange={v => setBillForm(f => ({ ...f, name: v }))} placeholder="Listrik, WiFi, Spotify..." required />
+                  <CurrencyInput label="Jumlah per Bulan" value={billForm.amount} onChange={v => setBillForm(f => ({ ...f, amount: v }))} />
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, display: 'block' }}>Tanggal Jatuh Tempo</label>
+                    <SelectOption
+                      value={billForm.dueDay}
+                      onChange={v => setBillForm(f => ({ ...f, dueDay: v }))}
+                      options={Array.from({ length: 28 }, (_, i) => ({ value: String(i + 1), label: `Tanggal ${i + 1}` }))}
+                    />
+                  </div>
+                  <SelectOption label="Kategori" value={billForm.category} onChange={v => setBillForm(f => ({ ...f, category: v }))} options={[
+                    { value: 'tagihan', label: '💡 Tagihan Umum' },
+                    { value: 'kos', label: '🏠 Kos/Sewa' },
+                    { value: 'internet', label: '📶 Internet/WiFi' },
+                    { value: 'streaming', label: '🎬 Streaming' },
+                    { value: 'asuransi', label: '🛡️ Asuransi' },
+                    { value: 'cicilan', label: '💳 Cicilan' },
+                    { value: 'lainnya', label: '📦 Lainnya' },
+                  ]} />
+                  <TextArea label="Catatan (opsional)" value={billForm.notes} onChange={v => setBillForm(f => ({ ...f, notes: v }))} placeholder="Info tambahan..." rows={2} />
+                  <Button type="submit" disabled={submitting} style={{ marginTop: 8 }}>{submitting ? 'Menyimpan...' : '💳 Simpan Tagihan'}</Button>
+                </div>
+              </form>
+            </Modal>
+
+            {/* Wishlist Modal */}
+            <Modal isOpen={showWishlistModal} onClose={() => setShowWishlistModal(false)} title="🛒 Tambah Rencana Belanja">
+              <form onSubmit={handleWishlistSubmit}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <TextInput label="Nama Barang" value={wishlistForm.name} onChange={v => setWishlistForm(f => ({ ...f, name: v }))} placeholder="Laptop, Sepatu, dll..." required />
+                  <CurrencyInput label="Estimasi Harga" value={wishlistForm.estimatedPrice} onChange={v => setWishlistForm(f => ({ ...f, estimatedPrice: v }))} />
+                  <SelectOption label="Prioritas" value={wishlistForm.priority} onChange={v => setWishlistForm(f => ({ ...f, priority: v }))} options={[
+                    { value: 'high', label: '🔴 Tinggi — Butuh segera' },
+                    { value: 'medium', label: '🟡 Sedang — Bisa ditunda' },
+                    { value: 'low', label: '⚪ Rendah — Nice to have' },
+                  ]} />
+                  <TextInput label="Kategori (opsional)" value={wishlistForm.category} onChange={v => setWishlistForm(f => ({ ...f, category: v }))} placeholder="Elektronik, Fashion, dll" />
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, display: 'block' }}>Target Beli (opsional)</label>
+                    <DateTimePicker mode="date" value={wishlistForm.targetDate} onChange={v => setWishlistForm(f => ({ ...f, targetDate: v }))} placeholder="Kapan mau beli?" />
+                  </div>
+                  <TextInput label="Link Produk (opsional)" value={wishlistForm.url} onChange={v => setWishlistForm(f => ({ ...f, url: v }))} placeholder="https://tokopedia.com/..." />
+                  <TextArea label="Catatan (opsional)" value={wishlistForm.notes} onChange={v => setWishlistForm(f => ({ ...f, notes: v }))} placeholder="Alasan, spek yang diinginkan..." rows={2} />
+                  <Button type="submit" disabled={submitting} style={{ marginTop: 8 }}>{submitting ? 'Menyimpan...' : '🛒 Simpan ke Wishlist'}</Button>
+                </div>
+              </form>
             </Modal>
 
             {/* Debt Modal */}

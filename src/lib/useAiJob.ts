@@ -18,6 +18,8 @@ interface UseAiJobOptions<T> {
 interface UseAiJobReturn<T> {
   /** Whether an AI job is currently processing */
   isProcessing: boolean;
+  /** Whether the hook is still doing its initial status check */
+  isInitializing: boolean;
   /** The result from the completed job */
   result: T | null;
   /** Error message if the job failed */
@@ -42,6 +44,7 @@ export function useAiJob<T = any>(
   const { onComplete, onError, enabled = true } = options;
 
   const [status, setStatus] = useState<'idle' | 'processing' | 'completed' | 'failed'>('idle');
+  const [isInitializing, setIsInitializing] = useState(enabled); // true until first check completes
   const [result, setResult] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,6 +135,7 @@ export function useAiJob<T = any>(
     mountedRef.current = true;
 
     if (!enabled) {
+      setIsInitializing(false);
       return () => { mountedRef.current = false; stopPolling(); };
     }
 
@@ -164,6 +168,10 @@ export function useAiJob<T = any>(
         }
       } catch {
         // Ignore initial check errors
+      } finally {
+        if (!cancelled && mountedRef.current) {
+          setIsInitializing(false);
+        }
       }
     })();
 
@@ -251,6 +259,7 @@ export function useAiJob<T = any>(
 
   return {
     isProcessing: status === 'processing',
+    isInitializing,
     result,
     error,
     status,

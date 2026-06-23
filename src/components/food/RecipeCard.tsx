@@ -2,13 +2,15 @@
 
 import React, { useState } from 'react';
 import { Card } from '@/components/ui';
-import { Heart, Clock, Gauge, Wallet, ChevronDown, ChefHat } from 'lucide-react';
+import { Heart, Clock, Gauge, Wallet, ChevronDown, ChefHat, Share2, Flame } from 'lucide-react';
 import { FridgeRecipe } from '@/services/foodService';
 
 interface RecipeCardProps {
   recipe: FridgeRecipe;
   favorited: boolean;
   onToggleFavorite: () => void;
+  onShare?: () => void;
+  showNutrition?: boolean;
   /** Optional footer note, e.g. saved date on the favorites tab */
   footnote?: string;
 }
@@ -26,7 +28,7 @@ function difficultyColor(difficulty: string): string {
  * Appetizing, scannable recipe card with cost, cook time, difficulty,
  * tags, a favorite heart toggle, and expandable ingredients + steps.
  */
-export function RecipeCard({ recipe, favorited, onToggleFavorite, footnote }: RecipeCardProps) {
+export function RecipeCard({ recipe, favorited, onToggleFavorite, onShare, showNutrition, footnote }: RecipeCardProps) {
   const [open, setOpen] = useState(false);
   const diffColor = difficultyColor(recipe.difficulty);
 
@@ -89,6 +91,28 @@ export function RecipeCard({ recipe, favorited, onToggleFavorite, footnote }: Re
             color={favorited ? 'rgb(var(--color-error))' : 'rgb(var(--text-muted))'}
           />
         </button>
+        {onShare && (
+          <button
+            onClick={onShare}
+            aria-label="Bagikan resep"
+            title="Bagikan resep"
+            style={{
+              background: 'rgb(var(--bg-surface))',
+              border: '1px solid var(--border-default)',
+              borderRadius: '50%',
+              width: 36,
+              height: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              flexShrink: 0,
+              transition: 'background 0.2s ease',
+            }}
+          >
+            <Share2 size={16} color="rgb(var(--text-muted))" />
+          </button>
+        )}
       </div>
 
       <div style={{ padding: '12px 16px 14px' }}>
@@ -104,6 +128,32 @@ export function RecipeCard({ recipe, favorited, onToggleFavorite, footnote }: Re
             <span key={t} style={metaChip}>#{t}</span>
           ))}
         </div>
+
+        {/* Nutrition info */}
+        {showNutrition && (recipe.calories || recipe.protein || recipe.carbs) && (
+          <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+            {recipe.calories && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'rgb(var(--color-warning))' }}>
+                <Flame size={12} /> {recipe.calories} kcal
+              </span>
+            )}
+            {recipe.protein && (
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>
+                💪 {recipe.protein}g protein
+              </span>
+            )}
+            {recipe.carbs && (
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>
+                🍚 {recipe.carbs}g karbo
+              </span>
+            )}
+            {recipe.fat && (
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'rgb(var(--text-secondary))' }}>
+                🫒 {recipe.fat}g lemak
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Expand toggle */}
         <button

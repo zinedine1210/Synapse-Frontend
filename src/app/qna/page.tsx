@@ -12,10 +12,10 @@ import { InfiniteScroll } from '@/components/ui/InfiniteScroll';
 import dynamic from 'next/dynamic';
 
 const RichTextEditor = dynamic(() => import('@/components/ui/RichTextEditor').then(m => ({ default: m.RichTextEditor })), { ssr: false });
-import { qnaService, QnaQuestion, QnaPaginated, UserReputation } from '@/services/qnaService';
+import { qnaService, QnaQuestion, QnaPaginated, UserReputation, SimilarQuestion, LeaderboardEntry } from '@/services/qnaService';
 import { useCache, setCache } from '@/lib/cache';
 import { useDebounce } from '@/lib/useDebounce';
-import { Plus, Loader2, MessageSquare, CheckCircle, Search, Award, Clock, User as UserIcon, Hash, Eye, HelpCircle, Flame, Star, Sparkles, Zap } from 'lucide-react';
+import { Plus, Loader2, MessageSquare, CheckCircle, Search, Award, Clock, User as UserIcon, Hash, Eye, HelpCircle, Flame, Sparkles, Zap, Bookmark, ThumbsUp, Trophy } from 'lucide-react';
 
 const QNA_CATEGORIES = [
   { id: 'semua', label: 'Semua', emoji: '🌐', color: '#6366f1' },
@@ -58,18 +58,20 @@ export default function QnaPage() {
   const { showToast } = useToast();
   const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [tab, setTab] = useState<'terbaru' | 'trending' | 'mine'>('terbaru');
+  const [tab, setTab] = useState<'terbaru' | 'trending' | 'mine' | 'bookmarks'>('terbaru');
   const [selectedCategory, setSelectedCategory] = useState('semua');
 
   const [questions, setQuestions] = useState<QnaQuestion[]>([]);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const { data: reputation } = useCache<UserReputation>('qna:reputation', () => qnaService.getReputation());
+  const { data: leaderboard } = useCache<LeaderboardEntry[]>('qna:leaderboard', () => qnaService.getWeeklyLeaderboard());
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 350);
   const [page, setPage] = useState(1);
+  const [similarQuestions, setSimilarQuestions] = useState<SimilarQuestion[]>([]);
 
   // Cache key for the current view — allows instant data on navigation back
   const cacheKey = `qna:questions:${tab}:${selectedCategory}:${debouncedSearch || '_'}`;
@@ -96,6 +98,13 @@ export default function QnaPage() {
   const [askForm, setAskForm] = useState({ title: '', body: '', category: '' });
   const [askTags, setAskTags] = useState<string[]>([]);
   const [askBodyError, setAskBodyError] = useState('');
+  const debouncedTitle = useDebounce(askForm.title, 500);
+
+  // Duplicate detection — fetch similar questions as user types title
+  useEffect(() => {
+    if (debouncedTitle.length < 10) { setSimilarQuestions([]); return; }
+    qnaService.findSimilarQuestions(debouncedTitle).then(setSimilarQuestions).catch(() => {});
+  }, [debouncedTitle]);
 
   // Pick up ?search= deep-links from detail page tag clicks (e.g. /qna?search=java).
   useEffect(() => {
@@ -109,22 +118,33 @@ export default function QnaPage() {
     if (append) setLoadingMore(true);
     else setLoading(true);
     try {
+      if (tab === 'bookmarks') {
+        const bookmarked = await qnaService.getBookmarks();
+        const list = Array.isArray(bookmarked) ? bookmarked : [];
+        setQuestions(list);
+        setTotalPages(1);
+        setTotal(list.length);
+        setCache(cacheKey, { questions: list, totalPages: 1, total: list.length });
+        return;
+      }
+
       if (tab === 'mine') {
         const all = await qnaService.getMyQuestions();
-        let filtered = all;
-        if (selectedCategory !== 'semua') filtered = filtered.filter(q => q.category?.includes(selectedCategory));
+        // Backend returns { data, total, ... } or array — normalize
+        const list = Array.isArray(all) ? all : (all as any).data ?? [];
+        let filtered = list;
+        if (selectedCategory !== 'semua') filtered = filtered.filter((q: any) => q.category?.includes(selectedCategory));
         if (debouncedSearch) {
           const s = debouncedSearch.toLowerCase();
-          filtered = filtered.filter(q =>
+          filtered = filtered.filter((q: any) =>
             q.title.toLowerCase().includes(s) ||
             (q.body || '').toLowerCase().includes(s) ||
-            q.tags?.some(t => t.toLowerCase().includes(s))
+            q.tags?.some((t: string) => t.toLowerCase().includes(s))
           );
         }
         setQuestions(filtered);
         setTotalPages(1);
         setTotal(filtered.length);
-        // Save to cache for instant back-navigation
         setCache(cacheKey, { questions: filtered, totalPages: 1, total: filtered.length });
         return;
       }
@@ -138,36 +158,41 @@ export default function QnaPage() {
         res = await qnaService.getQuestions(params);
       }
 
-      const newQuestions = append ? [...questions, ...res.questions] : res.questions;
-      if (append) setQuestions(prev => [...prev, ...res.questions]);
-      else setQuestions(res.questions);
+      if (append) {
+        setQuestions(prev => {
+          const newList = [...prev, ...res.questions];
+          setCache(cacheKey, { questions: newList, totalPages: res.totalPages, total: res.total });
+          return newList;
+        });
+      } else {
+        setQuestions(res.questions);
+        setCache(cacheKey, { questions: res.questions, totalPages: res.totalPages, total: res.total });
+      }
       setTotalPages(res.totalPages);
       setTotal(res.total);
-      // Save to cache (always save full current list for back-navigation)
-      setCache(cacheKey, { questions: newQuestions, totalPages: res.totalPages, total: res.total });
     } catch (e: any) {
       showToast(e.message, 'error');
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [debouncedSearch, selectedCategory, tab, showToast, cacheKey, questions]);
+  }, [debouncedSearch, selectedCategory, tab, showToast, cacheKey]);
 
   // Reset and fetch when tab, search, or category changes
   useEffect(() => {
     setPage(1);
     fetchQuestions(1, false);
-  }, [tab, debouncedSearch, selectedCategory]);
+  }, [tab, debouncedSearch, selectedCategory]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load more for infinite scroll (paginated tabs only)
   const handleLoadMore = useCallback(() => {
-    if (loadingMore || page >= totalPages || tab === 'mine') return;
+    if (loadingMore || page >= totalPages || tab === 'mine' || tab === 'bookmarks') return;
     const nextPage = page + 1;
     setPage(nextPage);
     fetchQuestions(nextPage, true);
   }, [page, totalPages, loadingMore, fetchQuestions, tab]);
 
-  const hasMore = tab !== 'mine' && page < totalPages;
+  const hasMore = tab !== 'mine' && tab !== 'bookmarks' && page < totalPages;
 
   const bodyPlainLen = askForm.body.replace(/<[^>]+>/g, '').trim().length;
 
@@ -211,18 +236,6 @@ export default function QnaPage() {
     const tagCount: Record<string, number> = {};
     questions.forEach(q => q.tags?.forEach(t => { tagCount[t] = (tagCount[t] || 0) + 1; }));
     return Object.entries(tagCount).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([tag, count]) => ({ tag, count }));
-  }, [questions]);
-
-  const topContributors = useMemo(() => {
-    if (!questions.length) return [];
-    const contribs: Record<string, { name: string; count: number }> = {};
-    questions.forEach(q => {
-      q.answers?.forEach(a => {
-        if (!contribs[a.user.id]) contribs[a.user.id] = { name: a.user.fullName, count: 0 };
-        contribs[a.user.id].count += 1;
-      });
-    });
-    return Object.values(contribs).sort((a, b) => b.count - a.count).slice(0, 5);
   }, [questions]);
 
   // Stats
@@ -357,6 +370,7 @@ export default function QnaPage() {
                     { key: 'terbaru', label: 'Terbaru', icon: <Clock size={13} /> },
                     { key: 'trending', label: 'Trending', icon: <Flame size={13} /> },
                     { key: 'mine', label: 'Milikku', icon: <UserIcon size={13} /> },
+                    { key: 'bookmarks', label: 'Bookmark', icon: <Bookmark size={13} /> },
                   ].map(t => (
                     <button key={t.key} onClick={() => { setTab(t.key as any); setPage(1); }} style={{
                       padding: '8px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: tab === t.key ? 700 : 400,
@@ -437,6 +451,16 @@ export default function QnaPage() {
                             <div style={{ display: 'flex', gap: 14 }}>
                               {/* Stat column */}
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 52, paddingTop: 2 }} className="qna-card-stats">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); qnaService.upvoteQuestion(q.id).then(() => { setQuestions(prev => prev.map(p => p.id === q.id ? { ...p, upvotes: (p.upvotes || 0) + 1 } : p)); }).catch(() => {}); }}
+                                  style={{ textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                                  title="Upvote pertanyaan"
+                                >
+                                  <div style={{ fontSize: 15, fontWeight: 800, lineHeight: 1, color: (q.upvotes || 0) > 0 ? 'rgb(var(--color-primary))' : 'inherit', opacity: (q.upvotes || 0) > 0 ? 1 : 0.3 }}>
+                                    <ThumbsUp size={14} style={{ marginBottom: 2 }} />
+                                    <div>{q.upvotes || 0}</div>
+                                  </div>
+                                </button>
                                 <div style={{ textAlign: 'center' }}>
                                   <div style={{ fontSize: 17, fontWeight: 800, lineHeight: 1, color: answerCount > 0 ? 'rgb(var(--color-primary))' : 'inherit', opacity: answerCount > 0 ? 1 : 0.3 }}>
                                     {answerCount}
@@ -558,30 +582,30 @@ export default function QnaPage() {
                   )}
                 </div>
 
-                {/* Top Contributors */}
+                {/* Weekly Leaderboard */}
                 <div style={{ padding: '14px 16px', borderRadius: 16, background: 'var(--card-bg)', border: '1px solid var(--border-default)' }}>
                   <h3 style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.4, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <Star size={12} /> Top Kontributor
+                    <Trophy size={12} /> Leaderboard Minggu Ini
                   </h3>
-                  {topContributors.length > 0 ? (
+                  {leaderboard && leaderboard.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {topContributors.map((c, i) => (
+                      {leaderboard.map((entry, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <div style={{ width: 12, fontSize: 11, fontWeight: 800, color: i === 0 ? '#f59e0b' : i === 1 ? '#9ca3af' : i === 2 ? '#b45309' : 'inherit', opacity: i >= 3 ? 0.4 : 1 }}>
                             {i + 1}
                           </div>
-                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: `linear-gradient(135deg, ${avatarColor(c.name)}, ${avatarColor(c.name)}99)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>
-                            {c.name.charAt(0).toUpperCase()}
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: `linear-gradient(135deg, ${avatarColor(entry.user.fullName)}, ${avatarColor(entry.user.fullName)}99)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>
+                            {entry.user.fullName.charAt(0).toUpperCase()}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</div>
-                            <div style={{ fontSize: 10, opacity: 0.4 }}>{c.count} jawaban</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.user.fullName}</div>
+                            <div style={{ fontSize: 10, opacity: 0.4 }}>{entry.answersCount} jawaban · {entry.approvedCount} approved</div>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p style={{ fontSize: 12, opacity: 0.35 }}>Belum ada kontributor.</p>
+                    <p style={{ fontSize: 12, opacity: 0.35 }}>Belum ada kontributor minggu ini.</p>
                   )}
                 </div>
               </aside>
@@ -608,6 +632,29 @@ export default function QnaPage() {
                     autoFocus
                   />
                   <p style={{ fontSize: 11, opacity: 0.4, marginTop: 5 }}>Tulis spesifik & langsung ke inti — bayangkan kamu lagi nanya ke teman.</p>
+
+                  {/* Duplicate detection */}
+                  {similarQuestions.length > 0 && (
+                    <div style={{ marginTop: 10, padding: '10px 12px', borderRadius: 10, background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: '#f59e0b', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Sparkles size={11} /> Mungkin sudah pernah ditanyakan:
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {similarQuestions.slice(0, 3).map(sq => (
+                          <a
+                            key={sq.id}
+                            href={`/qna/${sq.slug}`}
+                            target="_blank"
+                            rel="noopener"
+                            style={{ fontSize: 12, color: 'rgb(var(--color-primary))', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}
+                          >
+                            <span style={{ opacity: 0.5 }}>→</span> {sq.title}
+                            {sq._count?.answers ? <span style={{ fontSize: 10, opacity: 0.5 }}>({sq._count.answers} jawaban)</span> : null}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Detail */}

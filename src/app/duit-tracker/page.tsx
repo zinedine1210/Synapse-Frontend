@@ -610,7 +610,7 @@ export default function DuitTrackerPage() {
     onError: (err) => showToast(err || 'Gagal bikin Weekly Roast nih.', 'error'),
   });
   const weeklyRoast = weeklyRoastJob.result;
-  const roastLoading = weeklyRoastJob.isProcessing;
+  const roastLoading = weeklyRoastJob.isProcessing || weeklyRoastJob.isInitializing;
 
   // ── New Features State ──
   const [challenges, setChallenges] = useState<BudgetChallenge[]>([]);

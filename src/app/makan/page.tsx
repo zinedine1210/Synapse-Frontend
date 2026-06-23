@@ -14,13 +14,16 @@ import {
   FridgeResult,
   FridgeRecipe,
   MenuResult,
+  MealPlanResult,
   FoodBudgetInfo,
   FoodFavorite,
   FoodHistoryItem,
+  FoodRating,
 } from '@/services/foodService';
 import {
   UtensilsCrossed, Loader2, Settings2, Heart, History,
   Wallet, Clock, Refrigerator, ScrollText, Sparkles, ChevronDown, Gauge,
+  Share2, Star, CalendarDays, Type, Send,
 } from 'lucide-react';
 import { SegmentedTabs } from '@/components/food/SegmentedTabs';
 import { BudgetRing } from '@/components/food/BudgetRing';
@@ -61,11 +64,13 @@ function useSessionStorage<T>(key: string, initialValue: T) {
   return [storedValue, setValue] as const;
 }
 
-type TabMode = 'fridge' | 'menu' | 'favorites' | 'history';
+type TabMode = 'fridge' | 'menu' | 'text' | 'meal-plan' | 'favorites' | 'history';
 
 const TABS = [
   { value: 'fridge' as const, label: 'Foto Kulkas', icon: <Refrigerator size={16} /> },
   { value: 'menu' as const, label: 'Foto Menu', icon: <ScrollText size={16} /> },
+  { value: 'text' as const, label: 'Ketik Bahan', icon: <Type size={16} /> },
+  { value: 'meal-plan' as const, label: 'Meal Plan', icon: <CalendarDays size={16} /> },
   { value: 'favorites' as const, label: 'Favorit', icon: <Heart size={16} /> },
   { value: 'history' as const, label: 'Riwayat', icon: <History size={16} /> },
 ];
@@ -80,7 +85,14 @@ export default function MakanApaPage() {
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [fridgeResult, setFridgeResult] = useSessionStorage<FridgeResult | null>('makan_fridgeResult', null);
   const [menuResult, setMenuResult] = useSessionStorage<MenuResult | null>('makan_menuResult', null);
+  const [textResult, setTextResult] = useSessionStorage<FridgeResult | null>('makan_textResult', null);
+  const [mealPlanResult, setMealPlanResult] = useSessionStorage<MealPlanResult | null>('makan_mealPlan', null);
   const [menuFilter, setMenuFilter] = useSessionStorage('makan_menuFilter', 'hemat');
+  const [ingredientInput, setIngredientInput] = useState('');
+  const [ratingModal, setRatingModal] = useState<{ historyId: string; recipeName: string } | null>(null);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingFeedback, setRatingFeedback] = useState('');
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
 
   // AI Job tracking for food recommendations
   const fridgeJob = useAiJob<FridgeResult>('food_from_fridge', {
@@ -91,9 +103,17 @@ export default function MakanApaPage() {
     onComplete: (result) => { setMenuResult(result); refetchBudget(); },
     onError: (err) => { showToast(err || 'Gagal memproses foto.', 'error'); },
   });
+  const textJob = useAiJob<FridgeResult>('food_from_text', {
+    onComplete: (result) => { setTextResult(result); refetchBudget(); },
+    onError: (err) => { showToast(err || 'Gagal memproses bahan.', 'error'); },
+  });
+  const mealPlanJob = useAiJob<MealPlanResult>('food_meal_plan', {
+    onComplete: (result) => { setMealPlanResult(result); },
+    onError: (err) => { showToast(err || 'Gagal membuat meal plan.', 'error'); },
+  });
 
   // Derive loading from the active job status — block ALL uploads if ANY job is processing
-  const loading = fridgeJob.isProcessing || menuJob.isProcessing;
+  const loading = fridgeJob.isProcessing || menuJob.isProcessing || textJob.isProcessing || mealPlanJob.isProcessing;
 
   // Cached data fetching
   const budgetFetcher = useCallback(() => foodService.getRemainingBudget().catch(() => null), []);
@@ -105,7 +125,7 @@ export default function MakanApaPage() {
   // Favorites state — cached
   const favFetcher = useCallback(() => foodService.getFavorites(), []);
   const { data: favorites = [], loading: favoritesLoading, mutate: mutateFavorites } = useCache<FoodFavorite[]>(
-    mode === 'favorites' || mode === 'fridge' ? 'food:favorites' : null,
+    mode === 'favorites' || mode === 'fridge' || mode === 'text' ? 'food:favorites' : null,
     favFetcher
   );
 
@@ -118,6 +138,18 @@ export default function MakanApaPage() {
 
   const handleImageUpload = async (file: File) => {
     if (loading) return; // prevent double upload
+
+    // Validate file size (max 5MB) and format
+    const MAX_SIZE = 5 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      showToast('Ukuran foto maksimal 5MB. Coba kompres dulu ya.', 'error');
+      return;
+    }
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      showToast('Format foto harus JPG, PNG, atau WebP.', 'error');
+      return;
+    }
     try {
       const reader = new FileReader();
       const base64 = await new Promise<string>((resolve) => {
@@ -150,7 +182,7 @@ export default function MakanApaPage() {
   };
 
   const handleToggleFavorite = async (recipe: FridgeRecipe) => {
-    const existing = favorites.find(f => f.recipeName === recipe.name);
+    const existing = favorites.find(f => f.recipeName.toLowerCase() === recipe.name.toLowerCase());
     if (existing) {
       try {
         await foodService.removeFavorite(existing.id);
@@ -180,21 +212,79 @@ export default function MakanApaPage() {
     }
   };
 
-  // Filter fridge recipes by remaining budget
+  const handleTextSubmit = async () => {
+    if (loading) return;
+    const items = ingredientInput.split(',').map(s => s.trim()).filter(Boolean);
+    if (items.length < 2) { showToast('Minimal 2 bahan ya (pisahkan dengan koma).', 'error'); return; }
+    setTextResult(null);
+    try {
+      await textJob.trigger(() => foodService.fromText(items));
+    } catch (e: any) {
+      showToast(e.message || 'Gagal memproses bahan.', 'error');
+    }
+  };
+
+  const handleGenerateMealPlan = async () => {
+    if (loading) return;
+    setMealPlanResult(null);
+    try {
+      await mealPlanJob.trigger(() => foodService.generateMealPlan(7));
+    } catch (e: any) {
+      showToast(e.message || 'Gagal membuat meal plan.', 'error');
+    }
+  };
+
+  const handleShareRecipe = (recipe: FridgeRecipe) => {
+    const text = `🍳 ${recipe.name}\n⏱ ${recipe.cookTime} | 💰 Rp ${recipe.estimatedCost.toLocaleString('id-ID')}${recipe.calories ? ` | 🔥 ${recipe.calories} kcal` : ''}\n\n🧺 Bahan:\n${recipe.ingredients.map(i => `• ${i}`).join('\n')}\n\n👩‍🍳 Langkah:\n${recipe.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\n— dari Synapse Makan Apa`;
+    if (navigator.share) {
+      navigator.share({ title: recipe.name, text });
+    } else {
+      navigator.clipboard.writeText(text);
+      showToast('Resep disalin ke clipboard! 📋', 'success');
+    }
+  };
+
+  const handleRateSubmit = async () => {
+    if (!ratingModal || ratingValue === 0) return;
+    setRatingSubmitting(true);
+    try {
+      await foodService.rateRecipe(ratingModal.historyId, ratingValue, ratingFeedback || undefined);
+      showToast('Rating tersimpan! Makasih feedbacknya~ ⭐', 'success');
+      setRatingModal(null);
+      setRatingValue(0);
+      setRatingFeedback('');
+    } catch (e: any) {
+      showToast(e.message || 'Gagal menyimpan rating.', 'error');
+    } finally {
+      setRatingSubmitting(false);
+    }
+  };
+
+  // Filter fridge recipes by remaining budget (15% tolerance)
   const filteredFridgeRecipes = useMemo(() => {
     if (!fridgeResult?.recipes) return [];
     if (!budgetInfo?.remaining || budgetInfo.remaining <= 0) return fridgeResult.recipes;
-    return fridgeResult.recipes.filter(r => r.estimatedCost <= budgetInfo.remaining!);
+    const threshold = budgetInfo.remaining * 1.15;
+    return fridgeResult.recipes.filter(r => r.estimatedCost <= threshold);
   }, [fridgeResult, budgetInfo]);
 
-  // Filter menu recommendations by remaining budget
+  // Filter text-mode recipes by remaining budget (15% tolerance)
+  const filteredTextRecipes = useMemo(() => {
+    if (!textResult?.recipes) return [];
+    if (!budgetInfo?.remaining || budgetInfo.remaining <= 0) return textResult.recipes;
+    const threshold = budgetInfo.remaining * 1.15;
+    return textResult.recipes.filter(r => r.estimatedCost <= threshold);
+  }, [textResult, budgetInfo]);
+
+  // Filter menu recommendations by remaining budget (15% tolerance)
   const filteredMenuRecs = useMemo(() => {
     if (!menuResult?.recommendations) return [];
     if (!budgetInfo?.remaining || budgetInfo.remaining <= 0) return menuResult.recommendations;
-    return menuResult.recommendations.filter(r => r.price <= budgetInfo.remaining!);
+    const threshold = budgetInfo.remaining * 1.15;
+    return menuResult.recommendations.filter(r => r.price <= threshold);
   }, [menuResult, budgetInfo]);
 
-  const isFavorited = (recipeName: string) => favorites.some(f => f.recipeName === recipeName);
+  const isFavorited = (recipeName: string) => favorites.some(f => f.recipeName.toLowerCase() === recipeName.toLowerCase());
 
   const fmt = (n: number) => `Rp ${n.toLocaleString('id-ID')}`;
 
@@ -380,7 +470,7 @@ export default function MakanApaPage() {
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 4, marginTop: 12 }}>
                     <Button
                       onClick={(e) => { e.stopPropagation(); handleToggleFavorite(recipe); }}
                       variant="ghost"
@@ -398,6 +488,22 @@ export default function MakanApaPage() {
                         color={isFavorited(recipe.name) ? 'rgb(var(--color-error))' : 'currentColor'}
                       />
                       {isFavorited(recipe.name) ? 'Tersimpan di Favorit' : 'Tambah ke Favorit'}
+                    </Button>
+                    <Button
+                      onClick={(e) => { e.stopPropagation(); handleShareRecipe(recipe); }}
+                      variant="ghost"
+                      size="sm"
+                      style={{ color: 'rgb(var(--text-muted))', fontWeight: 700, gap: 6, padding: '6px 12px' }}
+                    >
+                      <Share2 size={15} /> Bagikan
+                    </Button>
+                    <Button
+                      onClick={(e) => { e.stopPropagation(); setRatingModal({ historyId: item.id, recipeName: recipe.name }); }}
+                      variant="ghost"
+                      size="sm"
+                      style={{ color: 'rgb(var(--color-warning))', fontWeight: 700, gap: 6, padding: '6px 12px' }}
+                    >
+                      <Star size={15} /> Rate
                     </Button>
                   </div>
                 </div>
@@ -750,6 +856,8 @@ export default function MakanApaPage() {
                               recipe={recipe}
                               favorited={isFavorited(recipe.name)}
                               onToggleFavorite={() => handleToggleFavorite(recipe)}
+                              onShare={() => handleShareRecipe(recipe)}
+                              showNutrition
                             />
                           ))}
                         </div>
@@ -883,6 +991,8 @@ export default function MakanApaPage() {
                               recipe={recipe}
                               favorited
                               onToggleFavorite={() => handleRemoveFavorite(fav.id)}
+                              onShare={() => handleShareRecipe(recipe)}
+                              showNutrition
                               footnote={savedNote}
                             />
                           );
@@ -925,9 +1035,194 @@ export default function MakanApaPage() {
                   )}
                 </div>
               )}
+
+              {/* Text-based ingredient mode */}
+              {mode === 'text' && (
+                <div className="animate-fade-in">
+                  <Card style={{ padding: '20px', marginBottom: 16 }}>
+                    <h3 style={{ fontWeight: 700, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Type size={18} style={{ color: 'rgb(var(--color-primary))' }} /> Ketik Bahan yang Kamu Punya
+                    </h3>
+                    <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginBottom: 14 }}>
+                      Tulis bahan-bahan yang ada, pisahkan pakai koma. AI akan carikan resep terbaik!
+                    </p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <input
+                        type="text"
+                        value={ingredientInput}
+                        onChange={(e) => setIngredientInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleTextSubmit(); }}
+                        placeholder="telur, mie instan, kecap, bawang..."
+                        style={{
+                          flex: 1, padding: '10px 14px', borderRadius: 'var(--radius-md)',
+                          border: '1px solid var(--border-default)', background: 'var(--input-bg)',
+                          fontSize: 'var(--font-sm)', fontFamily: 'inherit', outline: 'none',
+                          transition: 'border-color 0.2s',
+                        }}
+                      />
+                      <Button onClick={handleTextSubmit} disabled={loading || ingredientInput.trim().split(',').filter(Boolean).length < 2} style={{ borderRadius: 'var(--radius-md)', padding: '10px 16px' }}>
+                        {loading ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : <Send size={16} />}
+                      </Button>
+                    </div>
+                  </Card>
+
+                  {loading && (
+                    <Card className="animate-pulse" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(var(--color-primary) / 0.08), rgba(var(--color-secondary) / 0.05))', border: '1px dashed rgb(var(--color-primary))', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 12, borderRadius: 'var(--radius-lg)' }}>
+                      <Sparkles size={24} style={{ color: 'rgb(var(--color-primary))', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                      <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))' }}>AI lagi mikirin resep dari bahan kamu... ✨</p>
+                    </Card>
+                  )}
+
+                  {!loading && textResult && (
+                    <div className="animate-fade-in">
+                      {textResult.detectedIngredients.length > 0 && (
+                        <Card style={{ marginBottom: 16 }}>
+                          <h3 style={{ fontWeight: 700, marginBottom: 10 }}>🧺 Bahan Kamu</h3>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {textResult.detectedIngredients.map(ing => (
+                              <span key={ing} className="tag-chip">{ing}</span>
+                            ))}
+                          </div>
+                        </Card>
+                      )}
+
+                      <h3 style={{ fontWeight: 700, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Sparkles size={18} style={{ color: 'rgb(var(--color-primary))' }} /> Resep Rekomendasi
+                      </h3>
+                      <div className="stagger-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {filteredTextRecipes.map((recipe, i) => (
+                          <RecipeCard
+                            key={i}
+                            recipe={recipe}
+                            favorited={isFavorited(recipe.name)}
+                            onToggleFavorite={() => handleToggleFavorite(recipe)}
+                            onShare={() => handleShareRecipe(recipe)}
+                            showNutrition
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Meal Plan Tab */}
+              {mode === 'meal-plan' && (
+                <div className="animate-fade-in">
+                  {!mealPlanResult && !loading && (
+                    <Card style={{ padding: '2.5rem 2rem', textAlign: 'center' }}>
+                      <CalendarDays size={40} style={{ color: 'rgb(var(--color-primary))', marginBottom: 12 }} />
+                      <h3 style={{ fontWeight: 700, marginBottom: 8 }}>Meal Plan Mingguan</h3>
+                      <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: 16, maxWidth: 400, margin: '0 auto 16px' }}>
+                        AI akan susun menu makan siang & makan malam selama 7 hari, disesuaikan budget & seleramu.
+                      </p>
+                      <Button onClick={handleGenerateMealPlan} style={{ borderRadius: 'var(--radius-md)', padding: '12px 24px', fontWeight: 700 }}>
+                        <Sparkles size={16} /> Generate Meal Plan
+                      </Button>
+                    </Card>
+                  )}
+
+                  {loading && (
+                    <Card className="animate-pulse" style={{ padding: '20px', background: 'linear-gradient(135deg, rgba(var(--color-primary) / 0.08), rgba(var(--color-secondary) / 0.05))', border: '1px dashed rgb(var(--color-primary))', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 12, borderRadius: 'var(--radius-lg)' }}>
+                      <Sparkles size={24} style={{ color: 'rgb(var(--color-primary))', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                      <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))' }}>AI lagi nyusun menu seminggu... Sabar ya~ 🗓️</p>
+                    </Card>
+                  )}
+
+                  {!loading && mealPlanResult && mealPlanResult.days?.length > 0 && (
+                    <div className="animate-fade-in">
+                      {/* Summary */}
+                      <Card style={{ marginBottom: 16, padding: '14px 18px', background: 'linear-gradient(135deg, rgba(var(--color-primary) / 0.05), rgba(var(--color-secondary) / 0.03))' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                          <span style={{ fontSize: 'var(--font-sm)', fontWeight: 700 }}>📊 Estimasi Total</span>
+                          <span style={{ fontSize: 'var(--font-md)', fontWeight: 800, color: 'rgb(var(--color-primary))' }}>{fmt(mealPlanResult.totalEstimatedCost || 0)}</span>
+                        </div>
+                        <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: '4px 0 0' }}>
+                          Budget harian: ~{fmt(mealPlanResult.dailyBudget || 0)}
+                        </p>
+                      </Card>
+
+                      {/* Days */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {mealPlanResult.days.map((day) => (
+                          <Card key={day.day} style={{ padding: 0, overflow: 'hidden' }}>
+                            <div style={{ padding: '12px 16px', background: 'rgba(var(--color-primary) / 0.04)', borderBottom: '1px solid var(--border-default)' }}>
+                              <h4 style={{ fontWeight: 800, fontSize: 'var(--font-sm)', margin: 0 }}>📅 Hari {day.day}</h4>
+                            </div>
+                            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                              {day.meals.map((meal, mi) => (
+                                <div key={mi} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderBottom: mi < day.meals.length - 1 ? '1px solid var(--border-default)' : 'none' }}>
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                      <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: 999, background: meal.type === 'lunch' ? 'rgba(var(--color-warning) / 0.1)' : 'rgba(var(--color-primary) / 0.1)', color: meal.type === 'lunch' ? 'rgb(var(--color-warning))' : 'rgb(var(--color-primary))', fontWeight: 700 }}>
+                                        {meal.type === 'lunch' ? '☀️ Siang' : '🌙 Malam'}
+                                      </span>
+                                    </div>
+                                    <h5 style={{ fontWeight: 700, fontSize: 'var(--font-sm)', margin: 0 }}>{meal.name}</h5>
+                                    {meal.note && <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: '2px 0 0' }}>{meal.note}</p>}
+                                    <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                                      {meal.calories && <span style={{ fontSize: '10px', color: 'rgb(var(--text-muted))' }}>🔥 {meal.calories} kcal</span>}
+                                      {meal.protein && <span style={{ fontSize: '10px', color: 'rgb(var(--text-muted))' }}>💪 {meal.protein}g protein</span>}
+                                    </div>
+                                  </div>
+                                  <span style={{ fontWeight: 800, fontSize: 'var(--font-sm)', color: 'rgb(var(--color-primary))', whiteSpace: 'nowrap' }}>{fmt(meal.estimatedCost)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+
+                      <div style={{ marginTop: 16, textAlign: 'center' }}>
+                        <Button onClick={handleGenerateMealPlan} variant="outline" size="sm" style={{ borderRadius: 'var(--radius-md)' }}>
+                          <Sparkles size={14} /> Generate Ulang
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Preference editor — BottomSheet (slides up on mobile, centered modal on desktop) */}
+            {/* Rating Modal */}
+            <BottomSheet isOpen={!!ratingModal} onClose={() => { setRatingModal(null); setRatingValue(0); setRatingFeedback(''); }} title="⭐ Beri Rating">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))' }}>
+                  Gimana <strong>{ratingModal?.recipeName}</strong>? Kasih rating biar AI makin pintar rekomendasiin!
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                  {[1, 2, 3, 4, 5].map(v => (
+                    <button
+                      key={v}
+                      onClick={() => setRatingValue(v)}
+                      style={{
+                        background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                        transform: ratingValue >= v ? 'scale(1.2)' : 'scale(1)',
+                        transition: 'transform 0.15s',
+                      }}
+                    >
+                      <Star size={28} fill={ratingValue >= v ? '#f59e0b' : 'none'} color={ratingValue >= v ? '#f59e0b' : 'rgb(var(--text-muted))'} />
+                    </button>
+                  ))}
+                </div>
+                <textarea
+                  value={ratingFeedback}
+                  onChange={(e) => setRatingFeedback(e.target.value)}
+                  placeholder="Feedback opsional... (misal: terlalu asin, porsi kurang)"
+                  style={{
+                    padding: '10px 14px', borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-default)', background: 'var(--input-bg)',
+                    fontSize: 'var(--font-sm)', fontFamily: 'inherit', resize: 'vertical',
+                    minHeight: 60, outline: 'none',
+                  }}
+                />
+                <Button onClick={handleRateSubmit} disabled={ratingValue === 0 || ratingSubmitting} style={{ borderRadius: 'var(--radius-md)' }}>
+                  {ratingSubmitting ? <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> : 'Simpan Rating'}
+                </Button>
+              </div>
+            </BottomSheet>
+
+            {/* Preference editor */}
             <BottomSheet isOpen={showPrefModal} onClose={() => setShowPrefModal(false)} title="⚙️ Preferensi Makan">
               <PreferenceForm pref={pref} onSave={handleSavePref} />
             </BottomSheet>

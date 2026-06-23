@@ -14,6 +14,10 @@ export interface FridgeRecipe {
   cookTime: string;
   difficulty: string;
   estimatedCost: number;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
   ingredients: string[];
   steps: string[];
   tags: string[];
@@ -30,8 +34,39 @@ export interface MenuResult {
     name: string;
     price: number;
     reason: string;
+    calories?: number;
     tags: string[];
   }[];
+}
+
+export interface MealPlanDay {
+  day: number;
+  meals: {
+    type: 'lunch' | 'dinner';
+    name: string;
+    estimatedCost: number;
+    calories?: number;
+    protein?: number;
+    carbs?: number;
+    fat?: number;
+    tags: string[];
+    note?: string;
+  }[];
+}
+
+export interface MealPlanResult {
+  dailyBudget: number;
+  totalEstimatedCost: number;
+  days: MealPlanDay[];
+}
+
+export interface FoodRating {
+  id: string;
+  userId: string;
+  historyId: string;
+  rating: number;
+  feedback?: string;
+  createdAt: string;
 }
 
 export interface FoodBudgetInfo {
@@ -80,4 +115,17 @@ export const foodService = {
   // History
   getHistory: (limit?: number) =>
     apiFetch<FoodHistoryItem[]>(`/food/history${limit ? `?limit=${limit}` : ''}`),
+
+  // Text-based ingredient mode
+  fromText: (ingredients: string[]) =>
+    apiFetch<FridgeResult>('/food/from-text', { method: 'POST', body: JSON.stringify({ ingredients }) }),
+
+  // Rating
+  rateRecipe: (historyId: string, rating: number, feedback?: string) =>
+    apiFetch<FoodRating>('/food/rate', { method: 'POST', body: JSON.stringify({ historyId, rating, feedback }) }),
+  getMyRatings: () => apiFetch<FoodRating[]>('/food/ratings'),
+
+  // Weekly Meal Plan
+  generateMealPlan: (days = 7) =>
+    apiFetch<MealPlanResult>('/food/meal-plan', { method: 'POST', body: JSON.stringify({ days }) }),
 };

@@ -11,11 +11,15 @@ export interface QnaQuestion {
   status: 'open' | 'answered' | 'closed';
   isPublic: boolean;
   viewCount: number;
+  upvotes: number;
+  aiAnswer?: string;
   createdAt: string;
   updatedAt: string;
   user: { id: string; fullName: string; avatarUrl?: string };
   answers?: QnaAnswer[];
   _count?: { answers: number };
+  isBookmarked?: boolean;
+  hasVoted?: boolean;
 }
 
 export interface QnaAnswer {
@@ -26,7 +30,9 @@ export interface QnaAnswer {
   isApprovedByAsker: boolean;
   upvotes: number;
   createdAt: string;
+  updatedAt?: string;
   user: { id: string; fullName: string; avatarUrl?: string };
+  hasUpvoted?: boolean;
 }
 
 export interface QnaPaginated {
@@ -43,6 +49,20 @@ export interface UserReputation {
   answersApproved: number;
   questionsAsked: number;
   reportCount: number;
+}
+
+export interface SimilarQuestion {
+  id: string;
+  title: string;
+  slug: string;
+  status: string;
+  _count?: { answers: number };
+}
+
+export interface LeaderboardEntry {
+  user: { id: string; fullName: string; avatarUrl?: string };
+  answersCount: number;
+  approvedCount: number;
 }
 
 export const qnaService = {
@@ -81,6 +101,9 @@ export const qnaService = {
   editQuestion: (id: string, data: { title?: string; body?: string; category?: string[]; tags?: string[] }) =>
     apiFetch<QnaQuestion>(`/qna/questions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
+  editAnswer: (answerId: string, body: string) =>
+    apiFetch<QnaAnswer>(`/qna/answers/${answerId}`, { method: 'PATCH', body: JSON.stringify({ body }) }),
+
   reportAnswer: (answerId: string) =>
     apiFetch(`/qna/answers/${answerId}/report`, { method: 'POST' }),
 
@@ -92,4 +115,32 @@ export const qnaService = {
     if (params?.limit) q.set('limit', String(params.limit));
     return apiFetch<QnaPaginated>(`/qna/questions/trending?${q.toString()}`);
   },
+
+  // Bookmarks
+  bookmarkQuestion: (questionId: string) =>
+    apiFetch(`/qna/questions/${questionId}/bookmark`, { method: 'POST' }),
+
+  removeBookmark: (questionId: string) =>
+    apiFetch(`/qna/questions/${questionId}/bookmark`, { method: 'DELETE' }),
+
+  getBookmarks: () => apiFetch<QnaQuestion[]>('/qna/bookmarks'),
+
+  // Question votes
+  upvoteQuestion: (questionId: string) =>
+    apiFetch(`/qna/questions/${questionId}/vote`, { method: 'POST' }),
+
+  removeQuestionVote: (questionId: string) =>
+    apiFetch(`/qna/questions/${questionId}/vote`, { method: 'DELETE' }),
+
+  // Duplicate detection
+  findSimilarQuestions: (title: string) =>
+    apiFetch<SimilarQuestion[]>(`/qna/questions/similar?title=${encodeURIComponent(title)}`),
+
+  // Increment view
+  incrementView: (questionId: string) =>
+    apiFetch(`/qna/questions/${questionId}/view`, { method: 'POST' }),
+
+  // Weekly leaderboard
+  getWeeklyLeaderboard: (limit = 10) =>
+    apiFetch<LeaderboardEntry[]>(`/qna/leaderboard/weekly?limit=${limit}`),
 };

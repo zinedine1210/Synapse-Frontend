@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
 import { HtmlRenderer, Button, useToast, useConfirm } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { qnaService } from '@/services/qnaService';
-import { ThumbsUp, CheckCircle, MessageSquare, Eye, Clock, ArrowLeft, LogIn, Flag, Loader2, Share2, Hash, HelpCircle, Award } from 'lucide-react';
+import { ThumbsUp, CheckCircle, MessageSquare, Eye, Clock, ArrowLeft, LogIn, Flag, Loader2, Share2, Hash, HelpCircle, Award, Bookmark, BookmarkCheck, Pencil, Sparkles } from 'lucide-react';
 import { brand } from '@/config/brand';
 
 // Lazy-load Tiptap editor (heavy, no SSR needed)
@@ -34,6 +34,8 @@ interface Question {
   slug: string;
   status: 'open' | 'answered' | 'closed';
   viewCount: number;
+  upvotes: number;
+  aiAnswer?: string;
   createdAt: string;
   user: { id: string; fullName: string; avatarUrl?: string };
   answers?: Answer[];
@@ -86,8 +88,20 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
   const [answerHtml, setAnswerHtml] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [relatedQuestions] = useState<RelatedQuestion[]>(ssrRelatedQuestions);
-  // Track which answers the user has upvoted (optimistic state)
   const [upvotedAnswers, setUpvotedAnswers] = useState<Set<string>>(new Set());
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [hasVotedQuestion, setHasVotedQuestion] = useState(false);
+  const [editingAnswerId, setEditingAnswerId] = useState<string | null>(null);
+  const [editAnswerHtml, setEditAnswerHtml] = useState('');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const viewCountedRef = useRef(false);
+
+  // Increment view count on mount (ref guard prevents double-call in StrictMode)
+  useEffect(() => {
+    if (viewCountedRef.current) return;
+    viewCountedRef.current = true;
+    qnaService.incrementView(question.id).catch(() => {});
+  }, [question.id]);
 
   const answers = question.answers || [];
   const approvedAnswer = answers.find(a => a.isApprovedByAsker);
@@ -186,13 +200,14 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
 
   // ─── Approve answer (question owner only) ──────────────────────
   const handleApprove = async (answerId: string) => {
+    setActionLoading(`approve-${answerId}`);
     try {
       await qnaService.approveAnswer(answerId);
       showToast('Jawaban di-approve! ✅', 'success');
-      // XP notification for approving an answer (+30 XP to the answerer)
       setTimeout(() => showToast('+30 XP diberikan ke penjawab! 🎉', 'success'), 800);
       await refreshQuestion();
     } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setActionLoading(null); }
   };
 
   // ─── Report answer with confirmation dialog ────────────────────
@@ -209,10 +224,12 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
 
     if (!confirmed) return;
 
+    setActionLoading(`report-${answerId}`);
     try {
       await qnaService.reportAnswer(answerId);
       showToast('Laporan dikirim. Terima kasih!', 'success');
     } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setActionLoading(null); }
   };
 
   const handleShare = () => {
@@ -222,6 +239,55 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
       navigator.clipboard.writeText(window.location.href);
       showToast('Link disalin!', 'success');
     }
+  };
+
+  const handleBookmark = async () => {
+    if (!user) { showToast('Login untuk bookmark.', 'error'); return; }
+    setActionLoading('bookmark');
+    try {
+      if (isBookmarked) {
+        await qnaService.removeBookmark(question.id);
+        setIsBookmarked(false);
+        showToast('Bookmark dihapus.', 'success');
+      } else {
+        await qnaService.bookmarkQuestion(question.id);
+        setIsBookmarked(true);
+        showToast('Pertanyaan di-bookmark! 🔖', 'success');
+      }
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setActionLoading(null); }
+  };
+
+  const handleQuestionVote = async () => {
+    if (!user) { showToast('Login untuk vote.', 'error'); return; }
+    setActionLoading('vote');
+    try {
+      if (hasVotedQuestion) {
+        await qnaService.removeQuestionVote(question.id);
+        setQuestion(prev => ({ ...prev, upvotes: prev.upvotes - 1 }));
+        setHasVotedQuestion(false);
+      } else {
+        await qnaService.upvoteQuestion(question.id);
+        setQuestion(prev => ({ ...prev, upvotes: prev.upvotes + 1 }));
+        setHasVotedQuestion(true);
+      }
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setActionLoading(null); }
+  };
+
+  const handleEditAnswer = async (answerId: string) => {
+    if (!editAnswerHtml.trim()) return;
+    const plainText = editAnswerHtml.replace(/<[^>]+>/g, '').trim();
+    if (plainText.length < 20) { showToast('Jawaban minimal 20 karakter.', 'error'); return; }
+    setActionLoading(`edit-${answerId}`);
+    try {
+      await qnaService.editAnswer(answerId, editAnswerHtml);
+      showToast('Jawaban berhasil diupdate! ✅', 'success');
+      setEditingAnswerId(null);
+      setEditAnswerHtml('');
+      await refreshQuestion();
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setActionLoading(null); }
   };
 
   // ─── Login CTA component for unauthenticated users ─────────────
@@ -325,6 +391,12 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
 
           {/* Actions */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <button disabled={actionLoading === 'vote'} onClick={handleQuestionVote} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, border: 'none', cursor: actionLoading === 'vote' ? 'wait' : 'pointer', opacity: actionLoading === 'vote' ? 0.6 : 1, background: hasVotedQuestion ? 'rgba(var(--color-primary), 0.1)' : 'var(--input-bg)', fontSize: 12, fontWeight: hasVotedQuestion ? 700 : 500, width: '100%', textAlign: 'left', transition: 'all 0.2s', color: hasVotedQuestion ? 'rgb(var(--color-primary))' : 'inherit' }}>
+              <ThumbsUp size={13} fill={hasVotedQuestion ? 'rgb(var(--color-primary))' : 'none'} /> {actionLoading === 'vote' ? 'Loading...' : `Upvote (${question.upvotes || 0})`}
+            </button>
+            <button disabled={actionLoading === 'bookmark'} onClick={handleBookmark} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, border: 'none', cursor: actionLoading === 'bookmark' ? 'wait' : 'pointer', opacity: actionLoading === 'bookmark' ? 0.6 : 1, background: isBookmarked ? 'rgba(245, 158, 11, 0.1)' : 'var(--input-bg)', fontSize: 12, fontWeight: isBookmarked ? 700 : 500, width: '100%', textAlign: 'left', transition: 'all 0.2s', color: isBookmarked ? '#f59e0b' : 'inherit' }}>
+              {isBookmarked ? <BookmarkCheck size={13} /> : <Bookmark size={13} />} {actionLoading === 'bookmark' ? 'Loading...' : (isBookmarked ? 'Bookmarked' : 'Bookmark')}
+            </button>
             <button onClick={handleShare} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'var(--input-bg)', fontSize: 12, fontWeight: 500, width: '100%', textAlign: 'left', transition: 'all 0.2s', color: 'inherit' }}>
               <Share2 size={13} /> Bagikan
             </button>
@@ -375,8 +447,25 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
 
             {/* Body */}
             {question.body && (
-              <div style={{ padding: '20px 24px', background: 'rgb(var(--bg-surface))', borderRadius: 16, border: '1px solid var(--border-default)', marginBottom: 32, lineHeight: 1.8, fontSize: 15 }}>
+              <div style={{ padding: '20px 24px', background: 'rgb(var(--bg-surface))', borderRadius: 16, border: '1px solid var(--border-default)', marginBottom: 20, lineHeight: 1.8, fontSize: 15 }}>
                 <HtmlRenderer content={question.body} />
+              </div>
+            )}
+
+            {/* AI Answer */}
+            {question.aiAnswer && (
+              <div style={{ padding: '18px 22px', borderRadius: 16, marginBottom: 32, background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.04), rgba(139, 92, 246, 0.03))', border: '1px solid rgba(var(--color-primary), 0.12)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <Sparkles size={16} style={{ color: 'rgb(var(--color-primary))' }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'rgb(var(--color-primary))' }}>Jawaban AI</span>
+                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 12, background: 'rgba(var(--color-primary), 0.1)', color: 'rgb(var(--color-primary))', fontWeight: 600 }}>Auto-generated</span>
+                </div>
+                <div style={{ lineHeight: 1.8, fontSize: 14 }}>
+                  <HtmlRenderer content={question.aiAnswer} />
+                </div>
+                <p style={{ fontSize: 11, opacity: 0.4, marginTop: 12, fontStyle: 'italic' }}>
+                  ⚠️ Jawaban ini dihasilkan AI dan mungkin tidak 100% akurat. Tunggu jawaban dari komunitas untuk verifikasi.
+                </p>
               </div>
             )}
           </article>
@@ -432,7 +521,17 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
                       </div>
 
                       <div style={{ lineHeight: 1.8, marginBottom: 14, fontSize: 15 }}>
-                        <HtmlRenderer content={answer.body} />
+                        {editingAnswerId === answer.id ? (
+                          <div>
+                            <RichTextEditor content={editAnswerHtml} onChange={setEditAnswerHtml} placeholder="Edit jawaban..." minHeight={120} />
+                            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                              <Button disabled={!!actionLoading} onClick={() => handleEditAnswer(answer.id)} size="sm" style={{ borderRadius: 8 }}>{actionLoading === `edit-${answer.id}` ? 'Menyimpan...' : 'Simpan'}</Button>
+                              <Button disabled={!!actionLoading} onClick={() => { setEditingAnswerId(null); setEditAnswerHtml(''); }} size="sm" variant="ghost" style={{ borderRadius: 8 }}>Batal</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <HtmlRenderer content={answer.body} />
+                        )}
                       </div>
 
                       {/* Action buttons */}
@@ -462,11 +561,23 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
                           {/* Approve button - only for question owner, non-approved answers */}
                           {user && question.userId === user.id && !answer.isApprovedByAsker && (
                             <button
+                              disabled={actionLoading === `approve-${answer.id}`}
                               onClick={() => handleApprove(answer.id)}
-                              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'rgb(var(--color-success))', background: 'rgba(var(--color-success), 0.06)', border: '1px solid rgba(var(--color-success), 0.15)', cursor: 'pointer', padding: '6px 12px', borderRadius: 8, fontFamily: 'inherit', fontWeight: 600, transition: 'all 0.15s' }}
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'rgb(var(--color-success))', background: 'rgba(var(--color-success), 0.06)', border: '1px solid rgba(var(--color-success), 0.15)', cursor: actionLoading === `approve-${answer.id}` ? 'wait' : 'pointer', opacity: actionLoading === `approve-${answer.id}` ? 0.6 : 1, padding: '6px 12px', borderRadius: 8, fontFamily: 'inherit', fontWeight: 600, transition: 'all 0.15s' }}
                               title="Tandai sebagai jawaban terbaik"
                             >
-                              <CheckCircle size={13} /> Approve
+                              <CheckCircle size={13} /> {actionLoading === `approve-${answer.id}` ? 'Loading...' : 'Approve'}
+                            </button>
+                          )}
+
+                          {/* Edit button - only for answer owner */}
+                          {user && answer.userId === user.id && editingAnswerId !== answer.id && (
+                            <button
+                              onClick={() => { setEditingAnswerId(answer.id); setEditAnswerHtml(answer.body); }}
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'rgb(var(--text-muted))', background: 'var(--input-bg)', border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 8, fontFamily: 'inherit', fontWeight: 500, transition: 'all 0.15s' }}
+                              title="Edit jawaban"
+                            >
+                              <Pencil size={12} /> Edit
                             </button>
                           )}
                         </div>
@@ -474,13 +585,14 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
                         {/* Report button - show login CTA for unauthenticated */}
                         {user ? (
                           <button
+                            disabled={actionLoading === `report-${answer.id}`}
                             onClick={() => handleReport(answer.id)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'rgb(var(--text-muted))', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: 6, fontFamily: 'inherit', opacity: 0.6, transition: 'all 0.15s' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'rgb(var(--text-muted))', background: 'none', border: 'none', cursor: actionLoading === `report-${answer.id}` ? 'wait' : 'pointer', padding: '4px 8px', borderRadius: 6, fontFamily: 'inherit', opacity: actionLoading === `report-${answer.id}` ? 0.4 : 0.6, transition: 'all 0.15s' }}
                             title="Laporkan jawaban"
-                            onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'rgb(var(--color-error))'; }}
+                            onMouseEnter={e => { if (!actionLoading) { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'rgb(var(--color-error))'; } }}
                             onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.color = 'rgb(var(--text-muted))'; }}
                           >
-                            <Flag size={12} /> Laporkan
+                            <Flag size={12} /> {actionLoading === `report-${answer.id}` ? 'Loading...' : 'Laporkan'}
                           </button>
                         ) : (
                           <Link href="/auth" style={{ textDecoration: 'none' }}>

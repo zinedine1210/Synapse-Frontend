@@ -72,11 +72,15 @@ export default function DashboardPage() {
     onComplete: () => {
       refetchAiBriefing();
       setAiBriefingFailed(false);
+      setAiBriefingRefreshing(false);
       showToast('Briefing AI berhasil dibuat! ✨', 'success');
     },
-    onError: (err) => showToast(err || 'Gagal membuat briefing.', 'error'),
+    onError: (err) => {
+      setAiBriefingRefreshing(false);
+      showToast(err || 'Gagal membuat briefing.', 'error');
+    },
   });
-  const aiBriefingGenerating = aiBriefingJob.isProcessing;
+  const aiBriefingGenerating = aiBriefingJob.isProcessing || aiBriefingJob.isInitializing;
   const aiBriefingPersisted = aiBriefingJob.result;
 
   const { data: classComparisonsRaw } = useCache<{ comparisons: ClassComparison[] }>('dashboard:class-comparison', () => dashboardService.getClassComparison());
@@ -130,30 +134,29 @@ export default function DashboardPage() {
   const greeting = getGreeting(user?.fullName || 'Sobat');
 
   const handleRefreshAiBriefing = useCallback(async () => {
-    if (aiBriefingGenerating) return;
+    if (aiBriefingGenerating || aiBriefingRefreshing) return;
     setAiBriefingRefreshing(true);
     try {
       await aiBriefingJob.trigger(() => dashboardService.generateAiBriefing());
       refetchAiBriefing();
       setAiBriefingFailed(false);
-      showToast('Briefing AI berhasil diperbarui! ✨', 'success');
     } catch (e: any) {
+      setAiBriefingRefreshing(false);
       if (!e.message?.includes('sedang memproses')) {
         showToast(e.message || 'Gagal memuat ulang briefing.', 'error');
       }
-    } finally {
-      setAiBriefingRefreshing(false);
     }
-  }, [showToast, aiBriefingGenerating]);
+  }, [showToast, aiBriefingGenerating, aiBriefingRefreshing]);
 
   const handleGenerateAiBriefing = async () => {
-    if (aiBriefingGenerating) return;
+    if (aiBriefingGenerating || aiBriefingRefreshing) return;
+    setAiBriefingRefreshing(true);
     try {
       await aiBriefingJob.trigger(() => dashboardService.generateAiBriefing());
       refetchAiBriefing();
       setAiBriefingFailed(false);
-      showToast('Briefing AI berhasil dibuat! ✨', 'success');
     } catch (e: any) {
+      setAiBriefingRefreshing(false);
       if (!e.message?.includes('sedang memproses')) {
         showToast(e.message || 'Gagal membuat briefing.', 'error');
       }
@@ -333,11 +336,11 @@ export default function DashboardPage() {
                       <Button
                         type="button"
                         onClick={handleGenerateAiBriefing}
-                        disabled={aiBriefingGenerating}
+                        disabled={aiBriefingGenerating || aiBriefingRefreshing}
                         className="flex items-center gap-2 border border-indigo-200 hover:border-indigo-400 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 text-indigo-700 font-medium py-2 px-4 rounded-xl shadow-md hover:shadow-lg active:scale-95"
                       >
-                        {aiBriefingGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />}
-                        <span>{aiBriefingGenerating ? 'Loading...' : 'Update Briefing AI 🔄'}</span>
+                        {(aiBriefingGenerating || aiBriefingRefreshing) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />}
+                        <span>{(aiBriefingGenerating || aiBriefingRefreshing) ? 'Memproses...' : 'Update Briefing AI 🔄'}</span>
                       </Button>
                     </div>
                   </div>
@@ -366,11 +369,11 @@ export default function DashboardPage() {
                     <Button
                       type="button"
                       onClick={handleGenerateAiBriefing}
-                      disabled={aiBriefingGenerating}
+                      disabled={aiBriefingGenerating || aiBriefingRefreshing}
                       className="flex items-center gap-2 border border-indigo-200 hover:border-indigo-400 bg-indigo-50/50 hover:bg-indigo-50 transition-all duration-300 text-indigo-700 font-medium py-2 px-4 rounded-xl shadow-md hover:shadow-lg active:scale-95"
                     >
-                      {aiBriefingGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />}
-                      <span>{aiBriefingGenerating ? 'Loading...' : 'Gas Briefing AI 🚀'}</span>
+                      {(aiBriefingGenerating || aiBriefingRefreshing) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-indigo-500 animate-pulse" />}
+                      <span>{(aiBriefingGenerating || aiBriefingRefreshing) ? 'Memproses...' : 'Gas Briefing AI 🚀'}</span>
                     </Button>
                   </div>
                 ) : aiBriefingFailed && briefingData ? (

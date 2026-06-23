@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Session, Class } from '@/models/Class';
 import { Material } from '@/models/File';
 import { aiService } from '@/services/aiService';
@@ -12,7 +12,7 @@ import { TugasTab } from '@/components/TugasTab';
 import {
   Upload, FileText, Music, CheckCircle2, XCircle, Loader2, Sparkles, Download,
   Layers, Eye, Trash2, Search, ChevronRight, HelpCircle, Play, RotateCcw,
-  ChevronLeft, Plus, Image as ImageIcon,
+  ChevronLeft, Plus,
   Pencil, ChevronUp, ChevronDown,
 } from 'lucide-react';
 
@@ -211,7 +211,7 @@ export function PertemuanTab({
     const { jsPDF } = await import('jspdf');
     const { renderMarkdownToPDF } = await import('@/lib/pdfMarkdown');
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'b5' });
-    const mL = 20, mR = 12, mT = 15, mB = 15, cW = 176 - mL - mR;
+    const mL = 20, mR = 12, mT = 15, mB = 15;
     doc.setFont('Helvetica', 'bold'); doc.setFontSize(14);
     doc.text(stripMarkdown(title), mL, mT);
     doc.setFontSize(8); doc.setFont('Helvetica', 'italic');

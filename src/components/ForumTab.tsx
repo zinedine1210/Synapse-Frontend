@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
-import { forumService, ForumPost, ForumReply, ForumAttachment, ForumDiscussion } from '@/services/forumService';
-import { classService, CustomTab, CustomTabFile } from '@/services/classService';
+import { forumService, ForumPost, ForumAttachment, ForumDiscussion } from '@/services/forumService';
+import { classService, CustomTab } from '@/services/classService';
 import { groupService } from '@/services/groupService';
 import { Button, Modal, useToast, useConfirm, TextInput, SelectOption, DatePicker, TimePicker, TextArea } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
@@ -13,8 +13,8 @@ import {
   Send, Pin, Trash2, Loader2, HelpCircle, Megaphone, MessagesSquare,
   MoreVertical, Reply, X, BarChart3,
   Bell, Paperclip, Plus, Search,
-  Hash, Users as UsersIcon, ChevronUp, ImageIcon, FileText, Download, Pencil,
-  ChevronLeft, Bookmark, Save, ChevronDown, Calendar, StickyNote, MoreHorizontal,
+  Hash, Users as UsersIcon, ImageIcon, FileText, Download, Pencil,
+  ChevronLeft, Save, ChevronDown, Calendar, StickyNote, MoreHorizontal,
   Upload, ArrowDown,
 } from 'lucide-react';
 
@@ -255,8 +255,6 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
 
   // Discussion tabs (chat / lampiran / canvas IDs)
   const [discussionTab, setDiscussionTab] = useState<string>('chat');
-  const [infoSendingFile, setInfoSendingFile] = useState(false);
-  const infoFileInputRef = useRef<HTMLInputElement>(null);
 
   // Date jump
   const [dateJumpOpen, setDateJumpOpen] = useState(false);

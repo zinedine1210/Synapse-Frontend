@@ -3,13 +3,13 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { brand } from '@/config/brand';
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Sparkles, BookOpen, Brain, FileText, Users, BarChart3,
   ChevronRight, Zap, MessageSquare, ArrowRight, Star,
   CheckCircle2, GraduationCap, Layers, Target, Sun, Moon, Globe,
-  Shield, Wallet, ClipboardList, PenTool, Vote, Bell,
-  FolderOpen, ChevronDown, Play, Monitor, Smartphone,
+  Shield, Wallet, ClipboardList, PenTool, Bell,
+  FolderOpen, ChevronDown, Play, Smartphone,
 } from 'lucide-react';
 import { AnimatedNumber } from '@/components/ui/AnimatedNumber';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { superadminService } from '@/services/superadminService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
@@ -9,7 +9,7 @@ import { Appbar } from '@/components/layout/Appbar';
 import { Button, Alert, Modal, useToast, useConfirm, DataTable, Card, CurrencyInput, TextInput, SelectOption, NumberInput } from '@/components/ui';
 import type { Column } from '@/components/ui';
 import { useCache } from '@/lib/cache';
-import { Layers, Loader2, Clock } from 'lucide-react';
+import { Layers, Clock } from 'lucide-react';
 
 interface PricingPlan {
   id: string;

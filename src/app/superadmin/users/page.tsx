@@ -9,7 +9,7 @@ import { Appbar } from '@/components/layout/Appbar';
 import { Button, Alert, Modal, useToast, useConfirm, DataTable, Card, SelectOption, TextInput, PasswordInput } from '@/components/ui';
 import type { Column } from '@/components/ui';
 import { useCache } from '@/lib/cache';
-import { Users, Shield, Loader2, Trash2, UserPlus } from 'lucide-react';
+import { Users, Shield, Trash2, UserPlus } from 'lucide-react';
 
 interface UserListItem {
   id: string;

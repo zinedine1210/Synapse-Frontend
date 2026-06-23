@@ -13,7 +13,7 @@ interface SubtaskListProps {
   onDelete?: (subId: string) => Promise<void>;
 }
 
-export function SubtaskList({ subtasks, todoId, onAdd, onToggle, onDelete }: SubtaskListProps) {
+export function SubtaskList({ subtasks, onAdd, onToggle, onDelete }: SubtaskListProps) {
   const [newTitle, setNewTitle] = useState('');
   const [adding, setAdding] = useState(false);
   const [showInput, setShowInput] = useState(false);

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { groupService, TaskGroupFull } from '@/services/groupService';
 import { Card, Button, Modal, useToast, useConfirm, NumberInput, TextInput } from '@/components/ui';
 import {
-  Users, Plus, Trash2, Loader2, Shuffle, UserPlus, UserMinus, ChevronRight,
+  Users, Plus, Trash2, Loader2, Shuffle, UserMinus, ChevronRight,
 } from 'lucide-react';
 
 interface KelompokTabProps {

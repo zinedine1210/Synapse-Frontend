@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { Camera, Loader2, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { Camera, Loader2, Image as ImageIcon } from 'lucide-react';
 import { useToast } from './Toast';
 import { apiFetch } from '@/lib/api';
 
@@ -12,7 +12,7 @@ interface AIPhotoInputProps {
   label?: string;
 }
 
-export function AIPhotoInput({ onExtracted, mode, className = '', label = 'Gunakan AI Photo' }: AIPhotoInputProps) {
+export function AIPhotoInput({ onExtracted, mode, className = '' }: AIPhotoInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);

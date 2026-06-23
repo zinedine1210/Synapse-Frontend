@@ -8,7 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Alert } from '@/components/ui';
 import { useCache } from '@/lib/cache';
-import { Settings, Loader2, Bell, BookOpen, Receipt, CheckSquare, Users } from 'lucide-react';
+import { Settings, Bell, BookOpen, Receipt, CheckSquare, Users } from 'lucide-react';
 
 export default function SuperadminSystemPage() {
   const { user } = useAuth();

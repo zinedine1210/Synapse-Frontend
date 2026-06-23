@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { brand } from '@/config/brand';
 import {
-  Eye, EyeOff, Sparkles, Brain, BookOpen, MessageSquare,
+  Sparkles, Brain, MessageSquare,
   ArrowLeft, Sun, Moon, Target, Users, BarChart3, FileText,
   CheckCircle2, ArrowRight, Shield, Loader2,
 } from 'lucide-react';
@@ -111,7 +111,6 @@ export default function AuthPage() {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -215,13 +214,6 @@ export default function AuthPage() {
   };
 
   const toggleTheme = ctxToggleTheme;
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '0.7rem 0.9rem', borderRadius: 12,
-    border: `1px solid ${c.inputBorder}`, background: c.inputBg,
-    color: c.inputText, fontSize: '0.88rem', fontFamily: 'inherit',
-    outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s',
-  };
 
   return (
     <main style={{ minHeight: '100vh', display: 'flex', background: c.bg, transition: 'background 0.4s ease' }}>

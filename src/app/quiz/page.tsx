@@ -14,7 +14,6 @@ import { useAiJob } from '@/lib/useAiJob';
 import {
   GraduationCap,
   Sparkles,
-  Play,
   RotateCcw,
   CheckCircle2,
   XCircle,

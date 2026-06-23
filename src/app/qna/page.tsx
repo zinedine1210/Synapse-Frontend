@@ -54,7 +54,7 @@ function avatarColor(name: string): string {
 }
 
 export default function QnaPage() {
-  const { user } = useAuth();
+  useAuth();
   const { showToast } = useToast();
   const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

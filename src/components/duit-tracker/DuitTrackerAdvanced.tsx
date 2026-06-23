@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Transaction, duitTrackerService, BudgetChallenge, CustomCategory, FinancialForecast, SpendingComparison, SmartReminders } from '@/services/duitTrackerService';
-import { Modal, Button, useToast, useConfirm, CurrencyInput, TextInput } from '@/components/ui';
+import { Modal, Button, useToast, useConfirm, TextInput } from '@/components/ui';
 import {
-  Download, Upload, TrendingUp, TrendingDown, Target, Flame, Trophy,
-  Plus, Trash2, X, AlertTriangle, Calendar, BarChart3, PieChart,
-  Zap, Users, ArrowRight, Check, Clock, Loader2,
+  Download, Upload, Flame,
+  Plus, Trash2, X, AlertTriangle,
+  Zap, Users, Check, Loader2,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';

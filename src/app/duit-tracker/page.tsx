@@ -7,7 +7,7 @@ import { useInfiniteScroll } from '@/lib/useInfiniteScroll';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, Alert, Modal, useToast, useConfirm, CurrencyInput, parseCurrency, DateTimePicker, PullToRefresh, SelectOption, TextInput, TextArea } from '@/components/ui';
+import { Card, Button, Modal, useToast, useConfirm, CurrencyInput, parseCurrency, DateTimePicker, PullToRefresh, SelectOption, TextInput, TextArea } from '@/components/ui';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { duitTrackerService, Transaction, Summary, SavingTree, CategoryBudget, FinancialOverview, WishlistItem, RecurringBill, BudgetChallenge, CustomCategory, FinancialForecast, SpendingComparison, SmartReminders } from '@/services/duitTrackerService';
 import { siBawelService, BawelSetting, WeeklyRoast } from '@/services/siBawelService';
@@ -16,9 +16,10 @@ import { FinancialHero } from '@/components/duit-tracker/FinancialHero';
 import { TransactionSheet } from '@/components/duit-tracker/TransactionSheet';
 import { ReceiptScannerModal, ScannedItem } from '@/components/duit-tracker/ReceiptScannerModal';
 import { PieChartSvg, LineChartSvg, SpendingHeatmap, ForecastCard, ComparisonCard, ChallengeSection, CustomCategoryManager, CsvImportModal, ExportButton, ReminderBanner } from '@/components/duit-tracker/DuitTrackerAdvanced';
+import { WhatIfCalculator } from '@/components/duit-tracker/WhatIfCalculator';
 import { useCache } from '@/lib/cache';
 import { useAiJob } from '@/lib/useAiJob';
-import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X, Camera, ShoppingBag, ExternalLink, Check, Bell, CalendarClock, ToggleLeft, ToggleRight, TrendingDown, TrendingUp, Download, Upload, Flame, BarChart3, Users, PieChart, Calendar, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X, Camera, ExternalLink, Check, CalendarClock, ToggleLeft, ToggleRight, TrendingDown, TrendingUp, Upload, BarChart3, Users, PieChart, Calendar, ArrowRight } from 'lucide-react';
 
 type PeriodPreset = 'today' | 'yesterday' | '2days' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'custom';
 
@@ -218,16 +219,15 @@ function getCatEmoji(id: string, type: string) {
 }
 
 export default function DuitTrackerPage() {
-  const { user } = useAuth();
+  useAuth();
   const { hasFeature } = useFeatureAccess();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tab, setTab] = useState<'transactions' | 'summary' | 'trees' | 'budget' | 'debts' | 'wishlist' | 'bills' | 'challenges'>('transactions');
-  const [error, setError] = useState<string | null>(null);
   const now = new Date();
-  const [month, setMonth] = useState(now.getMonth() + 1);
-  const [year, setYear] = useState(now.getFullYear());
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
   const [typeFilter, setTypeFilter] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>('this_month');
@@ -260,8 +260,6 @@ export default function DuitTrackerPage() {
   const {
     items: transactions,
     loading: txLoading,
-    initialLoading: txInitialLoading,
-    hasMore: txHasMore,
     sentinelRef: txSentinelRef,
     refresh: refreshTx,
     removeItem: removeTx,
@@ -275,7 +273,7 @@ export default function DuitTrackerPage() {
   const budgetsFetcher = useCallback(() => duitTrackerService.getBudgets(month, year), [month, year]);
 
   const { data: summary, loading, revalidate: refetchSummary } = useCache<Summary>(`dt:summary:${month}:${year}`, summaryFetcher);
-  const { data: trees = [], revalidate: refetchTrees, mutate: mutateTrees } = useCache<SavingTree[]>('dt:trees', treesFetcher);
+  const { data: trees = [], revalidate: refetchTrees } = useCache<SavingTree[]>('dt:trees', treesFetcher);
   const { data: budgets = [], revalidate: refetchBudgets, mutate: mutateBudgets } = useCache<CategoryBudget[]>(`dt:budgets:${month}:${year}`, budgetsFetcher);
 
   // Financial overview (debts + bills summary for hero card)
@@ -314,8 +312,7 @@ export default function DuitTrackerPage() {
   const [depositType, setDepositType] = useState<'deposit' | 'withdrawal'>('deposit');
   const [bawelSetting, setBawelSetting] = useState<BawelSetting | null>(null);
   const [showBawelSettings, setShowBawelSettings] = useState(false);
-  const [expandedTxId, setExpandedTxId] = useState<string | null>(null);
-  const [commentLoading, setCommentLoading] = useState<Record<string, boolean>>({});
+
 
   // Recurring Bills / Tagihan
   const [bills, setBills] = useState<RecurringBill[]>([]);
@@ -609,7 +606,7 @@ export default function DuitTrackerPage() {
 
   // AI Job tracking for weekly roast
   const weeklyRoastJob = useAiJob<WeeklyRoast>('weekly_roast', {
-    onComplete: (roast) => showToast('Weekly Roast udah siap! Siap-siap di-roast 🔥', 'success'),
+    onComplete: () => showToast('Weekly Roast udah siap! Siap-siap di-roast 🔥', 'success'),
     onError: (err) => showToast(err || 'Gagal bikin Weekly Roast nih.', 'error'),
   });
   const weeklyRoast = weeklyRoastJob.result;
@@ -643,11 +640,6 @@ export default function DuitTrackerPage() {
     return [...EXPENSE_CATEGORIES, ...custom];
   }, [customCategories]);
 
-  const allIncomeCategories = useMemo(() => {
-    const custom = customCategories.filter(c => c.type === 'income').map(c => ({ id: c.name, label: c.name.charAt(0).toUpperCase() + c.name.slice(1), emoji: c.emoji }));
-    return [...INCOME_CATEGORIES, ...custom];
-  }, [customCategories]);
-
   // Pie chart data for summary
   const pieChartData = useMemo(() => {
     if (!summary?.categoryReport) return [];
@@ -671,19 +663,6 @@ export default function DuitTrackerPage() {
     });
     return Object.entries(weekMap).sort((a, b) => Number(a[0]) - Number(b[0])).map(([w, v]) => ({ label: `W${w}`, value: v }));
   }, [transactions]);
-
-  const handleGenerateComment = async (txId: string) => {
-    setCommentLoading(prev => ({ ...prev, [txId]: true }));
-    try {
-      const updatedTx = await duitTrackerService.generateComment(txId);
-      updateTx(tx => tx.id === txId, () => updatedTx);
-      showToast('Komentar Si Bawel udah jadi! 🗣️', 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Gagal bikin komentar nih.', 'error');
-    } finally {
-      setCommentLoading(prev => ({ ...prev, [txId]: false }));
-    }
-  };
 
   const handleGenerateWeeklyRoast = async () => {
     if (roastLoading) return;
@@ -789,8 +768,6 @@ export default function DuitTrackerPage() {
     if (!confirmed) return;
 
     removeTx(t => t.id === id);
-    // Optimistically update summary balance
-    const isIncome = tx.type === 'income';
     refetchSummary();
     try {
       await duitTrackerService.deleteTransaction(id);
@@ -931,11 +908,9 @@ export default function DuitTrackerPage() {
                 </div>
               </div>
 
-              {error && <Alert type="error" message={error} />}
-
               {/* Financial Hero — bold overview with count-up + daily trend */}
               {summary && (
-                <FinancialHero summary={summary} transactions={transactions} month={month} year={year} periodLabel={periodLabel} overview={overview} />
+                <FinancialHero transactions={transactions} month={month} year={year} periodLabel={periodLabel} overview={overview} />
               )}
 
               {/* Smart Reminders Banner */}
@@ -1361,6 +1336,13 @@ export default function DuitTrackerPage() {
 
                   {/* Financial Forecast */}
                   <ForecastCard forecast={forecast} />
+
+                  {/* What If Calculator + Time Machine */}
+                  <WhatIfCalculator
+                    avgIncome={forecast?.avgIncome || summary?.income || 0}
+                    avgExpense={forecast?.avgExpense || summary?.expense || 0}
+                    avgSaving={forecast?.avgSaving || ((summary?.income || 0) - (summary?.expense || 0))}
+                  />
 
                   {/* Spending Comparison (Peer) */}
                   <ComparisonCard comparison={comparison} />

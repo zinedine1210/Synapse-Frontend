@@ -9,7 +9,7 @@ import { Appbar } from '@/components/layout/Appbar';
 import { Card, Alert, DataTable } from '@/components/ui';
 import type { Column } from '@/components/ui';
 import { useCache } from '@/lib/cache';
-import { MessageSquare, Loader2, MessagesSquare, Reply, Calendar, TrendingUp } from 'lucide-react';
+import { MessageSquare, MessagesSquare, Reply, Calendar, TrendingUp } from 'lucide-react';
 
 interface ForumStats {
   totalPosts: number;

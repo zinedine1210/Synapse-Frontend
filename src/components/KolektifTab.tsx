@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { kolektifService, Kolektif, KolektifTransaction } from '@/services/kolektifService';
+import { kolektifService, Kolektif } from '@/services/kolektifService';
 import { classService } from '@/services/classService';
 import { Card, Button, Modal, useToast, useConfirm, TextInput, SelectOption, CurrencyInput, TextArea } from '@/components/ui';
 import {
-  Wallet, Plus, ArrowDownLeft, ArrowUpRight, Trash2, Loader2, Target, Users, Search, ListFilter, ChevronRight
+  Wallet, Plus, ArrowDownLeft, ArrowUpRight, Trash2, Loader2, Target, Users, ChevronRight
 } from 'lucide-react';
 
 interface KolektifTabProps {
@@ -20,7 +20,6 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
   const hasPerm = (perm: string) => memberRole === 'OWNER' || (permissions || []).includes(perm);
   const canCreateKas = hasPerm('KAS_CREATE');
   const canTransaction = hasPerm('KAS_TRANSACTION');
-  const canManage = canCreateKas || canTransaction;
 
   const [funds, setFunds] = useState<Kolektif[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,12 +83,6 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
       classService.getClassMembers(classId).then(setMembers).catch(() => {});
     }
   }, [selectedFund, classId]);
-
-  const formatCurrencyInput = (value: string) => {
-    const clean = value.replace(/\D/g, '');
-    if (!clean) return '';
-    return 'Rp ' + new Intl.NumberFormat('id-ID').format(parseInt(clean));
-  };
 
   const cleanAmount = (val: string) => {
     return val ? parseFloat(val.replace(/\D/g, '')) : 0;

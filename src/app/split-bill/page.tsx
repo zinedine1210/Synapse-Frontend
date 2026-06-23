@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '@/lib/AuthContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
@@ -18,7 +18,7 @@ import { useCache } from '@/lib/cache';
 import { useAiJob } from '@/lib/useAiJob';
 import {
   Receipt, Plus, Loader2, Camera, Check, X, Send, Trash2,
-  ChevronLeft, Users, Percent, TrendingUp, Zap, History,
+  ChevronLeft, Users, Percent, TrendingUp, History,
   Sparkles, Wallet, CheckCircle2, Clock, ArrowRight, Wand2, ScanLine, ImageIcon,
 } from 'lucide-react';
 
@@ -74,11 +74,11 @@ function billStats(bill: SplitBill): BillStats {
 }
 
 export default function SplitBillPage() {
-  const { user } = useAuth();
+  useAuth();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { data: bills = [], loading, revalidate: fetchBills, mutate: mutateBills } = useCache<SplitBill[]>('split-bill:list', async () => {
+  const { data: bills = [], loading, revalidate: fetchBills } = useCache<SplitBill[]>('split-bill:list', async () => {
     const res = await splitBillService.getAll();
     return Array.isArray(res) ? res : [];
   });

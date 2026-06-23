@@ -7,10 +7,8 @@ import { useFeatureAccess } from '@/lib/feature-access';
 import { SiBawelAvatar } from '@/components/shared/SiBawelAvatar';
 import type { AiBriefingResponse, AiBriefingSection } from '@/services/dashboardService';
 import {
-  parseBriefingSections,
   buildTaskDeepLink,
   buildTodoDeepLink,
-  type BriefingSection,
   type BriefingSectionType,
 } from '@/lib/briefing-parser';
 

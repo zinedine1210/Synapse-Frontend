@@ -14,7 +14,7 @@ import { Appbar } from '@/components/layout/Appbar';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { useCache } from '@/lib/cache';
 import { useAiJob } from '@/lib/useAiJob';
-import { Card, Button, Alert, Modal, useToast, useConfirm, PullToRefresh, AnimatedNumber, TextInput, TextArea, AIPhotoInput } from '@/components/ui';
+import { Card, Button, Alert, Modal, useToast, PullToRefresh, AnimatedNumber, TextInput, TextArea, AIPhotoInput } from '@/components/ui';
 import { TodaysBriefing, BriefingData } from '@/components/dashboard/TodaysBriefing';
 import { AiBriefingCard, AiBriefingSkeleton } from '@/components/dashboard/AiBriefingCard';
 import { ContextualBubbles } from '@/components/dashboard/ContextualBubbles';
@@ -28,6 +28,8 @@ import {
   CheckSquare, Square, ChevronDown, ChevronUp, Flame, Trophy, ArrowRight,
   Star, Award, MessageCircle, HelpCircle, CalendarDays
 } from 'lucide-react';
+import { VirtualPetWidget } from '@/components/virtual-pet/VirtualPetWidget';
+import { StreakCalendar } from '@/components/gamification/StreakCalendar';
 
 interface ParsedCourse {
   courseName: string;
@@ -50,9 +52,8 @@ const fmt = (n: number) => `Rp${n.toLocaleString('id-ID')}`;
 export default function DashboardPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const { confirm } = useConfirm();
   const { hasFeature } = useFeatureAccess();
-  const { classes, isLoading, error, isCreating, createClass, deleteClass } = useDashboard();
+  const { classes, isLoading, isCreating, createClass } = useDashboard();
   const { deadlines, isLoading: deadlinesLoading } = useDeadlines();
   const { suggestion: contextSuggestion } = useContextualSuggestion();
 
@@ -68,7 +69,7 @@ export default function DashboardPage() {
 
   // AI Job tracking for AI briefing generation
   const aiBriefingJob = useAiJob<AiBriefingResponse>('ai_briefing', {
-    onComplete: (result) => {
+    onComplete: () => {
       refetchAiBriefing();
       setAiBriefingFailed(false);
       showToast('Briefing AI berhasil dibuat! ✨', 'success');
@@ -193,14 +194,6 @@ export default function DashboardPage() {
     const res = await createClass(newClassName, newClassDesc);
     if (res.success) { setNewClassName(''); setNewClassDesc(''); setShowCreateModal(false); }
     else { setCreateError(res.error || 'Gagal bikin kelas nih.'); }
-  };
-
-  const handleDeleteClass = async (classId: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const ok = await confirm({ title: 'Yakin Hapus?', message: 'Kelas ini bakal dihapus permanen. Yakin nih?', confirmText: 'Gas Hapus', variant: 'danger' });
-    if (!ok) return;
-    await deleteClass(classId);
   };
 
   const handleCreateFromParse = async (course: ParsedCourse) => {
@@ -651,7 +644,30 @@ export default function DashboardPage() {
                 </Card>
               )}
 
-              {/* ═══════ SECTION 9: SOCIAL PROOF — CLASS COMPARISON ═══════ */}
+              {/* ═══════ SECTION 9: VIRTUAL PET + STREAK CALENDAR ═══════ */}
+              {hasFeature('gamification') && summary?.gamification && (
+                <>
+                  <VirtualPetWidget
+                    status={{
+                      name: 'Oren',
+                      streakDays: summary.gamification.currentStreak || 0,
+                      underBudget: true,
+                      daysSinceLastLog: 0,
+                      level: summary.gamification.level || 1,
+                    }}
+                    compact={false}
+                  />
+                  <div style={{ marginTop: 16 }}>
+                    <StreakCalendar
+                      activityMap={{}}
+                      currentStreak={summary.gamification.currentStreak || 0}
+                      longestStreak={summary.gamification.longestStreak || 0}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* ═══════ SECTION 10: SOCIAL PROOF — CLASS COMPARISON ═══════ */}
               {hasFeature('dashboard_class_comparison') && <ClassComparisonCard comparisons={classComparisons} />}
 
               {/* ═══════ SECTION 10: SOCIAL PROOF — TRENDING Q&A ═══════ */}

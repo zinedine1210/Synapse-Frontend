@@ -7,10 +7,10 @@ import { useFeatureAccess } from '@/lib/feature-access';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, useToast, useConfirm, BottomSheet, PullToRefresh, TextInput, SelectOption, Modal } from '@/components/ui';
+import { Card, Button, useToast, useConfirm, BottomSheet, PullToRefresh, TextInput, SelectOption } from '@/components/ui';
 import { todoService, PersonalTodo, TodoStats } from '@/services/todoService';
-import { useCache, setCache } from '@/lib/cache';
-import { Plus, Loader2, CheckSquare, Sparkles, ChevronLeft, ChevronRight, Flame, Search, CheckCheck, Trash2, X, Timer, BookmarkPlus, Bell, BellOff, Grid2X2 } from 'lucide-react';
+import { useCache } from '@/lib/cache';
+import { Plus, Loader2, CheckSquare, Sparkles, ChevronLeft, ChevronRight, Flame, Search, CheckCheck, Trash2, X, BookmarkPlus } from 'lucide-react';
 import { useCelebration } from '@/components/shared/CelebrationOverlay';
 import { CustomCategoryCreator, CustomCategory } from '@/components/todo/CustomCategoryCreator';
 import { UnifiedTimeline } from '@/components/todo/UnifiedTimeline';
@@ -264,7 +264,7 @@ export default function TodosPage() {
     const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 3);
     for (const t of active) {
       const isUrgent = t.dueDate ? new Date(t.dueDate) <= weekEnd : false;
-      const isImportant = t.priority === 'high' || t.priority === 'urgent';
+      const isImportant = t.priority === 'high';
       if (isUrgent && isImportant) q1.push(t);
       else if (!isUrgent && isImportant) q2.push(t);
       else if (isUrgent && !isImportant) q3.push(t);
@@ -487,14 +487,14 @@ export default function TodosPage() {
     if (!selectedIds.size) return;
     const confirmed = await confirm({ title: `Hapus ${selectedIds.size} task?`, message: 'Semua task terpilih akan dihapus.', confirmText: 'Hapus', variant: 'danger' });
     if (!confirmed) return;
-    const ids = [...selectedIds];
+    const ids = Array.from(selectedIds);
     mutateTodos(prev => (prev || []).filter(t => !selectedIds.has(t.id)));
     setSelectedIds(new Set()); setSelectMode(false);
     try { await todoService.bulkDelete(ids); showToast(`${ids.length} task dihapus`, 'success'); } catch { fetchData(); }
   };
 
   const handleBulkToggle = async (done: boolean) => {
-    const ids = [...selectedIds];
+    const ids = Array.from(selectedIds);
     mutateTodos(prev => (prev || []).map(t => selectedIds.has(t.id) ? { ...t, status: done ? 'done' : 'pending' } : t));
     setSelectedIds(new Set()); setSelectMode(false);
     try { await todoService.bulkToggleDone(ids, done); } catch { fetchData(); }
@@ -839,7 +839,7 @@ export default function TodosPage() {
                               selectMode={selectMode}
                               isSelected={selectedIds.has(todo.id)}
                               onSelect={() => toggleSelect(todo.id)}
-                              onExpandToggle={() => setExpandedTodoId(expandedTodoId === todo.id ? null : todo.id)}
+                              onToggleExpand={() => setExpandedTodoId(expandedTodoId === todo.id ? null : todo.id)}
                               onAddSubtask={(title) => handleAddSubtask(todo.id, title)}
                               onToggleSubtask={(subId, done) => handleToggleSubtask(todo.id, subId, done)}
                               onDeleteSubtask={(subId) => handleDeleteSubtask(todo.id, subId)}
@@ -916,7 +916,8 @@ export default function TodosPage() {
                 position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.5)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
               }} onClick={() => setShowTemplateModal(false)}>
-                <Card style={{ maxWidth: 420, width: '100%', padding: 24, maxHeight: '70vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+                <div onClick={e => e.stopPropagation()}>
+                <Card style={{ maxWidth: 420, width: '100%', padding: 24, maxHeight: '70vh', overflow: 'auto' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <h3 style={{ fontSize: 16, fontWeight: 700 }}>📝 Template Todo</h3>
                     <button onClick={() => setShowTemplateModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}><X size={18} /></button>
@@ -943,6 +944,7 @@ export default function TodosPage() {
                     </div>
                   )}
                 </Card>
+                </div>
               </div>
             )}
 
@@ -1032,7 +1034,6 @@ function CalendarView({ calendarData, calendarMonth, setCalendarMonth, customCat
           const dayTodos = calendarData.todosByDate[dateKey] || [];
           const isToday = isSameDay(calendarData.today, new Date(calendarData.year, calendarData.month, day));
           const isSelected = selectedDate === dateKey;
-          const hasPending = dayTodos.some(t => t.status === 'pending');
           const hasOverdue = dayTodos.some(t => t.status === 'pending' && new Date(t.dueDate!) < calendarData.today);
           const allDone = dayTodos.length > 0 && dayTodos.every(t => t.status === 'done');
 

@@ -122,7 +122,7 @@ export function fuzzyMatch<T>(
   query: string,
   items: T[],
   getText: (item: T) => string | string[],
-  threshold: number = 0.3,
+  _threshold: number = 0.3,
 ): { item: T; score: number }[] {
   if (!query.trim()) return [];
 

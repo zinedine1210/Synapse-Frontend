@@ -13,7 +13,6 @@ import {
   BookOpen,
   FileText,
   DollarSign,
-  Loader2,
   TrendingUp,
 } from 'lucide-react';
 

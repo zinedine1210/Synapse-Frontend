@@ -3,8 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import {
-  Search, ArrowRight, Wallet, CheckSquare, HelpCircle, BookOpen,
-  Settings, LayoutDashboard, CreditCard, Sparkles, Command, Calendar,
+  Search, Wallet, CheckSquare, HelpCircle, BookOpen,
+  Settings, LayoutDashboard, CreditCard, Command, Calendar,
   Clock, Hash, CornerDownLeft, ArrowUpDown, UtensilsCrossed, Receipt, Lightbulb,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
@@ -64,7 +64,7 @@ async function fetchSearchResults(query: string): Promise<SearchResponse | null>
   try { return await apiFetch<SearchResponse>(`/search?q=${encodeURIComponent(query)}&limit=20`); } catch { return null; }
 }
 
-function mapBackendResults(data: SearchResponse, router: ReturnType<typeof useRouter>): CategorizedResult[] {
+function mapBackendResults(data: SearchResponse, _router: ReturnType<typeof useRouter>): CategorizedResult[] {
   const results: CategorizedResult[] = [];
   for (const task of data.tasks) results.push({ id: `task-${task.id}`, category: 'tugas', title: task.title, description: task.className + (task.deadline ? ` • ${new Date(task.deadline).toLocaleDateString('id-ID')}` : ''), relevanceScore: 0.85 });
   for (const todo of data.todos) results.push({ id: `todo-${todo.id}`, category: 'todo', title: todo.title, description: todo.dueDate ? `Tenggat: ${new Date(todo.dueDate).toLocaleDateString('id-ID')}` : undefined, relevanceScore: 0.8 });

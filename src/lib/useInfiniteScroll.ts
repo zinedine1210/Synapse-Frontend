@@ -22,7 +22,7 @@ interface UseInfiniteScrollOptions<T> {
   cacheKey?: string;
 }
 
-export function useInfiniteScroll<T>({ fetcher, limit = 30, enabled = true, cacheKey }: UseInfiniteScrollOptions<T>) {
+export function useInfiniteScroll<T>({ fetcher, enabled = true, cacheKey }: UseInfiniteScrollOptions<T>) {
   // Hydrate from cache if available
   const cached = cacheKey ? getCache<{ items: T[]; total: number; totalPages: number }>(cacheKey) : undefined;
 

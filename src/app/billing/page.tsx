@@ -79,10 +79,10 @@ export default function BillingPage() {
               window.location.reload();
             }, 2000);
           },
-          onPending: (result: any) => {
+          onPending: () => {
             showToast('Pembayaran Anda tertunda. Silakan selesaikan pembayaran Anda.', 'warning');
           },
-          onError: (result: any) => {
+          onError: () => {
             setPaymentError('Pembayaran gagal. Silakan coba lagi.');
             showToast('Pembayaran gagal. Silakan coba lagi.', 'error');
           },

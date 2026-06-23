@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { BottomSheet, Button, CurrencyInput, TextInput, DateTimePicker, useToast } from '@/components/ui';
 import { duitTrackerService, Transaction } from '@/services/duitTrackerService';
-import { Loader2, Sparkles, Camera, Send, Image } from 'lucide-react';
+import { Loader2, Sparkles, Send } from 'lucide-react';
 
 export interface TxForm {
   amount: string;

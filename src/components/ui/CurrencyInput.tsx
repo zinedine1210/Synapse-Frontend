@@ -3,7 +3,7 @@
 import React, { useState, useId, useCallback } from 'react';
 import { FormField, getFormInputStyle } from './FormField';
 import type { FormFieldProps } from './types';
-import { formatCurrencyInput, parseCurrency as parseCurrencyUtil } from '@/lib/currency-utils';
+import { formatCurrencyInput } from '@/lib/currency-utils';
 
 export { parseCurrency } from '@/lib/currency-utils';
 

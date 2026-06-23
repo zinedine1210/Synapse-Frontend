@@ -160,7 +160,6 @@ export default function NotificationsPage() {
       });
 
       const fetched = data.notifications ?? [];
-      const newNotifs = append ? [...notifications, ...fetched] : fetched;
       setNotifications(append ? (prev) => [...prev, ...fetched] : fetched);
       setUnreadCount(data.unreadCount ?? 0);
       setHasMore(fetched.length >= PAGE_LIMIT);

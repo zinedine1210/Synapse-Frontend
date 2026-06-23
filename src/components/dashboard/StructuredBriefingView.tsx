@@ -7,7 +7,6 @@ import {
   parseBriefingSections,
   buildTaskDeepLink,
   buildTodoDeepLink,
-  type BriefingSection,
   type BriefingSectionType,
 } from '@/lib/briefing-parser';
 

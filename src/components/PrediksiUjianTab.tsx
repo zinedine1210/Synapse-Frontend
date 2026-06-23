@@ -4,10 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { Card, Button, Modal, useToast, AIPhotoInput, useConfirm, TextInput, SelectOption, NumberInput, TextArea } from './ui';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { useAiJob } from '@/lib/useAiJob';
-import { ExamPrediction, ExamPredictionQuestion, examPredictionService } from '@/services/examPredictionService';
+import { ExamPrediction, examPredictionService } from '@/services/examPredictionService';
 import { classService } from '@/services/classService';
 import { Session } from '@/models/Class';
-import { Sparkles, FileText, Download, Trash2, BookOpen, AlertCircle, CheckCircle, HelpCircle, FileCheck, Layers, Loader2 } from 'lucide-react';
+import { Sparkles, Download, Trash2, BookOpen, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 interface PrediksiUjianTabProps {
   classId: string;

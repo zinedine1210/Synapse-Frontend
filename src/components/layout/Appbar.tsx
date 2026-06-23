@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { Bell, User, Check, CheckCheck, X, Search } from 'lucide-react';
+import { Bell, User, CheckCheck, Search } from 'lucide-react';
 import { notificationService, Notification } from '@/services/notificationService';
 import { useAuth } from '@/lib/AuthContext';
 import { openCommandPalette } from './CommandPalette';

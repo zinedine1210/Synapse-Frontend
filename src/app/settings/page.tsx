@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
@@ -9,6 +9,7 @@ import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, useToast, useConfirm, TextInput, TagInput, TimePicker, SelectOption } from '@/components/ui';
 import { apiFetch, apiUpload } from '@/lib/api';
 import { useCache } from '@/lib/cache';
+import { ProfileCard } from '@/components/gamification/ProfileCard';
 
 import { usePushNotifications } from '@/lib/usePushNotifications';
 import {
@@ -632,6 +633,23 @@ function ProfileTab({
           </div>
         )}
       </Card>
+
+      {/* Digital Identity Card */}
+      <ProfileCard
+        data={{
+          name: user?.fullName || 'User',
+          avatarUrl: avatarUrl,
+          university: onboardingUniversity || undefined,
+          level: 1,
+          levelName: 'Pemula',
+          totalXp: 0,
+          currentStreak: 0,
+          longestStreak: 0,
+          achievementCount: 0,
+          totalSaved: 0,
+          memberSince: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : 'Jun 2026',
+        }}
+      />
     </div>
   );
 }

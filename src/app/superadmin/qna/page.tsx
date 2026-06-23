@@ -8,7 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Alert } from '@/components/ui';
 import { useCache } from '@/lib/cache';
-import { HelpCircle, Loader2, MessageSquare, AlertTriangle, Award, Tag } from 'lucide-react';
+import { HelpCircle, MessageSquare, AlertTriangle, Award, Tag } from 'lucide-react';
 
 export default function SuperadminQnaPage() {
   const { user } = useAuth();

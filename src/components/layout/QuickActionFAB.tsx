@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Modal, useToast, TextInput } from '@/components/ui';
 import { duitTrackerService } from '@/services/duitTrackerService';
@@ -26,7 +26,6 @@ export function QuickActionFAB() {
   const [input, setInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
-  const [parseResult, setParseResult] = useState<any>(null);
 
   // Filter FAB items based on feature access
   const filteredFabItems = FAB_ITEMS.filter(

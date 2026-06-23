@@ -9,13 +9,12 @@ import { classService } from '@/services/classService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, Alert, Modal, useConfirm, useToast, PasswordInput, TextInput, TextArea } from '@/components/ui';
-import { Plus, BookOpen, Trash2, Search, Users, ChevronRight, LogIn, Calendar, MapPin, GraduationCap } from 'lucide-react';
+import { Card, Button, Alert, Modal, useToast, PasswordInput, TextInput, TextArea } from '@/components/ui';
+import { Plus, BookOpen, Search, ChevronRight, LogIn, Calendar, MapPin, GraduationCap } from 'lucide-react';
 
 export default function ClassesPage() {
   const { user } = useAuth();
-  const { classes, isLoading, error, isCreating, createClass, deleteClass } = useDashboard();
-  const { confirm } = useConfirm();
+  const { classes, isLoading, error, isCreating, createClass } = useDashboard();
   const { showToast } = useToast();
   const router = useRouter();
 
@@ -38,13 +37,6 @@ export default function ClassesPage() {
     const res = await createClass(newClassName, newClassDesc);
     if (res.success) { setNewClassName(''); setNewClassDesc(''); setShowCreateModal(false); }
     else { setCreateError(res.error || 'Gagal bikin kelas nih.'); }
-  };
-
-  const handleDeleteClass = async (classId: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const ok = await confirm({ title: 'Yakin Hapus?', message: 'Kelas ini bakal dihapus permanen. Yakin nih?', confirmText: 'Gas Hapus', variant: 'danger' });
-    if (ok) await deleteClass(classId);
   };
 
   const handleJoinByCode = async (e: React.FormEvent) => {

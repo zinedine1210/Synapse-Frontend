@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { Class } from '@/models/Class';
 import { classService } from '@/services/classService';
 import { useCache } from '@/lib/cache';
@@ -71,7 +71,6 @@ export function useContextualSuggestion() {
   const hour = now.getHours();
   const dayOfWeek = now.getDay(); // 0=Sun, 6=Sat
   const dayOfMonth = now.getDate();
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
   const isEndOfMonth = dayOfMonth >= 25;
 

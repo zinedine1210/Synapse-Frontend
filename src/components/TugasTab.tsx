@@ -11,7 +11,7 @@ import dynamic from 'next/dynamic';
 
 const RichTextEditor = dynamic(() => import('@/components/ui/RichTextEditor').then(m => ({ default: m.RichTextEditor })), { ssr: false });
 import {
-  ClipboardList, Calendar, ChevronRight, Loader2, Send, Plus, Trash2, Camera, FileText, Sparkles, User, Users, Copy, Download, Pencil, Eye, EyeOff, ChevronLeft, Save, ChevronDown
+  ClipboardList, Calendar, ChevronRight, Loader2, Plus, Trash2, Camera, FileText, Sparkles, Copy, Download, Pencil, Eye, EyeOff, ChevronLeft, Save, ChevronDown
 } from 'lucide-react';
 
 interface TugasTabProps {
@@ -539,7 +539,6 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             <h4 style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgb(var(--text-muted))', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.5rem' }}>Riwayat Jawaban</h4>
             {taskSubmissions.map((sub) => {
-              const isOwnSubmission = sub.userId === (sub.user?.id || sub.userId);
               const submitterName = sub.user?.fullName || 'Anda';
               const isPublic = sub.visibility === 'PUBLIC';
               // Split AI answer by numbered sections for easier reading

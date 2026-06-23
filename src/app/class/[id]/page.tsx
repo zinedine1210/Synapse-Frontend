@@ -30,13 +30,11 @@ import {
   Users,
   Crown,
   ChevronDown,
-  ChevronUp,
   Target,
   X,
   Trash2,
   Shield,
   Plus,
-  Check,
 } from 'lucide-react';
 
 function TabLoader() {
@@ -99,7 +97,6 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
     selectedSession,
     setSelectedSession,
     isLoading,
-    error,
     isUploading,
     uploadedMaterials,
     uploadMaterial,
@@ -370,7 +367,6 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
 
   // Class members for info panel
   const [classMembers, setClassMembers] = useState<{ id: string; userId: string; role: string; classRoleId?: string; classRole?: { id: string; name: string; permissions: string[]; isDefault: boolean }; user: { id: string; fullName: string; email: string; avatarUrl?: string } }[]>([]);
-  const [showMembersList, setShowMembersList] = useState(false);
 
   // Role management state
   const [classRoles, setClassRoles] = useState<{ id: string; name: string; permissions: string[]; isDefault: boolean; _count: { members: number } }[]>([]);

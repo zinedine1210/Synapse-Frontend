@@ -3,7 +3,7 @@
 import React from 'react';
 import { Card } from '@/components/ui';
 import { WeeklyChallengeData } from '@/services/dashboardService';
-import { Target, Zap, Clock, Trophy } from 'lucide-react';
+import { Target, Zap, Clock } from 'lucide-react';
 
 interface WeeklyChallengeCardProps {
   challenge: WeeklyChallengeData;

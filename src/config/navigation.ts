@@ -83,6 +83,12 @@ export const secondaryNavItems: NavItem[] = [
     icon: Lightbulb,
     requiredFeature: 'ai_insight',
   },
+  {
+    label: 'Quiz Keuangan',
+    path: '/quiz-keuangan',
+    icon: Gamepad2,
+    badge: 'NEW',
+  },
 ];
 
 /**

@@ -8,7 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Alert } from '@/components/ui';
 import { useCache } from '@/lib/cache';
-import { GraduationCap, Loader2, FileText, ClipboardCheck, BarChart3, BookOpen } from 'lucide-react';
+import { GraduationCap, FileText, ClipboardCheck, BarChart3, BookOpen } from 'lucide-react';
 
 export default function SuperadminAcademicPage() {
   const { user } = useAuth();

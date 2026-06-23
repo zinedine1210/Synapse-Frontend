@@ -10,7 +10,7 @@ import { useToast, PasswordInput } from '@/components/ui';
 import { brand } from '@/config/brand';
 import {
   Sparkles, GraduationCap, Users, Loader2, ArrowLeft, BookOpen,
-  Lock, Eye, EyeOff, ArrowRight, Shield, CheckCircle2, Sun, Moon, Clock,
+  Lock, ArrowRight, Shield, Sun, Moon, Clock,
 } from 'lucide-react';
 import { useTheme } from '@/lib/ThemeContext';
 
@@ -100,7 +100,7 @@ export default function JoinClassPage() {
   const router = useRouter();
   const params = useParams();
   const classId = params.id as string;
-  const { user } = useAuth();
+  useAuth();
   const { showToast } = useToast();
 
   const [classInfo, setClassInfo] = useState<any>(null);
@@ -108,7 +108,6 @@ export default function JoinClassPage() {
   const [error, setError] = useState<string | null>(null);
   const [isJoining, setIsJoining] = useState(false);
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const { theme, toggleTheme: ctxToggleTheme } = useTheme();
   const isDark = theme === 'dark';
 

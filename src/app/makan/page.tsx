@@ -71,7 +71,7 @@ const TABS = [
 ];
 
 export default function MakanApaPage() {
-  const { user } = useAuth();
+  useAuth();
   const { showToast } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mode, setMode] = useSessionStorage<TabMode>('makan_mode', 'fridge');
@@ -104,7 +104,7 @@ export default function MakanApaPage() {
 
   // Favorites state — cached
   const favFetcher = useCallback(() => foodService.getFavorites(), []);
-  const { data: favorites = [], loading: favoritesLoading, revalidate: refetchFavorites, mutate: mutateFavorites } = useCache<FoodFavorite[]>(
+  const { data: favorites = [], loading: favoritesLoading, mutate: mutateFavorites } = useCache<FoodFavorite[]>(
     mode === 'favorites' || mode === 'fridge' ? 'food:favorites' : null,
     favFetcher
   );

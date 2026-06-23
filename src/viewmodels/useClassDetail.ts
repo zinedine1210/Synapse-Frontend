@@ -16,13 +16,11 @@ export function useClassDetail(classId: string) {
     data: classData,
     loading: classLoading,
     error: classError,
-    revalidate: refetchClassData,
     mutate: mutateClassData,
   } = useCache<Class>(`class:${classId}:detail`, () => classService.getClassById(classId));
 
   const {
     data: sessions = [],
-    loading: sessionsLoading,
     revalidate: refetchSessions,
     mutate: mutateSessions,
   } = useCache<Session[]>(`class:${classId}:sessions`, async () => (await classService.getClassSessions(classId)) ?? []);

@@ -101,10 +101,10 @@ function wrapText(
 }
 
 export default function InsightPage() {
-  const { user } = useAuth();
+  useAuth();
   const { showToast } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { data: dataRaw, loading, revalidate: refetchData, mutate: mutateData } = useCache<WeeklySummary>('insight:weekly', () => insightService.getWeekly('this_month'));
+  const { data: dataRaw, loading, mutate: mutateData } = useCache<WeeklySummary>('insight:weekly', () => insightService.getWeekly('this_month'));
   const data = dataRaw ?? null;
 
   const aiInsightJob = useAiJob<WeeklySummary>('ai_insight', {

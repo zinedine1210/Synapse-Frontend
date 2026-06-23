@@ -2,11 +2,10 @@
 
 import React, { useMemo } from 'react';
 import { AnimatedNumber } from '@/components/ui';
-import { Transaction, Summary, FinancialOverview } from '@/services/duitTrackerService';
+import { Transaction, FinancialOverview } from '@/services/duitTrackerService';
 import { TrendingUp, TrendingDown, Wallet, Receipt, AlertCircle, HandCoins } from 'lucide-react';
 
 interface FinancialHeroProps {
-  summary: Summary;
   transactions: Transaction[];
   month: number;
   year: number;
@@ -19,7 +18,7 @@ interface FinancialHeroProps {
  * Computes income/expense/balance from the filtered transactions so it
  * always reflects the active period filter (today, this week, this month).
  */
-export function FinancialHero({ summary, transactions, month, year, periodLabel, overview }: FinancialHeroProps) {
+export function FinancialHero({ transactions, month, year, periodLabel, overview }: FinancialHeroProps) {
   // Compute from filtered transactions for accuracy with period filters
   const { filteredIncome, filteredExpense, filteredBalance } = useMemo(() => {
     const inc = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);

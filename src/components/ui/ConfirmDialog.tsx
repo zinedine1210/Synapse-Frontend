@@ -1,8 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { AlertTriangle, Trash2, HelpCircle, X } from 'lucide-react';
-import { Button } from './Button';
+import { AlertTriangle, Trash2, HelpCircle } from 'lucide-react';
 
 interface ConfirmOptions {
   title?: string;

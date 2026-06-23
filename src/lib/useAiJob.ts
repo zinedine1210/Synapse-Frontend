@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { aiJobService, AiJobStatus } from '@/services/aiJobService';
+import { aiJobService } from '@/services/aiJobService';
 
 const POLL_INTERVAL = 4000; // 4 seconds
 const MAX_POLL_DURATION = 3 * 60 * 1000; // 3 minutes

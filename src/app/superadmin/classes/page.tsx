@@ -9,7 +9,7 @@ import { Appbar } from '@/components/layout/Appbar';
 import { Button, Alert, useToast, useConfirm, DataTable, Card } from '@/components/ui';
 import type { Column } from '@/components/ui';
 import { useCache } from '@/lib/cache';
-import { School, Loader2, Trash2 } from 'lucide-react';
+import { School, Trash2 } from 'lucide-react';
 
 interface ClassItem {
   id: string;

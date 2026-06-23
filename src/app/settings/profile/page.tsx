@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -55,7 +55,7 @@ export default function UserProfilePage() {
   const [savingContext, setSavingContext] = useState(false);
 
   // Cached profile loading
-  const { data: profileData, loading } = useCache<ProfileData>(
+  const { data: profileData } = useCache<ProfileData>(
     user ? 'user:profile' : null,
     () => apiFetch<ProfileData>('/user/profile')
   );

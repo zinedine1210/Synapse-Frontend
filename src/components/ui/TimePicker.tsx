@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback, useId } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { Clock, Check } from 'lucide-react';
 import { FormField, getFormInputStyle } from './FormField';
 import type { FormFieldProps } from './types';

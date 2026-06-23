@@ -8,7 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Alert } from '@/components/ui';
 import { useCache } from '@/lib/cache';
-import { Wallet, Loader2, Receipt, TreePine, Flame, Users, TrendingDown, TrendingUp } from 'lucide-react';
+import { Wallet, Receipt, TreePine, Flame, Users, TrendingDown, TrendingUp } from 'lucide-react';
 
 export default function SuperadminDuitTrackerPage() {
   const { user } = useAuth();

@@ -9,15 +9,16 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, Alert, Modal, useToast, useConfirm, CurrencyInput, parseCurrency, DateTimePicker, PullToRefresh, SelectOption, TextInput, TextArea } from '@/components/ui';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
-import { duitTrackerService, Transaction, Summary, SavingTree, CategoryBudget, FinancialOverview, WishlistItem, RecurringBill } from '@/services/duitTrackerService';
+import { duitTrackerService, Transaction, Summary, SavingTree, CategoryBudget, FinancialOverview, WishlistItem, RecurringBill, BudgetChallenge, CustomCategory, FinancialForecast, SpendingComparison, SmartReminders } from '@/services/duitTrackerService';
 import { siBawelService, BawelSetting, WeeklyRoast } from '@/services/siBawelService';
 import { SubscriptionCard } from '@/components/duit-tracker/SubscriptionCard';
 import { FinancialHero } from '@/components/duit-tracker/FinancialHero';
 import { TransactionSheet } from '@/components/duit-tracker/TransactionSheet';
 import { ReceiptScannerModal, ScannedItem } from '@/components/duit-tracker/ReceiptScannerModal';
+import { PieChartSvg, LineChartSvg, SpendingHeatmap, ForecastCard, ComparisonCard, ChallengeSection, CustomCategoryManager, CsvImportModal, ExportButton, ReminderBanner } from '@/components/duit-tracker/DuitTrackerAdvanced';
 import { useCache } from '@/lib/cache';
 import { useAiJob } from '@/lib/useAiJob';
-import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X, Camera, ShoppingBag, ExternalLink, Check, Bell, CalendarClock, ToggleLeft, ToggleRight, TrendingDown, TrendingUp } from 'lucide-react';
+import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X, Camera, ShoppingBag, ExternalLink, Check, Bell, CalendarClock, ToggleLeft, ToggleRight, TrendingDown, TrendingUp, Download, Upload, Flame, BarChart3, Users, PieChart, Calendar, ArrowRight } from 'lucide-react';
 
 type PeriodPreset = 'today' | 'yesterday' | '2days' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'custom';
 
@@ -222,7 +223,7 @@ export default function DuitTrackerPage() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [tab, setTab] = useState<'transactions' | 'summary' | 'trees' | 'budget' | 'debts' | 'wishlist' | 'bills'>('transactions');
+  const [tab, setTab] = useState<'transactions' | 'summary' | 'trees' | 'budget' | 'debts' | 'wishlist' | 'bills' | 'challenges'>('transactions');
   const [error, setError] = useState<string | null>(null);
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -614,6 +615,63 @@ export default function DuitTrackerPage() {
   const weeklyRoast = weeklyRoastJob.result;
   const roastLoading = weeklyRoastJob.isProcessing;
 
+  // ── New Features State ──
+  const [challenges, setChallenges] = useState<BudgetChallenge[]>([]);
+  const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
+  const [forecast, setForecast] = useState<FinancialForecast | null>(null);
+  const [comparison, setComparison] = useState<SpendingComparison | null>(null);
+  const [reminders, setReminders] = useState<SmartReminders | null>(null);
+  const [showCsvImport, setShowCsvImport] = useState(false);
+
+  const fetchChallenges = useCallback(() => { duitTrackerService.getChallenges().then(setChallenges).catch(() => {}); }, []);
+  const fetchCustomCategories = useCallback(() => { duitTrackerService.getCustomCategories().then(setCustomCategories).catch(() => {}); }, []);
+  const fetchForecast = useCallback(() => { duitTrackerService.getFinancialForecast().then(setForecast).catch(() => {}); }, []);
+  const fetchComparison = useCallback(() => { duitTrackerService.getSpendingComparison().then(setComparison).catch(() => {}); }, []);
+  const fetchReminders = useCallback(() => { duitTrackerService.getReminders().then(setReminders).catch(() => {}); }, []);
+
+  useEffect(() => {
+    fetchChallenges();
+    fetchCustomCategories();
+    fetchForecast();
+    fetchComparison();
+    fetchReminders();
+  }, [fetchChallenges, fetchCustomCategories, fetchForecast, fetchComparison, fetchReminders]);
+
+  // Merged categories (built-in + custom)
+  const allExpenseCategories = useMemo(() => {
+    const custom = customCategories.filter(c => c.type === 'expense').map(c => ({ id: c.name, label: c.name.charAt(0).toUpperCase() + c.name.slice(1), emoji: c.emoji }));
+    return [...EXPENSE_CATEGORIES, ...custom];
+  }, [customCategories]);
+
+  const allIncomeCategories = useMemo(() => {
+    const custom = customCategories.filter(c => c.type === 'income').map(c => ({ id: c.name, label: c.name.charAt(0).toUpperCase() + c.name.slice(1), emoji: c.emoji }));
+    return [...INCOME_CATEGORIES, ...custom];
+  }, [customCategories]);
+
+  // Pie chart data for summary
+  const pieChartData = useMemo(() => {
+    if (!summary?.categoryReport) return [];
+    const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#14b8a6'];
+    return summary.categoryReport
+      .filter(cr => cr.spent > 0)
+      .sort((a, b) => b.spent - a.spent)
+      .map((cr, i) => {
+        const catInfo = allExpenseCategories.find(c => c.id === cr.category);
+        return { label: catInfo?.label || cr.category, value: cr.spent, color: colors[i % colors.length], emoji: catInfo?.emoji };
+      });
+  }, [summary, allExpenseCategories]);
+
+  // Monthly line chart data (computed from transactions grouped by week)
+  const weeklyLineData = useMemo(() => {
+    const expenses = transactions.filter(t => t.type === 'expense');
+    const weekMap: Record<number, number> = {};
+    expenses.forEach(t => {
+      const w = Math.ceil(new Date(t.date).getDate() / 7);
+      weekMap[w] = (weekMap[w] || 0) + t.amount;
+    });
+    return Object.entries(weekMap).sort((a, b) => Number(a[0]) - Number(b[0])).map(([w, v]) => ({ label: `W${w}`, value: v }));
+  }, [transactions]);
+
   const handleGenerateComment = async (txId: string) => {
     setCommentLoading(prev => ({ ...prev, [txId]: true }));
     try {
@@ -880,6 +938,9 @@ export default function DuitTrackerPage() {
                 <FinancialHero summary={summary} transactions={transactions} month={month} year={year} periodLabel={periodLabel} overview={overview} />
               )}
 
+              {/* Smart Reminders Banner */}
+              <ReminderBanner reminders={reminders} onPayBill={handleMarkBillPaid} onPayDebt={handleMarkDebtPaid} />
+
               {/* Tabs — pill style */}
               <div className="duit-tabs" style={{ display: 'flex', gap: 4, marginBottom: 24, padding: 4, borderRadius: 14, background: 'var(--input-bg)', width: 'fit-content' }}>
                 {[
@@ -890,6 +951,7 @@ export default function DuitTrackerPage() {
                   { key: 'bills', label: '💳 Tagihan' },
                   { key: 'debts', label: '🤝 Hutang' },
                   { key: 'wishlist', label: '🛒 Wishlist' },
+                  { key: 'challenges', label: '🔥 Challenge' },
                 ].filter(t => !t.feature || hasFeature(t.feature)).map(t => (
                   <button key={t.key} onClick={() => setTab(t.key as any)} style={{
                     padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
@@ -1004,6 +1066,13 @@ export default function DuitTrackerPage() {
               {/* ─── Transactions Tab ─── */}
               {tab === 'transactions' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  {/* Export & Import buttons */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <ExportButton transactions={transactions} month={month} year={year} summary={summary} />
+                    <button onClick={() => setShowCsvImport(true)} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 12px', borderRadius: 8, background: 'var(--input-bg)', border: '1px solid var(--dt-card-border)', cursor: 'pointer', fontSize: 12, fontWeight: 500 }}>
+                      <Upload size={13} /> Import
+                    </button>
+                  </div>
                   {transactions.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: 48 }}>
                       <Wallet size={48} style={{ opacity: 0.15, marginBottom: 12 }} />
@@ -1289,6 +1358,53 @@ export default function DuitTrackerPage() {
                     getCategoryEmoji={(cat) => getCatEmoji(cat, 'expense')}
                     onDismiss={fetchData}
                   />
+
+                  {/* Financial Forecast */}
+                  <ForecastCard forecast={forecast} />
+
+                  {/* Spending Comparison (Peer) */}
+                  <ComparisonCard comparison={comparison} />
+
+                  {/* Spending Heatmap */}
+                  <Card style={{ padding: '20px 22px' }}>
+                    <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Calendar size={16} /> Heatmap Pengeluaran
+                    </h3>
+                    <SpendingHeatmap transactions={transactions} month={month} year={year} />
+                  </Card>
+
+                  {/* Pie Chart */}
+                  {pieChartData.length > 0 && (
+                    <Card style={{ padding: '20px 22px' }}>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <PieChart size={16} /> Distribusi Pengeluaran
+                      </h3>
+                      <PieChartSvg data={pieChartData} size={180} />
+                    </Card>
+                  )}
+
+                  {/* Weekly Line Chart */}
+                  {weeklyLineData.length >= 2 && (
+                    <Card style={{ padding: '20px 22px' }}>
+                      <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <BarChart3 size={16} /> Tren Mingguan
+                      </h3>
+                      <LineChartSvg data={weeklyLineData} color="#ef4444" width={300} height={140} />
+                    </Card>
+                  )}
+
+                  {/* Custom Categories Manager */}
+                  <CustomCategoryManager categories={customCategories} onRefresh={fetchCustomCategories} />
+
+                  {/* Split Bill Link */}
+                  <a href="/split-bill" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderRadius: 14, background: 'var(--card-bg)', border: '1px solid var(--dt-card-border)', textDecoration: 'none', color: 'inherit' }}>
+                    <Users size={20} style={{ color: '#6366f1' }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14 }}>Split Bill / Patungan</div>
+                      <div style={{ fontSize: 12, color: 'var(--dt-text-secondary)', marginTop: 2 }}>Bagi rata pengeluaran bareng temen</div>
+                    </div>
+                    <ArrowRight size={16} style={{ opacity: 0.4 }} />
+                  </a>
                 </div>
               )}
 
@@ -1707,6 +1823,16 @@ export default function DuitTrackerPage() {
 
               </>}
             </div>
+
+            {/* ─── Challenge Tab ─── */}
+            {tab === 'challenges' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <ChallengeSection challenges={challenges} onRefresh={fetchChallenges} />
+              </div>
+            )}
+
+            {/* CSV Import Modal */}
+            <CsvImportModal open={showCsvImport} onClose={() => setShowCsvImport(false)} onSuccess={fetchData} />
 
             {/* ─── MODALS ─── */}
 

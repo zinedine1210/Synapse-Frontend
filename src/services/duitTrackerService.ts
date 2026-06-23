@@ -97,6 +97,63 @@ export interface WishlistItem {
   updatedAt: string;
 }
 
+export interface BudgetChallenge {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  type: string; // daily_limit, weekly_limit, no_spend_day, category_limit
+  targetAmount?: number;
+  targetDays: number;
+  category?: string;
+  startDate: string;
+  endDate: string;
+  currentStreak: number;
+  bestStreak: number;
+  isActive: boolean;
+  completedDays: number;
+  failedDays: number;
+  createdAt: string;
+}
+
+export interface CustomCategory {
+  id: string;
+  userId: string;
+  name: string;
+  emoji: string;
+  type: string;
+  color?: string;
+  sortOrder: number;
+}
+
+export interface SpendingComparison {
+  userTotal: number;
+  avgTotal: number;
+  percentile: number;
+  totalUsers: number;
+  categoryComparison: { category: string; userAmount: number; avgAmount: number; diff: number }[];
+}
+
+export interface FinancialForecast {
+  hasEnoughData: boolean;
+  avgIncome?: number;
+  avgExpense?: number;
+  avgSaving?: number;
+  thisMonthExpense?: number;
+  thisMonthIncome?: number;
+  projectedMonthExpense?: number;
+  dailyBurnRate?: number;
+  survivalDays?: number;
+  daysRemaining?: number;
+  wishlistForecast?: { name: string; price: number; monthsNeeded: number | null; targetDate: string | null }[];
+}
+
+export interface SmartReminders {
+  dueBills: { id: string; name: string; amount: number; dueDay: number; daysUntilDue: number; isOverdue: boolean }[];
+  dueDebts: { id: string; description: string; amount: number; personName: string; debtType: string; dueDate?: string; daysUntilDue: number | null; isOverdue: boolean }[];
+  dailySpending: { today: number; average: number; isAboveAverage: boolean };
+}
+
 export const duitTrackerService = {
   // Transactions
   createTransaction: (data: Partial<Transaction>) =>
@@ -218,4 +275,41 @@ export const duitTrackerService = {
 
   markWishlistPurchased: (id: string, linkedTransactionId?: string) =>
     apiFetch<WishlistItem>(`/duit-tracker/wishlist/${id}/purchase`, { method: 'POST', body: JSON.stringify({ linkedTransactionId }) }),
+
+  // Budget Challenges
+  getChallenges: () => apiFetch<BudgetChallenge[]>('/duit-tracker/challenges'),
+
+  createChallenge: (data: { title: string; description?: string; type: string; targetAmount?: number; targetDays?: number; category?: string }) =>
+    apiFetch<BudgetChallenge>('/duit-tracker/challenges', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateChallengeProgress: (id: string) =>
+    apiFetch<BudgetChallenge>(`/duit-tracker/challenges/${id}/progress`, { method: 'POST' }),
+
+  deleteChallenge: (id: string) =>
+    apiFetch(`/duit-tracker/challenges/${id}`, { method: 'DELETE' }),
+
+  // Custom Categories
+  getCustomCategories: () => apiFetch<CustomCategory[]>('/duit-tracker/categories'),
+
+  createCustomCategory: (data: { name: string; emoji?: string; type?: string; color?: string }) =>
+    apiFetch<CustomCategory>('/duit-tracker/categories', { method: 'POST', body: JSON.stringify(data) }),
+
+  updateCustomCategory: (id: string, data: { name?: string; emoji?: string; color?: string; sortOrder?: number }) =>
+    apiFetch<CustomCategory>(`/duit-tracker/categories/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  deleteCustomCategory: (id: string) =>
+    apiFetch(`/duit-tracker/categories/${id}`, { method: 'DELETE' }),
+
+  // Spending Comparison (Peer)
+  getSpendingComparison: () => apiFetch<SpendingComparison>('/duit-tracker/comparison'),
+
+  // Financial Forecast
+  getFinancialForecast: () => apiFetch<FinancialForecast>('/duit-tracker/forecast'),
+
+  // CSV Bulk Import
+  bulkImport: (transactions: { amount: number; type: string; category: string; label: string; note?: string; date?: string }[]) =>
+    apiFetch<{ count: number }>('/duit-tracker/bulk-import', { method: 'POST', body: JSON.stringify({ transactions }) }),
+
+  // Smart Reminders
+  getReminders: () => apiFetch<SmartReminders>('/duit-tracker/reminders'),
 };

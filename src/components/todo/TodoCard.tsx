@@ -2,7 +2,7 @@
 
 import React from 'react';
 import {
-  CheckCircle2, Circle, Trash2, Edit2, Calendar, AlertTriangle, RefreshCw, ListChecks, ChevronDown,
+  CheckCircle2, Circle, Trash2, Edit2, Calendar, AlertTriangle, RefreshCw, ListChecks, ChevronDown, Timer, Tag,
 } from 'lucide-react';
 import { PersonalTodo } from '@/services/todoService';
 import { SwipeableRow } from '@/components/ui';
@@ -26,18 +26,17 @@ interface TodoCardProps {
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onFocus?: () => void;
+  selectMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
   onAddSubtask: (title: string) => Promise<void>;
   onToggleSubtask: (subId: string, isDone: boolean) => Promise<void>;
   onDeleteSubtask?: (subId: string) => Promise<void>;
 }
 
-/**
- * TodoCard — a modern task card with a bouncy checkbox, priority accent,
- * category & recurrence chips, due-date, and subtask progress. Keeps the
- * swipe gestures (right = done, left = delete) and inline subtask expansion.
- */
 export function TodoCard({
-  todo, catInfo, isExpanded, onToggleExpand, onToggle, onEdit, onDelete, onAddSubtask, onToggleSubtask, onDeleteSubtask,
+  todo, catInfo, isExpanded, onToggleExpand, onToggle, onEdit, onDelete, onFocus, selectMode, isSelected, onSelect, onAddSubtask, onToggleSubtask, onDeleteSubtask,
 }: TodoCardProps) {
   const done = todo.status === 'done';
   const priority = PRIORITY_META[todo.priority] || PRIORITY_META.medium;
@@ -80,6 +79,22 @@ export function TodoCard({
         />
 
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+          {/* Select mode checkbox */}
+          {selectMode && (
+            <button
+              onClick={onSelect}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0, padding: 0, marginTop: 1, lineHeight: 0 }}
+            >
+              <div style={{
+                width: 20, height: 20, borderRadius: 6, border: `2px solid ${isSelected ? 'rgb(var(--color-primary))' : 'var(--border-default)'}`,
+                background: isSelected ? 'rgb(var(--color-primary))' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.2s',
+              }}>
+                {isSelected && <span style={{ color: '#fff', fontSize: 12, fontWeight: 800 }}>✓</span>}
+              </div>
+            </button>
+          )}
+
           {/* Checkbox with bounce animation hook */}
           <button
             data-todo-check={todo.id}
@@ -142,6 +157,15 @@ export function TodoCard({
                   <ListChecks size={12} /> {doneSubs}/{subtasks.length}
                 </span>
               )}
+              {todo.tags && todo.tags.length > 0 && todo.tags.map(tag => (
+                <span key={tag} style={{
+                  fontSize: 10, padding: '2px 7px', borderRadius: 999,
+                  background: 'rgba(var(--color-secondary), 0.12)', color: 'rgb(var(--color-secondary))',
+                  fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3,
+                }}>
+                  <Tag size={9} /> {tag}
+                </span>
+              ))}
             </div>
 
             {/* Subtask mini progress bar */}
@@ -154,6 +178,11 @@ export function TodoCard({
 
           {/* Actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+            {!done && onFocus && (
+              <button onClick={onFocus} aria-label="Fokus" className="todo-card-action" title="Pomodoro Timer" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: 'rgb(var(--text-muted))', lineHeight: 0 }}>
+                <Timer size={15} />
+              </button>
+            )}
             {hasSubtasks && (
               <button
                 onClick={onToggleExpand}

@@ -102,4 +102,24 @@ export const todoService = {
   // ─── Unified Timeline ──────────────────────────────────────────────
   getUnifiedTimeline: () =>
     apiFetch<UnifiedTimelineItem[]>('/todos/unified-timeline'),
+
+  // ─── Bulk operations ──────────────────────────────────────────────
+  bulkDelete: (ids: string[]) =>
+    apiFetch<{ deleted: number }>('/todos/bulk/delete', { method: 'POST', body: JSON.stringify({ ids }) }),
+
+  bulkToggleDone: (ids: string[], done: boolean) =>
+    apiFetch<{ updated: number }>('/todos/bulk/toggle', { method: 'POST', body: JSON.stringify({ ids, done }) }),
+
+  bulkUpdateCategory: (ids: string[], category: string) =>
+    apiFetch<{ updated: number }>('/todos/bulk/category', { method: 'POST', body: JSON.stringify({ ids, category }) }),
+
+  bulkUpdatePriority: (ids: string[], priority: string) =>
+    apiFetch<{ updated: number }>('/todos/bulk/priority', { method: 'POST', body: JSON.stringify({ ids, priority }) }),
+
+  // ─── Reminders ────────────────────────────────────────────────────
+  setReminder: (todoId: string, remindAt: string) =>
+    apiFetch<any>(`/todos/${todoId}/reminder`, { method: 'POST', body: JSON.stringify({ remindAt }) }),
+
+  deleteReminder: (todoId: string) =>
+    apiFetch<any>(`/todos/${todoId}/reminder`, { method: 'DELETE' }),
 };

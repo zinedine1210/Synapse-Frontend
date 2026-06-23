@@ -42,8 +42,12 @@ const STRUCTURED_ICONS: Record<BriefingSectionType, string> = {
   tugas: '📝',
   todo: '✅',
   keuangan: '💰',
+  tagihan: '💳',
+  hutang: '🤝',
   kelas: '📚',
   tabungan: '🌳',
+  challenge: '🔥',
+  wishlist: '🛒',
   motivasi: '💬',
 };
 

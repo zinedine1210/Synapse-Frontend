@@ -2,7 +2,7 @@
  * Briefing Parser — Parses markdown section markers from backend AI briefing content.
  * The backend structures output with `<!-- SECTION:type -->` markers.
  *
- * Supported section types: greeting, tugas, todo, keuangan, kelas, tabungan, motivasi
+ * Supported section types: greeting, tugas, todo, keuangan, tagihan, hutang, kelas, tabungan, challenge, wishlist, motivasi
  */
 
 export type BriefingSectionType =
@@ -10,8 +10,12 @@ export type BriefingSectionType =
   | 'tugas'
   | 'todo'
   | 'keuangan'
+  | 'tagihan'
+  | 'hutang'
   | 'kelas'
   | 'tabungan'
+  | 'challenge'
+  | 'wishlist'
   | 'motivasi';
 
 export interface BriefingItem {
@@ -34,8 +38,12 @@ const SECTION_ICONS: Record<BriefingSectionType, string> = {
   tugas: '📝',
   todo: '✅',
   keuangan: '💰',
+  tagihan: '💳',
+  hutang: '🤝',
   kelas: '📚',
   tabungan: '🌳',
+  challenge: '🔥',
+  wishlist: '🛒',
   motivasi: '💬',
 };
 
@@ -45,13 +53,17 @@ const SECTION_TITLES: Record<BriefingSectionType, string> = {
   tugas: 'Tugas Kelas',
   todo: 'To-Do',
   keuangan: 'Keuangan',
+  tagihan: 'Tagihan',
+  hutang: 'Hutang & Piutang',
   kelas: 'Jadwal Kelas',
   tabungan: 'Tabungan',
+  challenge: 'Budget Challenge',
+  wishlist: 'Wishlist',
   motivasi: 'Motivasi',
 };
 
 const VALID_SECTION_TYPES: BriefingSectionType[] = [
-  'greeting', 'tugas', 'todo', 'keuangan', 'kelas', 'tabungan', 'motivasi',
+  'greeting', 'tugas', 'todo', 'keuangan', 'tagihan', 'hutang', 'kelas', 'tabungan', 'challenge', 'wishlist', 'motivasi',
 ];
 
 /**
@@ -136,6 +148,9 @@ function parseItemsFromContent(content: string, type: BriefingSectionType): Brie
     } else if (type === 'todo') {
       item.link = '/todos';
       item.metadata = 'todo';
+    } else if (type === 'tagihan' || type === 'hutang' || type === 'keuangan' || type === 'challenge' || type === 'wishlist') {
+      item.link = '/duit-tracker';
+      item.metadata = type;
     }
 
     return item;

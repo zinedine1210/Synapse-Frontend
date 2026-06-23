@@ -7,10 +7,10 @@ import { useFeatureAccess } from '@/lib/feature-access';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, useToast, useConfirm, BottomSheet, PullToRefresh, TextInput, SelectOption } from '@/components/ui';
+import { Card, Button, useToast, useConfirm, BottomSheet, PullToRefresh, TextInput, SelectOption, Modal } from '@/components/ui';
 import { todoService, PersonalTodo, TodoStats } from '@/services/todoService';
 import { useCache, setCache } from '@/lib/cache';
-import { Plus, Loader2, CheckSquare, Sparkles, ChevronLeft, ChevronRight, Flame } from 'lucide-react';
+import { Plus, Loader2, CheckSquare, Sparkles, ChevronLeft, ChevronRight, Flame, Search, CheckCheck, Trash2, X, Timer, BookmarkPlus, Bell, BellOff, Grid2X2 } from 'lucide-react';
 import { useCelebration } from '@/components/shared/CelebrationOverlay';
 import { CustomCategoryCreator, CustomCategory } from '@/components/todo/CustomCategoryCreator';
 import { UnifiedTimeline } from '@/components/todo/UnifiedTimeline';
@@ -19,6 +19,7 @@ import { ViewSegmentedControl, TodoViewMode } from '@/components/todo/ViewSegmen
 import { TodoCard } from '@/components/todo/TodoCard';
 import { TodoForm, TodoFormState } from '@/components/todo/TodoForm';
 import { DraftSubtask } from '@/components/todo/SubtaskEditor';
+import { PomodoroTimer } from '@/components/todo/PomodoroTimer';
 
 // Dynamic import dnd-kit (no SSR)
 const DndSortable = dynamic(() => import('@/components/todo/DndSortable').then(mod => ({
@@ -47,7 +48,7 @@ const PRIORITY_DOT: Record<string, string> = {
   low: 'rgb(var(--color-success))',
 };
 
-const EMPTY_FORM: TodoFormState = { title: '', description: '', dueDate: '', dueTime: '', priority: 'medium', category: '', recurrence: null };
+const EMPTY_FORM: TodoFormState = { title: '', description: '', dueDate: '', dueTime: '', priority: 'medium', category: '', recurrence: null, tags: [], reminderAt: '' };
 
 function getCategoryInfo(cat: string, customCats: CustomCategory[]) {
   const found = [...DEFAULT_CATEGORIES, ...customCats].find(c => c.id === cat);
@@ -113,6 +114,27 @@ export default function TodosPage() {
   });
   const [showCategoryCreator, setShowCategoryCreator] = useState(false);
 
+  // ─── New features state ─────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [pomodoroTodo, setPomodoroTodo] = useState<PersonalTodo | null>(null);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ todo: PersonalTodo; timeout: ReturnType<typeof setTimeout> } | null>(null);
+
+  // Templates (localStorage)
+  const [templates, setTemplates] = useState<{ name: string; form: TodoFormState; subtasks: DraftSubtask[] }[]>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('synapse_todo_templates');
+      return stored ? JSON.parse(stored) : [];
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('synapse_todo_templates', JSON.stringify(templates));
+  }, [templates]);
+
   const allCategories = useMemo(() => [...DEFAULT_CATEGORIES, ...customCategories], [customCategories]);
 
   const categoryOptionsForForm = useMemo(
@@ -174,6 +196,17 @@ export default function TodosPage() {
     }
   }, [todayProgress.percent, todayProgress.total, triggerConfetti]);
 
+  // ─── Search filter ─────────────────────────────────────────────────
+  const filteredTodos = useMemo(() => {
+    if (!searchQuery.trim()) return todos;
+    const q = searchQuery.toLowerCase();
+    return todos.filter(t =>
+      t.title.toLowerCase().includes(q) ||
+      (t.description && t.description.toLowerCase().includes(q)) ||
+      (t.tags && t.tags.some(tag => tag.toLowerCase().includes(q)))
+    );
+  }, [todos, searchQuery]);
+
   // Group by time
   const timeGroups = useMemo((): TodoGroup[] => {
     const now = new Date();
@@ -184,7 +217,7 @@ export default function TodosPage() {
     const overdue: PersonalTodo[] = [], todayList: PersonalTodo[] = [], tomorrowList: PersonalTodo[] = [];
     const weekList: PersonalTodo[] = [], later: PersonalTodo[] = [], done: PersonalTodo[] = [], noDue: PersonalTodo[] = [];
 
-    const sorted = [...todos].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const sorted = [...filteredTodos].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
     for (const t of sorted) {
       if (t.status === 'done') { done.push(t); continue; }
@@ -206,11 +239,11 @@ export default function TodosPage() {
     if (noDue.length) result.push({ label: 'TANPA DEADLINE', emoji: '📝', todos: noDue });
     if (done.length && statusFilter !== 'pending') result.push({ label: 'SELESAI', emoji: '✅', todos: done });
     return result;
-  }, [todos, statusFilter]);
+  }, [filteredTodos, statusFilter]);
 
   // Group by category
   const categoryGroups = useMemo((): TodoGroup[] => {
-    const sorted = [...todos].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const sorted = [...filteredTodos].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     const groups: Record<string, PersonalTodo[]> = {};
     for (const t of sorted) {
       const cat = t.category || 'uncategorized';
@@ -221,9 +254,31 @@ export default function TodosPage() {
       const info = getCategoryInfo(cat, customCategories);
       return { label: info.label, emoji: '', todos: list, color: info.color };
     });
-  }, [todos, customCategories]);
+  }, [filteredTodos, customCategories]);
 
-  const groups = viewMode === 'time' ? timeGroups : categoryGroups;
+  // ─── Eisenhower Matrix ──────────────────────────────────────────────
+  const eisenhowerQuadrants = useMemo(() => {
+    const active = filteredTodos.filter(t => t.status !== 'done');
+    const q1: PersonalTodo[] = [], q2: PersonalTodo[] = [], q3: PersonalTodo[] = [], q4: PersonalTodo[] = [];
+    const today = new Date();
+    const weekEnd = new Date(today); weekEnd.setDate(weekEnd.getDate() + 3);
+    for (const t of active) {
+      const isUrgent = t.dueDate ? new Date(t.dueDate) <= weekEnd : false;
+      const isImportant = t.priority === 'high' || t.priority === 'urgent';
+      if (isUrgent && isImportant) q1.push(t);
+      else if (!isUrgent && isImportant) q2.push(t);
+      else if (isUrgent && !isImportant) q3.push(t);
+      else q4.push(t);
+    }
+    return [
+      { label: 'Lakukan Segera', emoji: '🔥', todos: q1, color: '#ef4444' },
+      { label: 'Jadwalkan', emoji: '📅', todos: q2, color: '#3b82f6' },
+      { label: 'Delegasikan', emoji: '🤝', todos: q3, color: '#f59e0b' },
+      { label: 'Eliminasi', emoji: '🗑️', todos: q4, color: '#6b7280' },
+    ];
+  }, [filteredTodos]);
+
+  const groups = viewMode === 'time' ? timeGroups : viewMode === 'category' ? categoryGroups : timeGroups;
 
   // Calendar data
   const calendarData = useMemo(() => {
@@ -233,7 +288,7 @@ export default function TodosPage() {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const today = new Date();
     const todosByDate: Record<string, PersonalTodo[]> = {};
-    for (const t of todos) {
+    for (const t of filteredTodos) {
       if (!t.dueDate) continue;
       const d = new Date(t.dueDate);
       if (d.getMonth() === month && d.getFullYear() === year) {
@@ -301,6 +356,7 @@ export default function TodosPage() {
         dueTime: form.dueTime || undefined,
         priority: form.priority,
         category: form.category || undefined,
+        tags: form.tags.length ? form.tags : undefined,
       };
       const originalSubs: DraftSubtask[] = (editingTodo?.subtasks || []).map(s => ({ id: s.id, title: s.title, isDone: s.isDone }));
       if (editingTodo) {
@@ -308,12 +364,21 @@ export default function TodosPage() {
         if (form.recurrence !== (editingTodo.recurrence || null)) {
           await todoService.setRecurrence(editingTodo.id, form.recurrence);
         }
+        // Reminder
+        if (form.reminderAt) {
+          await todoService.setReminder(editingTodo.id, new Date(form.reminderAt).toISOString());
+        } else {
+          await todoService.deleteReminder(editingTodo.id).catch(() => {});
+        }
         await syncSubtasks(editingTodo.id, formSubtasks, originalSubs);
         showToast('Task udah di-update! ✏️', 'success');
       } else {
         const created = await todoService.create(data);
         if (form.recurrence && created.id) {
           await todoService.setRecurrence(created.id, form.recurrence);
+        }
+        if (form.reminderAt && created.id) {
+          await todoService.setReminder(created.id, new Date(form.reminderAt).toISOString());
         }
         if (created.id && formSubtasks.length) {
           await syncSubtasks(created.id, formSubtasks, []);
@@ -358,6 +423,8 @@ export default function TodosPage() {
       priority: todo.priority,
       category: todo.category || '',
       recurrence: todo.recurrence || null,
+      tags: todo.tags || [],
+      reminderAt: (todo as any).reminders?.[0]?.remindAt ? new Date((todo as any).reminders[0].remindAt).toISOString().slice(0, 16) : '',
     });
     setFormSubtasks((todo.subtasks || []).map(s => ({ id: s.id, title: s.title, isDone: s.isDone })));
     setShowSheet(true);
@@ -384,17 +451,72 @@ export default function TodosPage() {
   const handleDelete = async (id: string) => {
     const todo = todos.find(t => t.id === id);
     if (!todo) return;
-    const confirmed = await confirm({
-      title: 'Hapus Task?',
-      message: `"${todo.title}" bakal dihapus permanen beserta semua subtask-nya. Yakin nih?`,
-      confirmText: 'Gas Hapus',
-      cancelText: 'Gak Jadi',
-      variant: 'danger',
-    });
-    if (!confirmed) return;
+    // Optimistic remove
     mutateTodos(prev => (prev || []).filter(t => t.id !== id));
-    try { await todoService.delete(id); showToast('Task udah dihapus 🗑️', 'success'); }
-    catch (e: any) { showToast(e.message, 'error'); fetchData(); }
+    // Undo toast
+    const timeout = setTimeout(async () => {
+      setPendingDelete(null);
+      try { await todoService.delete(id); } catch { fetchData(); }
+    }, 5000);
+    if (pendingDelete) {
+      clearTimeout(pendingDelete.timeout);
+      try { await todoService.delete(pendingDelete.todo.id); } catch {}
+    }
+    setPendingDelete({ todo, timeout });
+    showToast('Task dihapus — tap undo untuk batal', 'info');
+  };
+
+  const undoDelete = useCallback(() => {
+    if (!pendingDelete) return;
+    clearTimeout(pendingDelete.timeout);
+    mutateTodos(prev => [...(prev || []), pendingDelete.todo]);
+    setPendingDelete(null);
+    showToast('Undo berhasil ✅', 'success');
+  }, [pendingDelete, mutateTodos, showToast]);
+
+  // ─── Bulk actions ─────────────────────────────────────────────────
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selectedIds.size) return;
+    const confirmed = await confirm({ title: `Hapus ${selectedIds.size} task?`, message: 'Semua task terpilih akan dihapus.', confirmText: 'Hapus', variant: 'danger' });
+    if (!confirmed) return;
+    const ids = [...selectedIds];
+    mutateTodos(prev => (prev || []).filter(t => !selectedIds.has(t.id)));
+    setSelectedIds(new Set()); setSelectMode(false);
+    try { await todoService.bulkDelete(ids); showToast(`${ids.length} task dihapus`, 'success'); } catch { fetchData(); }
+  };
+
+  const handleBulkToggle = async (done: boolean) => {
+    const ids = [...selectedIds];
+    mutateTodos(prev => (prev || []).map(t => selectedIds.has(t.id) ? { ...t, status: done ? 'done' : 'pending' } : t));
+    setSelectedIds(new Set()); setSelectMode(false);
+    try { await todoService.bulkToggleDone(ids, done); } catch { fetchData(); }
+  };
+
+  // ─── Template handlers ───────────────────────────────────────────
+  const saveAsTemplate = (name: string, form: TodoFormState, subtasks: DraftSubtask[]) => {
+    setTemplates(prev => [...prev, { name, form, subtasks }]);
+    showToast('Template disimpan 📝', 'success');
+  };
+
+  const loadTemplate = (idx: number) => {
+    const tpl = templates[idx];
+    if (!tpl) return;
+    setForm(tpl.form);
+    setFormSubtasks(tpl.subtasks);
+    setShowTemplateModal(false);
+    setShowSheet(true);
+  };
+
+  const deleteTemplate = (idx: number) => {
+    setTemplates(prev => prev.filter((_, i) => i !== idx));
   };
 
   // ─── Subtask handlers (inline card expansion) ─────────────────────
@@ -443,6 +565,10 @@ export default function TodosPage() {
         onToggle={() => handleToggle(todo.id)}
         onEdit={() => openEdit(todo)}
         onDelete={() => handleDelete(todo.id)}
+        onFocus={() => setPomodoroTodo(todo)}
+        selectMode={selectMode}
+        isSelected={selectedIds.has(todo.id)}
+        onSelect={() => toggleSelect(todo.id)}
         onAddSubtask={(title) => handleAddSubtask(todo.id, title)}
         onToggleSubtask={(subId, isDone) => handleToggleSubtask(todo.id, subId, isDone)}
         onDeleteSubtask={(subId) => handleDeleteSubtask(todo.id, subId)}
@@ -545,11 +671,75 @@ export default function TodosPage() {
                     allowedModes={[
                       'time' as TodoViewMode,
                       ...(hasFeature('todo_categories') ? ['category' as TodoViewMode] : []),
+                      'eisenhower' as TodoViewMode,
                       ...(hasFeature('todo_calendar') ? ['calendar' as TodoViewMode] : []),
                       ...(hasFeature('todo_timeline') ? ['timeline' as TodoViewMode] : []),
                     ]}
                   />
                 </div>
+
+                {/* ─── Search bar ─── */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <TextInput
+                      placeholder="Cari task..."
+                      value={searchQuery}
+                      onChange={setSearchQuery}
+                      leftIcon={<Search size={15} />}
+                    />
+                  </div>
+                  <button
+                    onClick={() => { setSelectMode(!selectMode); setSelectedIds(new Set()); }}
+                    style={{
+                      padding: '8px 14px', borderRadius: 12, border: '1px solid var(--border-default)',
+                      background: selectMode ? 'rgb(var(--color-primary))' : 'var(--input-bg)',
+                      color: selectMode ? '#fff' : 'rgb(var(--text-secondary))',
+                      cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
+                    }}
+                  >
+                    <CheckCheck size={14} /> {selectMode ? 'Batal' : 'Pilih'}
+                  </button>
+                  <button
+                    onClick={() => setShowTemplateModal(true)}
+                    title="Template"
+                    style={{
+                      padding: '8px 12px', borderRadius: 12, border: '1px solid var(--border-default)',
+                      background: 'var(--input-bg)', color: 'rgb(var(--text-secondary))',
+                      cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                    }}
+                  >
+                    <BookmarkPlus size={14} />
+                  </button>
+                </div>
+
+                {/* ─── Select mode toolbar ─── */}
+                {selectMode && selectedIds.size > 0 && (
+                  <div style={{
+                    display: 'flex', gap: 8, padding: '10px 14px', marginBottom: 14,
+                    borderRadius: 14, background: 'rgba(var(--color-primary), 0.08)',
+                    border: '1px solid rgba(var(--color-primary), 0.2)', alignItems: 'center', flexWrap: 'wrap',
+                  }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'rgb(var(--color-primary))', marginRight: 'auto' }}>
+                      {selectedIds.size} dipilih
+                    </span>
+                    <Button size="sm" variant="ghost" onClick={() => handleBulkToggle(true)} style={{ fontSize: 12 }}>✅ Selesai</Button>
+                    <Button size="sm" variant="ghost" onClick={() => handleBulkToggle(false)} style={{ fontSize: 12 }}>↩️ Aktifkan</Button>
+                    <Button size="sm" variant="danger" onClick={handleBulkDelete} style={{ fontSize: 12 }}><Trash2 size={13} /> Hapus</Button>
+                  </div>
+                )}
+
+                {/* ─── Undo delete toast ─── */}
+                {pendingDelete && (
+                  <div style={{
+                    position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)', zIndex: 9990,
+                    background: 'rgb(var(--bg-elevated))', border: '1px solid rgba(var(--color-primary), 0.3)',
+                    borderRadius: 16, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.25)', animation: 'fadeSlideIn 0.2s',
+                  }}>
+                    <span style={{ fontSize: 13, color: 'rgb(var(--text-primary))' }}>"{pendingDelete.todo.title}" dihapus</span>
+                    <Button size="sm" onClick={undoDelete}>Undo</Button>
+                  </div>
+                )}
 
                 {/* ─── Filters (hidden for timeline) ─── */}
                 {viewMode !== 'timeline' && viewMode !== 'calendar' && (
@@ -623,6 +813,42 @@ export default function TodosPage() {
                     onDayClick={(dateKey) => openAdd({ dueDate: dateKey })}
                     onTodoClick={openEdit}
                   />
+                ) : viewMode === ('eisenhower' as TodoViewMode) ? (
+                  /* ─── Eisenhower Matrix ─── */
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    {eisenhowerQuadrants.map((q, i) => (
+                      <Card key={i} style={{ padding: 14, borderLeft: `3px solid ${q.color}`, minHeight: 120 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                          <span>{q.emoji}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: q.color, letterSpacing: 0.5 }}>{q.label}</span>
+                          <span style={{ marginLeft: 'auto', fontSize: 11, opacity: 0.5 }}>{q.todos.length}</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {q.todos.length === 0 ? (
+                            <p style={{ fontSize: 12, opacity: 0.35, textAlign: 'center', paddingTop: 12 }}>Kosong</p>
+                          ) : q.todos.map(todo => (
+                            <TodoCard
+                              key={todo.id}
+                              todo={todo}
+                              catInfo={getCategoryInfo(todo.category || 'uncategorized', customCategories)}
+                              isExpanded={expandedTodoId === todo.id}
+                              onToggle={() => handleToggle(todo.id)}
+                              onEdit={() => openEdit(todo)}
+                              onDelete={() => handleDelete(todo.id)}
+                              onFocus={() => setPomodoroTodo(todo)}
+                              selectMode={selectMode}
+                              isSelected={selectedIds.has(todo.id)}
+                              onSelect={() => toggleSelect(todo.id)}
+                              onExpandToggle={() => setExpandedTodoId(expandedTodoId === todo.id ? null : todo.id)}
+                              onAddSubtask={(title) => handleAddSubtask(todo.id, title)}
+                              onToggleSubtask={(subId, done) => handleToggleSubtask(todo.id, subId, done)}
+                              onDeleteSubtask={(subId) => handleDeleteSubtask(todo.id, subId)}
+                            />
+                          ))}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
                 ) : loading ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {[1, 2, 3, 4].map(n => <div key={n} className="skeleton" style={{ height: 64, borderRadius: 14 }} />)}
@@ -680,9 +906,54 @@ export default function TodosPage() {
                 submitting={submitting}
                 editing={!!editingTodo}
                 onSubmit={handleAdd}
+                onSaveTemplate={saveAsTemplate}
               />
             </BottomSheet>
 
+            {/* ─── Templates modal ─── */}
+            {showTemplateModal && (
+              <div style={{
+                position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+              }} onClick={() => setShowTemplateModal(false)}>
+                <Card style={{ maxWidth: 420, width: '100%', padding: 24, maxHeight: '70vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 700 }}>📝 Template Todo</h3>
+                    <button onClick={() => setShowTemplateModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5 }}><X size={18} /></button>
+                  </div>
+                  {templates.length === 0 ? (
+                    <p style={{ fontSize: 13, opacity: 0.5, textAlign: 'center', padding: 20 }}>
+                      Belum ada template. Buat task lalu save sebagai template dari form.
+                    </p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {templates.map((tpl, i) => (
+                        <div key={i} style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                          borderRadius: 12, border: '1px solid var(--border-default)', cursor: 'pointer',
+                        }} onClick={() => loadTemplate(i)}>
+                          <BookmarkPlus size={14} style={{ opacity: 0.5 }} />
+                          <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{tpl.name}</span>
+                          <span style={{ fontSize: 11, opacity: 0.4 }}>{tpl.subtasks.length} subtask</span>
+                          <button onClick={e => { e.stopPropagation(); deleteTemplate(i); }} style={{
+                            background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 4,
+                          }}><X size={14} /></button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              </div>
+            )}
+
+            {/* ─── Pomodoro Timer ─── */}
+            {pomodoroTodo && (
+              <PomodoroTimer
+                todoTitle={pomodoroTodo.title}
+                onComplete={() => { handleToggle(pomodoroTodo.id); setPomodoroTodo(null); }}
+                onClose={() => setPomodoroTodo(null)}
+              />
+            )}
 
           </div>
         </div>

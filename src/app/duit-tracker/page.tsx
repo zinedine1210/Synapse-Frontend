@@ -1338,11 +1338,7 @@ export default function DuitTrackerPage() {
                   <ForecastCard forecast={forecast} />
 
                   {/* What If Calculator + Time Machine */}
-                  <WhatIfCalculator
-                    avgIncome={forecast?.avgIncome || summary?.income || 0}
-                    avgExpense={forecast?.avgExpense || summary?.expense || 0}
-                    avgSaving={forecast?.avgSaving || ((summary?.income || 0) - (summary?.expense || 0))}
-                  />
+                  <WhatIfCalculator transactions={transactions} />
 
                   {/* Spending Comparison (Peer) */}
                   <ComparisonCard comparison={comparison} />

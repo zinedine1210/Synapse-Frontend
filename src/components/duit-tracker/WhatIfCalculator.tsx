@@ -1,176 +1,227 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Card } from '@/components/ui';
-import { Calculator, TrendingUp, Coffee, ShoppingBag, Sparkles, Plane, Smartphone, Car } from 'lucide-react';
+import {
+  Calculator, TrendingUp, Coffee, ShoppingBag, UtensilsCrossed, Car, Bus, Gamepad2,
+  Smartphone, Plane, GraduationCap, Shirt, Zap,
+} from 'lucide-react';
+import { Transaction } from '@/services/duitTrackerService';
 
 interface WhatIfCalculatorProps {
-  /** Average monthly income */
-  avgIncome: number;
-  /** Average monthly expense */
-  avgExpense: number;
-  /** Average monthly saving (income - expense) */
-  avgSaving: number;
+  transactions: Transaction[];
 }
 
-const PRESETS = [
-  { label: 'Kopi harian', icon: Coffee, amount: 25000, frequency: 'daily' as const },
-  { label: 'Jajan online', icon: ShoppingBag, amount: 150000, frequency: 'weekly' as const },
-  { label: 'Langganan streaming', icon: Sparkles, amount: 60000, frequency: 'monthly' as const },
-  { label: 'Rokok sebungkus', icon: ShoppingBag, amount: 30000, frequency: 'daily' as const },
+// ─── Equivalence items: what your money could buy ───
+const EQUIVALENCES = [
+  { label: 'Kopi Starbucks', amount: 55000, icon: Coffee },
+  { label: 'Makan di resto', amount: 75000, icon: UtensilsCrossed },
+  { label: 'Bensin full-tank', amount: 80000, icon: Car },
+  { label: 'Streaming 1 bulan', amount: 55000, icon: Gamepad2 },
+  { label: 'Baju baru', amount: 200000, icon: Shirt },
+  { label: 'Grab/Gojek 5x', amount: 100000, icon: Bus },
+  { label: 'Pulsa/Kuota', amount: 50000, icon: Zap },
+  { label: 'Jajan online', amount: 150000, icon: ShoppingBag },
 ];
 
-const GOALS = [
+const SAVINGS_GOALS = [
   { label: 'iPhone 16', amount: 18000000, icon: Smartphone },
   { label: 'Trip Bali', amount: 5000000, icon: Plane },
+  { label: 'Kursus Online', amount: 1500000, icon: GraduationCap },
   { label: 'Motor Bekas', amount: 12000000, icon: Car },
-  { label: 'Laptop Baru', amount: 10000000, icon: Smartphone },
 ];
+
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  makanan: UtensilsCrossed,
+  'jajan/snack': Coffee,
+  transportasi: Bus,
+  belanja: ShoppingBag,
+  hiburan: Gamepad2,
+  kopi: Coffee,
+};
 
 const fmt = (n: number) => `Rp${Math.round(n).toLocaleString('id-ID')}`;
 
-function getMonthlyEquivalent(amount: number, frequency: 'daily' | 'weekly' | 'monthly'): number {
-  switch (frequency) {
-    case 'daily': return amount * 30;
-    case 'weekly': return amount * 4.33;
-    case 'monthly': return amount;
-  }
+interface SpendingInsight {
+  category: string;
+  total: number;
+  count: number;
+  avgPerTx: number;
+  daily: number;
+  weekly: number;
+  monthly: number;
 }
 
-export function WhatIfCalculator({ }: WhatIfCalculatorProps) {
-  const [customAmount, setCustomAmount] = useState('');
-  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const [selectedPreset, setSelectedPreset] = useState<number | null>(null);
+export function WhatIfCalculator({ transactions }: WhatIfCalculatorProps) {
+  const insights = useMemo(() => {
+    const expenses = transactions.filter(t => t.type === 'expense');
+    if (expenses.length === 0) return null;
 
-  const monthlyAmount = useMemo(() => {
-    if (selectedPreset !== null) {
-      const p = PRESETS[selectedPreset];
-      return getMonthlyEquivalent(p.amount, p.frequency);
+    // Determine date range
+    const dates = expenses.map(t => new Date(t.date).getTime());
+    const minDate = Math.min(...dates);
+    const maxDate = Math.max(...dates);
+    const daySpan = Math.max(1, Math.ceil((maxDate - minDate) / 86400000));
+
+    // Group by category
+    const catMap = new Map<string, { total: number; count: number }>();
+    for (const tx of expenses) {
+      const cat = tx.category.toLowerCase();
+      const entry = catMap.get(cat) || { total: 0, count: 0 };
+      entry.total += tx.amount;
+      entry.count += 1;
+      catMap.set(cat, entry);
     }
-    const amt = parseFloat(customAmount) || 0;
-    return getMonthlyEquivalent(amt, frequency);
-  }, [customAmount, frequency, selectedPreset]);
 
-  const yearlyAmount = monthlyAmount * 12;
+    // Build insights sorted by total desc
+    const totalExpense = expenses.reduce((s, t) => s + t.amount, 0);
+    const result: SpendingInsight[] = [];
+    for (const [category, { total, count }] of Array.from(catMap.entries())) {
+      const daily = total / daySpan;
+      result.push({
+        category,
+        total,
+        count,
+        avgPerTx: total / count,
+        daily,
+        weekly: daily * 7,
+        monthly: daily * 30,
+      });
+    }
+    result.sort((a, b) => b.total - a.total);
+
+    return {
+      categories: result.slice(0, 5), // Top 5 categories
+      totalExpense,
+      dailyExpense: totalExpense / daySpan,
+      weeklyExpense: (totalExpense / daySpan) * 7,
+      monthlyExpense: (totalExpense / daySpan) * 30,
+      daySpan,
+    };
+  }, [transactions]);
+
+  if (!insights || insights.categories.length === 0) {
+    return (
+      <Card style={{ padding: 20, marginBottom: 16, opacity: 0.6, textAlign: 'center' }}>
+        <Calculator size={24} style={{ margin: '0 auto 8px', opacity: 0.4 }} />
+        <p style={{ fontSize: 13 }}>Belum ada data pengeluaran untuk dianalisis.</p>
+      </Card>
+    );
+  }
 
   return (
     <Card style={{ padding: 20, marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
         <Calculator size={18} style={{ color: 'rgb(var(--color-primary))' }} />
-        <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>What If Calculator</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>What If — Insight Pengeluaran</h3>
       </div>
-
-      <p style={{ fontSize: 13, opacity: 0.6, marginBottom: 16 }}>
-        Kalau kamu STOP pengeluaran ini, dalam setahun kamu bisa punya...
+      <p style={{ fontSize: 12, opacity: 0.5, marginBottom: 16 }}>
+        Berdasarkan {insights.daySpan} hari data transaksimu
       </p>
 
-      {/* Presets */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-        {PRESETS.map((p, i) => {
-          const Icon = p.icon;
-          const active = selectedPreset === i;
-          return (
-            <button key={i} onClick={() => { setSelectedPreset(active ? null : i); setCustomAmount(''); }} style={{
-              padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${active ? 'rgb(var(--color-primary))' : 'var(--border-default)'}`,
-              background: active ? 'rgba(var(--color-primary), 0.08)' : 'transparent',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: active ? 700 : 500,
-              color: active ? 'rgb(var(--color-primary))' : 'inherit', transition: 'all 0.2s',
-            }}>
-              <Icon size={13} /> {p.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Custom input */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <div style={{ flex: 1, position: 'relative' }}>
-          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, opacity: 0.5 }}>Rp</span>
-          <input
-            type="number"
-            placeholder="Atau masukkan nominal..."
-            value={customAmount}
-            onChange={e => { setCustomAmount(e.target.value); setSelectedPreset(null); }}
-            style={{
-              width: '100%', padding: '10px 12px 10px 32px', borderRadius: 10,
-              border: '1px solid var(--border-default)', background: 'var(--input-bg)',
-              color: 'rgb(var(--text-primary))', fontSize: 13, outline: 'none',
-            }}
-          />
-        </div>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {(['daily', 'weekly', 'monthly'] as const).map(f => (
-            <button key={f} onClick={() => { setFrequency(f); setSelectedPreset(null); }} style={{
-              padding: '8px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
-              background: frequency === f && selectedPreset === null ? 'rgb(var(--color-primary))' : 'var(--input-bg)',
-              color: frequency === f && selectedPreset === null ? '#fff' : 'inherit',
-            }}>
-              {f === 'daily' ? '/hari' : f === 'weekly' ? '/minggu' : '/bulan'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Results */}
-      {monthlyAmount > 0 && (
-        <div style={{ borderRadius: 14, padding: 16, background: 'linear-gradient(135deg, rgba(var(--color-success), 0.08), rgba(var(--color-primary), 0.05))', border: '1px solid rgba(var(--color-success), 0.2)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4 }}>Per Bulan</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'rgb(var(--color-success))' }}>{fmt(monthlyAmount)}</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 11, opacity: 0.6, marginBottom: 4 }}>Per Tahun</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'rgb(var(--color-primary))' }}>{fmt(yearlyAmount)}</div>
-            </div>
+      {/* Spending overview */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 18 }}>
+        {[
+          { label: 'Per Hari', value: insights.dailyExpense },
+          { label: 'Per Minggu', value: insights.weeklyExpense },
+          { label: 'Per Bulan', value: insights.monthlyExpense },
+        ].map(({ label, value }) => (
+          <div key={label} style={{ textAlign: 'center', padding: '10px 6px', borderRadius: 10, background: 'var(--input-bg)' }}>
+            <div style={{ fontSize: 10, opacity: 0.6, marginBottom: 3 }}>{label}</div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: 'rgb(var(--color-danger))' }}>{fmt(value)}</div>
           </div>
+        ))}
+      </div>
 
-          {/* Goal comparisons */}
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, opacity: 0.7 }}>Setahun itu setara:</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {GOALS.map((goal, i) => {
-              const months = Math.ceil(goal.amount / monthlyAmount);
-              const Icon = goal.icon;
-              if (months > 36) return null;
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                  <Icon size={14} style={{ opacity: 0.6 }} />
-                  <span style={{ flex: 1 }}>{goal.label} ({fmt(goal.amount)})</span>
-                  <span style={{ fontWeight: 700, color: 'rgb(var(--color-primary))' }}>{months} bulan</span>
+      {/* Top categories breakdown */}
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, opacity: 0.7 }}>🔥 Top Pengeluaranmu</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {insights.categories.map((cat) => {
+            const Icon = CATEGORY_ICONS[cat.category] || ShoppingBag;
+            const pct = Math.round((cat.total / insights.totalExpense) * 100);
+            return (
+              <div key={cat.category} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(var(--color-primary), 0.08)' }}>
+                  <Icon size={14} style={{ color: 'rgb(var(--color-primary))' }} />
                 </div>
-              );
-            })}
-          </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, textTransform: 'capitalize' }}>{cat.category}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700 }}>{fmt(cat.weekly)}/minggu</span>
+                  </div>
+                  <div style={{ height: 4, borderRadius: 2, background: 'var(--input-bg)', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, borderRadius: 2, background: 'rgb(var(--color-primary))', transition: 'width 0.4s' }} />
+                  </div>
+                </div>
+                <span style={{ fontSize: 10, opacity: 0.5, minWidth: 28, textAlign: 'right' }}>{pct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-          {/* Time Machine projection */}
-          <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: 'rgb(var(--bg-surface))', border: '1px solid var(--border-default)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-              <TrendingUp size={14} style={{ color: 'rgb(var(--color-primary))' }} />
-              <span style={{ fontSize: 12, fontWeight: 700 }}>⏰ Time Machine</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ opacity: 0.6 }}>6 bulan</span>
-                <span style={{ fontWeight: 700 }}>{fmt(monthlyAmount * 6)}</span>
+      {/* What your spending equals */}
+      <div style={{ borderRadius: 14, padding: 16, background: 'linear-gradient(135deg, rgba(var(--color-warning), 0.06), rgba(var(--color-primary), 0.04))', border: '1px solid rgba(var(--color-warning), 0.15)', marginBottom: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>💡 Pengeluaranmu per MINGGU setara:</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {EQUIVALENCES.map(eq => {
+            const count = Math.floor(insights.weeklyExpense / eq.amount);
+            if (count < 1) return null;
+            const Icon = eq.icon;
+            return (
+              <div key={eq.label} style={{ padding: '8px 12px', borderRadius: 10, background: 'rgb(var(--bg-surface))', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                <Icon size={13} style={{ opacity: 0.6 }} />
+                <span><b>{count}x</b> {eq.label}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ opacity: 0.6 }}>1 tahun</span>
-                <span style={{ fontWeight: 700 }}>{fmt(yearlyAmount)}</span>
+            );
+          }).filter(Boolean)}
+        </div>
+      </div>
+
+      {/* What your monthly spending equals */}
+      <div style={{ borderRadius: 14, padding: 16, background: 'linear-gradient(135deg, rgba(var(--color-danger), 0.06), rgba(var(--color-warning), 0.04))', border: '1px solid rgba(var(--color-danger), 0.12)', marginBottom: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>🔥 Pengeluaranmu per BULAN setara:</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {EQUIVALENCES.map(eq => {
+            const count = Math.floor(insights.monthlyExpense / eq.amount);
+            if (count < 1) return null;
+            const Icon = eq.icon;
+            return (
+              <div key={eq.label} style={{ padding: '8px 12px', borderRadius: 10, background: 'rgb(var(--bg-surface))', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                <Icon size={13} style={{ opacity: 0.6 }} />
+                <span><b>{count}x</b> {eq.label}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ opacity: 0.6 }}>3 tahun</span>
-                <span style={{ fontWeight: 700 }}>{fmt(yearlyAmount * 3)}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ opacity: 0.6 }}>5 tahun (+ bunga 5%/th)</span>
-                <span style={{ fontWeight: 700, color: 'rgb(var(--color-success))' }}>
-                  {fmt(monthlyAmount * 12 * 5 * 1.14)}
+            );
+          }).filter(Boolean)}
+        </div>
+      </div>
+
+      {/* If you SAVED instead — how fast to goals */}
+      <div style={{ borderRadius: 14, padding: 16, background: 'linear-gradient(135deg, rgba(var(--color-success), 0.08), rgba(var(--color-primary), 0.05))', border: '1px solid rgba(var(--color-success), 0.2)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+          <TrendingUp size={14} style={{ color: 'rgb(var(--color-success))' }} />
+          <span style={{ fontSize: 12, fontWeight: 700 }}>Kalau kamu nabung sebesar pengeluaranmu...</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {SAVINGS_GOALS.map(goal => {
+            const months = Math.ceil(goal.amount / insights.monthlyExpense);
+            const Icon = goal.icon;
+            return (
+              <div key={goal.label} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
+                <Icon size={15} style={{ opacity: 0.6 }} />
+                <span style={{ flex: 1 }}>{goal.label} <span style={{ opacity: 0.5 }}>({fmt(goal.amount)})</span></span>
+                <span style={{ fontWeight: 800, color: months <= 6 ? 'rgb(var(--color-success))' : months <= 12 ? 'rgb(var(--color-primary))' : 'rgb(var(--color-warning))' }}>
+                  {months <= 1 ? '< 1 bulan' : `${months} bulan`}
                 </span>
               </div>
-            </div>
-          </div>
+            );
+          })}
         </div>
-      )}
+        <div style={{ marginTop: 12, fontSize: 11, opacity: 0.5, textAlign: 'center' }}>
+          Bayangkan kalau kamu hemat 50% aja — goals tercapai 2x lebih cepat! 🚀
+        </div>
+      </div>
     </Card>
   );
 }

@@ -16,7 +16,7 @@ import { usePushNotifications } from '@/lib/usePushNotifications';
 import {
   Settings, User, Bell, Palette, Database, Shield,
   Camera, Save, Loader2, Moon, Sun, Monitor, Globe,
-  Clock, ExternalLink, Mail, Link2, Check, Trash2, AlertTriangle,
+  ExternalLink, Mail, Link2, Check, Trash2, AlertTriangle,
   GraduationCap
 } from 'lucide-react';
 
@@ -32,6 +32,7 @@ interface NotificationPreferences {
   achievementAlert: boolean;
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
+  pushEnabled: boolean;
 }
 
 interface UserPreferences {
@@ -51,15 +52,39 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'account', label: 'Akun', icon: <Shield size={16} /> },
 ];
 
-const NOTIFICATION_TOGGLES: { key: keyof Omit<NotificationPreferences, 'quietHoursStart' | 'quietHoursEnd'>; label: string; description: string }[] = [
-  { key: 'deadlineReminder', label: 'Reminder Deadline', description: 'Kasih tau kalo deadline udah mepet nih' },
-  { key: 'budgetAlert', label: 'Alert Budget', description: 'Warning kalo budget kategori udah 80%' },
-  { key: 'streakReminder', label: 'Reminder Streak', description: 'Ingetin biar streak harian gak putus' },
-  { key: 'idleReminder', label: 'Reminder Idle', description: 'Nudge kalo 3 hari gak catat transaksi' },
-  { key: 'weeklyRecap', label: 'Rekap Mingguan', description: 'Rangkuman aktivitas lo seminggu ini' },
-  { key: 'forumReply', label: 'Balasan Forum', description: 'Ada yang bales di forum nih!' },
-  { key: 'qnaAnswer', label: 'Jawaban Q&A', description: 'Pertanyaan lo udah dijawab!' },
-  { key: 'achievementAlert', label: 'Achievement', description: 'Dapet achievement baru! 🎉' },
+interface NotifToggleGroup {
+  category: string;
+  emoji: string;
+  items: { key: string; label: string; description: string }[];
+}
+
+const NOTIFICATION_GROUPS: NotifToggleGroup[] = [
+  {
+    category: 'Akademik',
+    emoji: '📚',
+    items: [
+      { key: 'deadlineReminder', label: 'Reminder Deadline', description: 'Ingatkan H-1 sebelum deadline tugas/task' },
+      { key: 'forumReply', label: 'Balasan Forum', description: 'Ada yang bales postingan kamu di forum' },
+      { key: 'qnaAnswer', label: 'Jawaban Q&A', description: 'Pertanyaan kamu udah dijawab' },
+    ],
+  },
+  {
+    category: 'Keuangan',
+    emoji: '💰',
+    items: [
+      { key: 'budgetAlert', label: 'Alert Budget', description: 'Warning kalo budget kategori udah 80%+' },
+      { key: 'idleReminder', label: 'Reminder Catat', description: 'Nudge kalo 3 hari gak catat transaksi' },
+      { key: 'weeklyRecap', label: 'Rekap Mingguan', description: 'Rangkuman pengeluaran & insight minggu ini' },
+    ],
+  },
+  {
+    category: 'Engagement',
+    emoji: '🎮',
+    items: [
+      { key: 'streakReminder', label: 'Reminder Streak', description: 'Ingetin biar streak harian gak putus' },
+      { key: 'achievementAlert', label: 'Achievement', description: 'Notif pas dapet achievement/level up baru' },
+    ],
+  },
 ];
 
 export default function SettingsPage() {
@@ -82,6 +107,10 @@ export default function SettingsPage() {
   const [onboardingHobbies, setOnboardingHobbies] = useState<string[]>([]);
   const [onboardingJob, setOnboardingJob] = useState('');
   const [onboardingReason, setOnboardingReason] = useState('');
+  const [onboardingDailyHabits, setOnboardingDailyHabits] = useState('');
+  const [onboardingLifeGoals, setOnboardingLifeGoals] = useState('');
+  const [onboardingStudySchedule, setOnboardingStudySchedule] = useState('');
+  const [onboardingPersonalNotes, setOnboardingPersonalNotes] = useState('');
   const [onboardingSaving, setOnboardingSaving] = useState(false);
 
   // Preferences state
@@ -102,6 +131,7 @@ export default function SettingsPage() {
 
   const { data: onboardingData, loading: onboardingLoading } = useCache<{
     university: string | null; hobbies: string[]; job: string | null; reason: string | null;
+    dailyHabits: string | null; lifeGoals: string | null; studySchedule: string | null; personalNotes: string | null;
   }>(
     user ? 'settings:onboarding-profile' : null,
     () => apiFetch('/user/profile')
@@ -111,7 +141,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (prefData) {
       const toggles: Record<string, boolean> = {};
-      NOTIFICATION_TOGGLES.forEach(t => { toggles[t.key] = prefData.notifications[t.key]; });
+      NOTIFICATION_GROUPS.forEach(g => g.items.forEach(t => { toggles[t.key] = (prefData.notifications as any)[t.key] ?? true; }));
       setNotifToggles(toggles);
       setQuietStart(prefData.notifications.quietHoursStart || '');
       setQuietEnd(prefData.notifications.quietHoursEnd || '');
@@ -126,6 +156,10 @@ export default function SettingsPage() {
       setOnboardingHobbies(onboardingData.hobbies || []);
       setOnboardingJob(onboardingData.job || '');
       setOnboardingReason(onboardingData.reason || '');
+      setOnboardingDailyHabits(onboardingData.dailyHabits || '');
+      setOnboardingLifeGoals(onboardingData.lifeGoals || '');
+      setOnboardingStudySchedule(onboardingData.studySchedule || '');
+      setOnboardingPersonalNotes(onboardingData.personalNotes || '');
     }
   }, [onboardingData]);
 
@@ -200,11 +234,15 @@ export default function SettingsPage() {
           hobbies: onboardingHobbies,
           job: onboardingJob.trim(),
           reason: onboardingReason.trim(),
+          dailyHabits: onboardingDailyHabits.trim(),
+          lifeGoals: onboardingLifeGoals.trim(),
+          studySchedule: onboardingStudySchedule.trim(),
+          personalNotes: onboardingPersonalNotes.trim(),
         }),
       });
-      showToast('Data onboarding udah ke-save! ✅', 'success');
+      showToast('Profil udah ke-update! ✅', 'success');
     } catch (err: any) {
-      showToast(err.message || 'Gagal nyimpen data onboarding nih.', 'error');
+      showToast(err.message || 'Gagal nyimpen profil nih.', 'error');
     } finally {
       setOnboardingSaving(false);
     }
@@ -378,6 +416,14 @@ export default function SettingsPage() {
                     setOnboardingJob={setOnboardingJob}
                     onboardingReason={onboardingReason}
                     setOnboardingReason={setOnboardingReason}
+                    onboardingDailyHabits={onboardingDailyHabits}
+                    setOnboardingDailyHabits={setOnboardingDailyHabits}
+                    onboardingLifeGoals={onboardingLifeGoals}
+                    setOnboardingLifeGoals={setOnboardingLifeGoals}
+                    onboardingStudySchedule={onboardingStudySchedule}
+                    setOnboardingStudySchedule={setOnboardingStudySchedule}
+                    onboardingPersonalNotes={onboardingPersonalNotes}
+                    setOnboardingPersonalNotes={setOnboardingPersonalNotes}
                     onboardingSaving={onboardingSaving}
                     onboardingLoading={onboardingLoading}
                     handleSaveOnboardingProfile={handleSaveOnboardingProfile}
@@ -449,6 +495,14 @@ function ProfileTab({
   setOnboardingJob,
   onboardingReason,
   setOnboardingReason,
+  onboardingDailyHabits,
+  setOnboardingDailyHabits,
+  onboardingLifeGoals,
+  setOnboardingLifeGoals,
+  onboardingStudySchedule,
+  setOnboardingStudySchedule,
+  onboardingPersonalNotes,
+  setOnboardingPersonalNotes,
   onboardingSaving,
   onboardingLoading,
   handleSaveOnboardingProfile,
@@ -470,6 +524,14 @@ function ProfileTab({
   setOnboardingJob: (v: string) => void;
   onboardingReason: string;
   setOnboardingReason: (v: string) => void;
+  onboardingDailyHabits: string;
+  setOnboardingDailyHabits: (v: string) => void;
+  onboardingLifeGoals: string;
+  setOnboardingLifeGoals: (v: string) => void;
+  onboardingStudySchedule: string;
+  setOnboardingStudySchedule: (v: string) => void;
+  onboardingPersonalNotes: string;
+  setOnboardingPersonalNotes: (v: string) => void;
   onboardingSaving: boolean;
   onboardingLoading: boolean;
   handleSaveOnboardingProfile: () => void;
@@ -477,17 +539,22 @@ function ProfileTab({
   const { hasFeature } = useFeatureAccess();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <Card style={{ padding: '1.5rem' }}>
-        <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600, marginBottom: '1.25rem' }}>
-          Informasi Profil
-        </h3>
-
-        {/* Avatar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+      {/* Profile Hero Card */}
+      <Card style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{
+          padding: '2rem 1.5rem 1.5rem',
+          background: 'linear-gradient(135deg, rgba(var(--color-primary) / 0.08), rgba(var(--color-secondary) / 0.06))',
+          borderBottom: '1px solid var(--border-default)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.25rem',
+          flexWrap: 'wrap',
+        }}>
+          {/* Avatar */}
           <div style={{ position: 'relative' }}>
             <div style={{
-              width: 72,
-              height: 72,
+              width: 80,
+              height: 80,
               borderRadius: '50%',
               background: avatarUrl
                 ? `url(${avatarUrl}) center/cover`
@@ -497,8 +564,10 @@ function ProfileTab({
               justifyContent: 'center',
               color: 'rgb(var(--bg-base))',
               fontWeight: 700,
-              fontSize: '1.5rem',
+              fontSize: '1.75rem',
               overflow: 'hidden',
+              border: '3px solid rgb(var(--bg-surface))',
+              boxShadow: '0 4px 12px rgba(var(--color-primary) / 0.2)',
             }}>
               {!avatarUrl && (user?.fullName?.charAt(0).toUpperCase() || 'U')}
             </div>
@@ -507,10 +576,10 @@ function ProfileTab({
               disabled={avatarUploading}
               style={{
                 position: 'absolute',
-                bottom: -2,
-                right: -2,
-                width: 28,
-                height: 28,
+                bottom: 0,
+                right: 0,
+                width: 30,
+                height: 30,
                 borderRadius: '50%',
                 background: 'rgb(var(--color-primary))',
                 border: '2px solid rgb(var(--bg-surface))',
@@ -519,16 +588,38 @@ function ProfileTab({
                 justifyContent: 'center',
                 cursor: 'pointer',
                 color: 'white',
+                transition: 'transform 0.15s',
               }}
             >
-              {avatarUploading ? <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> : <Camera size={12} />}
+              {avatarUploading ? <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> : <Camera size={13} />}
             </button>
           </div>
-          <div>
-            <p style={{ fontSize: 'var(--font-sm)', fontWeight: 500 }}>Foto Profil</p>
-            <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>
-              JPG, PNG, atau WebP. Maks 2MB ya!
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 style={{ fontSize: 'var(--font-lg)', fontWeight: 800, margin: '0 0 4px' }}>
+              {user?.fullName || 'User'}
+            </h3>
+            <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', margin: 0 }}>
+              {user?.email}
             </p>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                background: user?.plan === 'PRO' ? 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))' : 'rgba(var(--text-muted) / 0.1)',
+                color: user?.plan === 'PRO' ? 'white' : 'rgb(var(--text-secondary))',
+              }}>
+                {user?.plan || 'FREE'}
+              </span>
+              {onboardingUniversity && (
+                <span style={{
+                  fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 999,
+                  background: 'rgba(var(--color-primary) / 0.08)',
+                  color: 'rgb(var(--color-primary))',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                  <GraduationCap size={11} /> {onboardingUniversity}
+                </span>
+              )}
+            </div>
           </div>
           <input
             ref={fileInputRef as React.LegacyRef<HTMLInputElement>}
@@ -539,35 +630,34 @@ function ProfileTab({
           />
         </div>
 
-        {/* Full Name */}
-        <div style={{ marginBottom: '1rem' }}>
-          <TextInput name="name" autoComplete="name" label="Nama Lengkap" value={fullName} onChange={setFullName} placeholder="Tulis nama kamu di sini" />
+        {/* Basic info form */}
+        <div style={{ padding: '1.5rem' }}>
+          <div style={{ marginBottom: '1rem' }}>
+            <TextInput name="name" autoComplete="name" label="Nama Lengkap" value={fullName} onChange={setFullName} placeholder="Tulis nama kamu di sini" />
+          </div>
+          <div style={{ marginBottom: '1.25rem' }}>
+            <TextInput name="email" autoComplete="email" label="Email" value={user?.email || ''} onChange={() => {}} disabled placeholder="" />
+          </div>
+          <Button
+            variant="primary"
+            size="md"
+            isLoading={saving}
+            leftIcon={<Save size={14} />}
+            onClick={handleSaveProfile}
+          >
+            Save Profil
+          </Button>
         </div>
-
-        {/* Email (read only) */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          <TextInput name="email" autoComplete="email" label="Email" value={user?.email || ''} onChange={() => {}} disabled placeholder="" />
-        </div>
-
-        <Button
-          variant="primary"
-          size="md"
-          isLoading={saving}
-          leftIcon={<Save size={14} />}
-          onClick={handleSaveProfile}
-        >
-          Save Profil
-        </Button>
       </Card>
 
-      {/* Profil Onboarding Section */}
+      {/* Extended Profile Section */}
       <Card style={{ padding: '1.5rem' }}>
         <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
           <GraduationCap size={16} style={{ color: 'rgb(var(--color-primary))' }} />
-          Info Kampus & Diri
+          Tentang Kamu
         </h3>
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1.25rem' }}>
-          Isi biar Synapse makin kenal kamu & rekomendasi makin spot on! 🎯
+          Isi biar AI makin kenal kamu & rekomendasi makin personal! 🎯
         </p>
 
         {onboardingLoading ? (
@@ -576,50 +666,90 @@ function ProfileTab({
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {/* University */}
-            <TextInput
-              name="university"
-              autoComplete="organization"
-              label="Kampus"
-              value={onboardingUniversity}
-              onChange={setOnboardingUniversity}
-              placeholder="Contoh: Universitas Indonesia"
-            />
+            {/* Row: University + Job */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <TextInput
+                name="university"
+                autoComplete="organization"
+                label="🏫 Kampus"
+                value={onboardingUniversity}
+                onChange={setOnboardingUniversity}
+                placeholder="Universitas Indonesia"
+              />
+              <TextInput
+                name="job"
+                autoComplete="organization-title"
+                label="💼 Kesibukan"
+                value={onboardingJob}
+                onChange={setOnboardingJob}
+                placeholder="Mahasiswa, Freelancer"
+              />
+            </div>
 
             {/* Hobbies */}
             <div>
               <label style={{ display: 'block', fontSize: 'var(--font-sm)', fontWeight: 500, marginBottom: '0.4rem' }}>
-                Hobi
+                🎨 Hobi
               </label>
               <TagInput
                 value={onboardingHobbies}
                 onChange={setOnboardingHobbies}
-                placeholder="Tambahin hobi kamu (Enter/koma buat nambah)"
+                placeholder="Tambahin hobi kamu (Enter buat nambah)"
                 maxTags={10}
               />
-              <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginTop: '0.25rem' }}>
-                Tekan Enter atau koma buat nambahin hobi.
-              </p>
             </div>
-
-            {/* Job */}
-            <TextInput
-              name="job"
-              autoComplete="organization-title"
-              label="Kesibukan"
-              value={onboardingJob}
-              onChange={setOnboardingJob}
-              placeholder="Contoh: Mahasiswa, Pekerja, Freelancer"
-            />
 
             {/* Reason */}
             <TextInput
               name="reason"
-              label="Kenapa Pakai Synapse?"
+              label="🎯 Kenapa Pakai Synapse?"
               value={onboardingReason}
               onChange={setOnboardingReason}
-              placeholder="Contoh: Pengen lebih produktif di kampus"
+              placeholder="Pengen lebih produktif di kampus"
             />
+
+            {/* Extended fields — collapsible */}
+            <div style={{
+              marginTop: '0.5rem',
+              padding: '1rem',
+              borderRadius: 'var(--radius-md)',
+              background: 'rgba(var(--color-primary) / 0.03)',
+              border: '1px solid rgba(var(--color-primary) / 0.1)',
+            }}>
+              <p style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--color-primary))', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                ✨ Info Tambahan (Opsional)
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <TextInput
+                  name="dailyHabits"
+                  label="🌅 Kebiasaan Harian"
+                  value={onboardingDailyHabits}
+                  onChange={setOnboardingDailyHabits}
+                  placeholder="Bangun pagi, ngopi, belajar malam..."
+                />
+                <TextInput
+                  name="lifeGoals"
+                  label="🚀 Goals / Target"
+                  value={onboardingLifeGoals}
+                  onChange={setOnboardingLifeGoals}
+                  placeholder="Lulus cum laude, nabung 10jt..."
+                />
+                <TextInput
+                  name="studySchedule"
+                  label="📅 Jadwal Kuliah"
+                  value={onboardingStudySchedule}
+                  onChange={setOnboardingStudySchedule}
+                  placeholder="Senin-Rabu pagi, Kamis full day..."
+                />
+                <TextInput
+                  name="personalNotes"
+                  label="📝 Catatan Pribadi"
+                  value={onboardingPersonalNotes}
+                  onChange={setOnboardingPersonalNotes}
+                  placeholder="Apa aja yang AI perlu tau tentang kamu"
+                />
+              </div>
+            </div>
 
             <div style={{ marginTop: '0.25rem' }}>
               <Button
@@ -629,7 +759,7 @@ function ProfileTab({
                 leftIcon={<Save size={14} />}
                 onClick={handleSaveOnboardingProfile}
               >
-                Save Data Kampus
+                Simpan Profil
               </Button>
             </div>
           </div>
@@ -691,41 +821,53 @@ function NotificationsTab({
   };
 }) {
   const { showToast } = useToast();
+
+  // Master toggle — all on or all off
+  const allKeys = NOTIFICATION_GROUPS.flatMap(g => g.items.map(i => i.key));
+  const allEnabled = allKeys.every(k => notifToggles[k] !== false);
+  const noneEnabled = allKeys.every(k => notifToggles[k] === false);
+
+  const handleMasterToggle = (value: boolean) => {
+    allKeys.forEach(k => handleToggleNotif(k, value));
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      {/* Notification Toggles */}
-      <Card style={{ padding: '1.5rem' }}>
-        <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600, marginBottom: '1rem' }}>
-          Preferensi Notifikasi
-        </h3>
-        <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>
-          Pilih notif mana aja yang mau nyala, biar gak keganggu tapi tetep update!
-        </p>
-
-        {/* Push Notifications Toggle */}
-        {pushNotifications.isSupported && (
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '0.75rem', borderRadius: 'var(--radius-md)',
-            background: pushNotifications.isSubscribed
-              ? 'rgba(var(--color-secondary) / 0.06)'
-              : 'rgba(var(--text-muted) / 0.03)',
-            border: pushNotifications.isSubscribed
-              ? '1px solid rgba(var(--color-secondary) / 0.15)'
-              : '1px solid transparent',
-            marginBottom: '0.75rem',
-          }}>
-            <div>
-              <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                📱 Push Notification ke HP
-              </p>
-              <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>
-                {pushNotifications.isSubscribed
-                  ? 'Notifikasi akan muncul di HP kamu meskipun browser ditutup'
-                  : pushNotifications.permission === 'denied'
-                    ? 'Izin notifikasi diblokir. Aktifkan di pengaturan browser.'
-                    : 'Aktifkan untuk menerima notifikasi langsung di HP kamu'}
-              </p>
+      {/* Push Notifications Card */}
+      {pushNotifications.isSupported && (
+        <Card style={{
+          padding: '1.25rem',
+          background: pushNotifications.isSubscribed
+            ? 'linear-gradient(135deg, rgba(var(--color-primary) / 0.06), rgba(var(--color-secondary) / 0.04))'
+            : undefined,
+          border: pushNotifications.isSubscribed
+            ? '1px solid rgba(var(--color-primary) / 0.2)'
+            : undefined,
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 'var(--radius-md)',
+                background: pushNotifications.isSubscribed
+                  ? 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))'
+                  : 'rgba(var(--text-muted) / 0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: pushNotifications.isSubscribed ? 'white' : 'rgb(var(--text-muted))',
+              }}>
+                <Bell size={18} />
+              </div>
+              <div>
+                <p style={{ fontSize: 'var(--font-sm)', fontWeight: 700, margin: 0 }}>
+                  Push Notification
+                </p>
+                <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: 0 }}>
+                  {pushNotifications.isSubscribed
+                    ? 'Aktif — notif muncul di HP meski browser ditutup'
+                    : pushNotifications.permission === 'denied'
+                      ? 'Diblokir — aktifkan di pengaturan browser'
+                      : 'Kirim notif langsung ke perangkat kamu'}
+                </p>
+              </div>
             </div>
             <Button
               size="sm"
@@ -736,44 +878,90 @@ function NotificationsTab({
                 if (pushNotifications.isSubscribed) {
                   const result = await pushNotifications.unsubscribe();
                   if (result.ok) showToast('Push notification dinonaktifkan', 'success');
-                  else showToast(result.error || 'Gagal menonaktifkan push notification', 'error');
+                  else showToast(result.error || 'Gagal menonaktifkan', 'error');
                 } else {
                   const result = await pushNotifications.subscribe();
-                  if (result.ok) showToast('Push notification berhasil diaktifkan! 🔔', 'success');
-                  else showToast(result.error || 'Gagal mengaktifkan push notification', 'error');
+                  if (result.ok) showToast('Push notification aktif! 🔔', 'success');
+                  else showToast(result.error || 'Gagal mengaktifkan', 'error');
                 }
               }}
-              style={!pushNotifications.isSubscribed ? {
-                background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
-                color: 'black', fontWeight: 700, border: 'none',
-              } : undefined}
             >
               {pushNotifications.isSubscribed ? 'Nonaktifkan' : 'Aktifkan'}
             </Button>
           </div>
-        )}
+        </Card>
+      )}
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {NOTIFICATION_TOGGLES.map(toggle => (
-            <div
-              key={toggle.key}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '0.75rem',
-                borderRadius: 'var(--radius-md)',
-                background: 'rgba(var(--text-muted) / 0.03)',
-              }}
-            >
-              <div>
-                <p style={{ fontSize: 'var(--font-sm)', fontWeight: 500 }}>{toggle.label}</p>
-                <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>{toggle.description}</p>
+      {/* Master Toggle + Grouped Notification Toggles */}
+      <Card style={{ padding: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div>
+            <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600, margin: 0 }}>
+              Preferensi Notifikasi
+            </h3>
+            <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: '4px 0 0' }}>
+              Atur notif mana yang mau nyala/mati
+            </p>
+          </div>
+          {/* Master toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'rgb(var(--text-muted))' }}>
+              {allEnabled ? 'Semua ON' : noneEnabled ? 'Semua OFF' : 'Sebagian'}
+            </span>
+            <ToggleSwitch
+              checked={allEnabled}
+              onChange={handleMasterToggle}
+            />
+          </div>
+        </div>
+
+        {/* Grouped toggles */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {NOTIFICATION_GROUPS.map(group => (
+            <div key={group.category}>
+              {/* Group header */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                marginBottom: '0.6rem',
+                paddingBottom: '0.4rem',
+                borderBottom: '1px solid var(--border-default)',
+              }}>
+                <span style={{ fontSize: 14 }}>{group.emoji}</span>
+                <span style={{ fontSize: 'var(--font-sm)', fontWeight: 700, color: 'rgb(var(--text-primary))' }}>
+                  {group.category}
+                </span>
               </div>
-              <ToggleSwitch
-                checked={notifToggles[toggle.key] ?? true}
-                onChange={val => handleToggleNotif(toggle.key, val)}
-              />
+
+              {/* Toggle items */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {group.items.map(toggle => {
+                  const isOn = notifToggles[toggle.key] !== false;
+                  return (
+                    <div
+                      key={toggle.key}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '0.65rem 0.75rem',
+                        borderRadius: 'var(--radius-md)',
+                        background: isOn ? 'rgba(var(--color-primary) / 0.04)' : 'rgba(var(--text-muted) / 0.02)',
+                        border: `1px solid ${isOn ? 'rgba(var(--color-primary) / 0.12)' : 'transparent'}`,
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600, margin: 0 }}>{toggle.label}</p>
+                        <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: '2px 0 0' }}>{toggle.description}</p>
+                      </div>
+                      <ToggleSwitch
+                        checked={isOn}
+                        onChange={val => handleToggleNotif(toggle.key, val)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ))}
         </div>
@@ -782,11 +970,11 @@ function NotificationsTab({
       {/* Quiet Hours */}
       <Card style={{ padding: '1.5rem' }}>
         <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Clock size={16} />
+          <Moon size={16} style={{ color: 'rgb(var(--color-primary))' }} />
           Quiet Hours
         </h3>
         <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>
-          Notif bakal ditahan dulu pas jam segini, biar gak ganggu tidur/me time kamu~ 🌙
+          Notif bakal ditahan dulu pas jam segini, biar gak ganggu tidur kamu~ 🌙
         </p>
 
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1302,15 +1490,18 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (val:
       aria-checked={checked}
       onClick={() => onChange(!checked)}
       style={{
-        width: 42,
+        width: 44,
         height: 24,
         borderRadius: 12,
         border: 'none',
-        background: checked ? 'rgb(var(--color-primary))' : 'rgba(var(--text-muted) / 0.3)',
+        background: checked
+          ? 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))'
+          : 'rgba(var(--text-muted) / 0.25)',
         position: 'relative',
         cursor: 'pointer',
-        transition: 'background 0.2s ease',
+        transition: 'background 0.25s ease, box-shadow 0.25s ease',
         flexShrink: 0,
+        boxShadow: checked ? '0 2px 8px rgba(var(--color-primary) / 0.3)' : 'none',
       }}
     >
       <div
@@ -1321,9 +1512,9 @@ function ToggleSwitch({ checked, onChange }: { checked: boolean; onChange: (val:
           background: 'white',
           position: 'absolute',
           top: 3,
-          left: checked ? 21 : 3,
-          transition: 'left 0.2s ease',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          left: checked ? 23 : 3,
+          transition: 'left 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+          boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
         }}
       />
     </button>

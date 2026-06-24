@@ -4,7 +4,7 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
-import { HtmlRenderer, Button, useToast, useConfirm } from '@/components/ui';
+import { HtmlRenderer, Button, useToast, useConfirm, UserAvatar } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { qnaService } from '@/services/qnaService';
 import { ThumbsUp, CheckCircle, MessageSquare, Eye, Clock, ArrowLeft, LogIn, Flag, Loader2, Share2, Hash, HelpCircle, Award, Bookmark, BookmarkCheck, Pencil, Sparkles } from 'lucide-react';
@@ -380,9 +380,7 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
           <div style={{ padding: '14px 16px', borderRadius: 14, background: 'var(--card-bg)', border: '1px solid var(--border-default)', marginBottom: 16 }}>
             <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.4, marginBottom: 10 }}>Penanya</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.2), rgba(var(--color-primary), 0.05))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: 'rgb(var(--color-primary))' }}>
-                {question.user.fullName.charAt(0).toUpperCase()}
-              </div>
+              <UserAvatar name={question.user.fullName} avatarUrl={question.user.avatarUrl} size={32} />
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{question.user.fullName}</div>
               </div>
@@ -511,9 +509,7 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
 
                       {/* Author row */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: answer.isApprovedByAsker ? 'rgba(var(--color-success), 0.1)' : 'rgba(var(--color-primary), 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: answer.isApprovedByAsker ? 'var(--color-success)' : 'rgb(var(--color-primary))' }}>
-                          {answer.user.fullName.charAt(0).toUpperCase()}
-                        </div>
+                        <UserAvatar name={answer.user.fullName} avatarUrl={answer.user.avatarUrl} size={28} />
                         <div>
                           <strong style={{ fontSize: 13 }}>{answer.user.fullName}</strong>
                           <span style={{ fontSize: 11, opacity: 0.4, marginLeft: 8 }}>· {timeAgo(answer.createdAt)}</span>

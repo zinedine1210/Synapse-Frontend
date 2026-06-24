@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { Bell, User, CheckCheck, Search } from 'lucide-react';
-import { notificationService, Notification } from '@/services/notificationService';
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { Bell, CheckCheck, Search } from 'lucide-react';
+import { Notification } from '@/services/notificationService';
 import { useAuth } from '@/lib/AuthContext';
+import { useNotifications } from '@/lib/NotificationContext';
 import { openCommandPalette } from './CommandPalette';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 
 interface AppbarProps {
   title?: string;
@@ -23,64 +25,11 @@ export function Appbar({
   sidebarCollapsed = false,
 }: AppbarProps) {
   const { user: authUser } = useAuth();
+  const router = useRouter();
   const resolvedUserName = userName || authUser?.fullName || 'Mahasiswa';
-  const resolvedUserId = userId || authUser?.id;
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [showPanel, setShowPanel] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(initialUnread);
-  const [loaded, setLoaded] = useState(false);
-  const socketRef = useRef<Socket | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  // Connect to notification socket
-  useEffect(() => {
-    if (!resolvedUserId) return;
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
-    const wsBase = apiUrl.replace(/\/api\/v\d+\/?$/, '');
-    const socket = io(`${wsBase}/notifications`, { transports: ['polling'], withCredentials: true });
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      socket.emit('joinUser', { userId: resolvedUserId });
-    });
-
-    socket.on('newNotification', (notif: Notification) => {
-      setNotifications((prev) => [notif, ...prev].slice(0, 50));
-      setUnreadCount((prev) => prev + 1);
-    });
-
-    socket.on('unreadCount', ({ count }: { count: number }) => {
-      setUnreadCount(count);
-    });
-
-    return () => {
-      socket.emit('leaveUser', { userId: resolvedUserId });
-      socket.disconnect();
-    };
-  }, [resolvedUserId]);
-
-  // Fetch notifications when panel opens
-  const fetchNotifications = useCallback(async () => {
-    if (loaded) return;
-    try {
-      const data = await notificationService.getNotifications();
-      setNotifications(data.notifications);
-      setUnreadCount(data.unreadCount);
-      setLoaded(true);
-    } catch { }
-  }, [loaded]);
-
-  useEffect(() => {
-    if (showPanel && !loaded) fetchNotifications();
-  }, [showPanel, loaded, fetchNotifications]);
-
-  // Fetch initial unread count
-  useEffect(() => {
-    if (!resolvedUserId) return;
-    notificationService.getNotifications().then((data) => {
-      setUnreadCount(data.unreadCount);
-    }).catch(() => {});
-  }, [resolvedUserId]);
 
   // Close panel on outside click
   useEffect(() => {
@@ -94,16 +43,16 @@ export function Appbar({
     return () => document.removeEventListener('mousedown', handler);
   }, [showPanel]);
 
-  const handleMarkAsRead = async (id: string) => {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
-    setUnreadCount((prev) => Math.max(0, prev - 1));
-    try { await notificationService.markAsRead(id); } catch { }
+  const handleNotifClick = (notif: Notification) => {
+    if (!notif.isRead) markAsRead(notif.id);
+    setShowPanel(false);
+    if (notif.actionUrl) {
+      router.push(notif.actionUrl);
+    }
   };
 
-  const handleMarkAllRead = async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    setUnreadCount(0);
-    try { await notificationService.markAllAsRead(); } catch { }
+  const handleMarkAllRead = () => {
+    markAllAsRead();
   };
 
   const timeAgo = (date: string) => {
@@ -261,12 +210,12 @@ export function Appbar({
                   notifications.map((notif) => (
                     <div
                       key={notif.id}
-                      onClick={() => !notif.isRead && handleMarkAsRead(notif.id)}
+                      onClick={() => handleNotifClick(notif)}
                       style={{
                         padding: '0.65rem 1rem',
                         borderBottom: '1px solid var(--border-subtle)',
                         background: notif.isRead ? 'transparent' : 'rgba(var(--color-primary) / 0.03)',
-                        cursor: notif.isRead ? 'default' : 'pointer',
+                        cursor: 'pointer',
                         transition: 'background 0.1s',
                         display: 'flex',
                         gap: '0.5rem',
@@ -296,6 +245,7 @@ export function Appbar({
         </div>
 
         <div
+          className="appbar-user-pill"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -306,20 +256,8 @@ export function Appbar({
             borderRadius: 'var(--radius-sm)',
           }}
         >
-          <div
-            style={{
-              width: 26,
-              height: 26,
-              borderRadius: 'var(--radius-sm)',
-              background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <User size={13} color="white" />
-          </div>
-          <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>
+          <UserAvatar name={resolvedUserName} avatarUrl={authUser?.avatarUrl} size={26} style={{ borderRadius: 'var(--radius-sm)' }} />
+          <span className="appbar-user-name" style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>
             {resolvedUserName}
           </span>
         </div>

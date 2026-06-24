@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { groupService, TaskGroupFull } from '@/services/groupService';
-import { Card, Button, Modal, useToast, useConfirm, NumberInput, TextInput } from '@/components/ui';
+import { Card, Button, Modal, useToast, useConfirm, NumberInput, TextInput, UserAvatar } from '@/components/ui';
 import {
   Users, Plus, Trash2, Loader2, Shuffle, UserMinus, ChevronRight,
 } from 'lucide-react';
@@ -119,11 +119,7 @@ export function KelompokTab({ classId, memberRole, permissions, userId, classMem
         {activeGroup.members.map((m) => (
           <Card key={m.id} style={{ padding: '0.5rem 0.65rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              {m.user.avatarUrl ? (
-                <img src={m.user.avatarUrl} alt="" style={{ width: 24, height: 24, borderRadius: '50%' }} />
-              ) : (
-                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(var(--color-primary) / 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 600, color: 'rgb(var(--color-primary))' }}>{m.user.fullName.charAt(0)}</div>
-              )}
+              <UserAvatar name={m.user.fullName} avatarUrl={m.user.avatarUrl} size={24} />
               <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500 }}>{m.user.fullName}</span>
             </div>
             {canManageGroup && (
@@ -151,11 +147,7 @@ export function KelompokTab({ classId, memberRole, permissions, userId, classMem
                 {filtered.slice(0, 10).map((cm) => (
                   <Card key={cm.userId} style={{ padding: '0.4rem 0.55rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      {cm.user.avatarUrl ? (
-                        <img src={cm.user.avatarUrl} alt="" style={{ width: 22, height: 22, borderRadius: '50%' }} />
-                      ) : (
-                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(var(--color-primary) / 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.55rem', fontWeight: 600, color: 'rgb(var(--color-primary))' }}>{cm.user.fullName.charAt(0)}</div>
-                      )}
+                      <UserAvatar name={cm.user.fullName} avatarUrl={cm.user.avatarUrl} size={22} />
                       <div>
                         <div style={{ fontSize: 'var(--font-xs)', fontWeight: 500 }}>{cm.user.fullName}</div>
                         <div style={{ fontSize: '0.55rem', color: 'rgb(var(--text-muted))' }}>{cm.user.email}</div>

@@ -293,9 +293,10 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
     const wsBase = apiUrl.replace(/\/api\/v\d+\/?$/, '');
-    const socket = io(`${wsBase}/forum`, { transports: ['polling'], withCredentials: true });
+    const socket = io(`${wsBase}/forum`, { transports: ['polling'], withCredentials: true, reconnectionAttempts: 5, reconnectionDelay: 3000 });
     socketRef.current = socket;
     socket.on('connect', () => socket.emit('joinClass', { classId }));
+    socket.on('connect_error', () => {});
     socket.on('newPost', (post: ForumPost & { discussionId?: string | null }) => {
       const postDiscId = post.discussionId || null;
       if (postDiscId !== activeDiscussionId) {

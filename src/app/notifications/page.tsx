@@ -206,12 +206,14 @@ export default function NotificationsPage() {
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
     const wsBase = apiUrl.replace(/\/api\/v\d+\/?$/, '');
-    const socket = io(`${wsBase}/notifications`, { transports: ['polling'], withCredentials: true });
+    const socket = io(`${wsBase}/notifications`, { transports: ['polling'], withCredentials: true, reconnectionAttempts: 5, reconnectionDelay: 3000 });
     socketRef.current = socket;
 
     socket.on('connect', () => {
       socket.emit('joinUser', { userId: user.id });
     });
+
+    socket.on('connect_error', () => {});
 
     socket.on('newNotification', (notif: Notification) => {
       // Prepend new notification to the list (if matches active category filter)

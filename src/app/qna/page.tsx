@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Button, useToast, PullToRefresh, BottomSheet, TagInput, TextInput, SelectOption } from '@/components/ui';
+import { Button, useToast, PullToRefresh, BottomSheet, TagInput, TextInput, SelectOption, UserAvatar } from '@/components/ui';
 import { stripMarkdown } from '@/components/ui/MarkdownRenderer';
 import { InfiniteScroll } from '@/components/ui/InfiniteScroll';
 import dynamic from 'next/dynamic';
@@ -28,8 +28,6 @@ const QNA_CATEGORIES = [
   { id: 'lainnya', label: 'Lainnya', emoji: '💬', color: '#6b7280' },
 ];
 
-const AVATAR_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#3b82f6'];
-
 const MIN_BODY_LEN = 20;
 
 function timeAgo(date: string) {
@@ -46,12 +44,6 @@ function toPreview(text: string): string {
   return stripMarkdown(text || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-/** Stable color per name so avatars stay consistent. */
-function avatarColor(name: string): string {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return AVATAR_COLORS[h % AVATAR_COLORS.length];
-}
 
 export default function QnaPage() {
   useAuth();
@@ -481,9 +473,7 @@ export default function QnaPage() {
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 {/* Author row */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                                  <div style={{ width: 28, height: 28, borderRadius: '50%', background: `linear-gradient(135deg, ${avatarColor(q.user.fullName)}, ${avatarColor(q.user.fullName)}99)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                                    {q.user.fullName.charAt(0).toUpperCase()}
-                                  </div>
+                                  <UserAvatar name={q.user.fullName} avatarUrl={q.user.avatarUrl} size={28} />
                                   <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{q.user.fullName}</span>
                                   <span style={{ fontSize: 11, opacity: 0.35, flexShrink: 0 }}>· {timeAgo(q.createdAt)}</span>
                                   {isAnswered && (
@@ -594,9 +584,7 @@ export default function QnaPage() {
                           <div style={{ width: 12, fontSize: 11, fontWeight: 800, color: i === 0 ? '#f59e0b' : i === 1 ? '#9ca3af' : i === 2 ? '#b45309' : 'inherit', opacity: i >= 3 ? 0.4 : 1 }}>
                             {i + 1}
                           </div>
-                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: `linear-gradient(135deg, ${avatarColor(entry.user.fullName)}, ${avatarColor(entry.user.fullName)}99)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>
-                            {entry.user.fullName.charAt(0).toUpperCase()}
-                          </div>
+                          <UserAvatar name={entry.user.fullName} avatarUrl={entry.user.avatarUrl} size={28} />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.user.fullName}</div>
                             <div style={{ fontSize: 10, opacity: 0.4 }}>{entry.answersCount} jawaban · {entry.approvedCount} approved</div>

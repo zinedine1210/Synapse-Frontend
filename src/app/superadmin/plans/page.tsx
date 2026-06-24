@@ -74,9 +74,15 @@ const FEATURE_SECTIONS: FeatureSection[] = [
       { id: 'duit_tracker_saving_tree', label: 'Pohon Tabungan' },
       { id: 'duit_tracker_summary', label: 'Ringkasan & Grafik Keuangan' },
       { id: 'duit_tracker_quick_input', label: 'Input Cepat (AI Parse)' },
+      { id: 'duit_tracker_bills', label: 'Tagihan Rutin (Recurring Bills)' },
+      { id: 'duit_tracker_debts', label: 'Pencatatan Hutang' },
+      { id: 'duit_tracker_wishlist', label: 'Wishlist / Rencana Belanja' },
+      { id: 'duit_tracker_challenges', label: 'Budget Challenge & Streak' },
       { id: 'si_bawel', label: 'Si Bawel (AI Keuangan)' },
+      { id: 'si_bawel_memory', label: 'Si Bawel Memory & Evolusi' },
       { id: 'split_bill', label: 'Split Bill' },
       { id: 'receipt_scanner', label: 'Scan Struk (OCR)' },
+      { id: 'what_if_calculator', label: 'What If Calculator & Time Machine' },
     ],
   },
   {
@@ -103,6 +109,8 @@ const FEATURE_SECTIONS: FeatureSection[] = [
       { id: 'notification', label: 'Notifikasi' },
       { id: 'command_palette', label: 'Command Palette' },
       { id: 'quick_action', label: 'Quick Action FAB' },
+      { id: 'virtual_pet', label: 'Virtual Pet (Pixel Cat)' },
+      { id: 'streak_calendar', label: 'Streak Calendar (Heatmap)' },
     ],
   },
   {
@@ -110,6 +118,8 @@ const FEATURE_SECTIONS: FeatureSection[] = [
     items: [
       { id: 'profile_ai_context', label: 'Konteks AI Personal' },
       { id: 'profile_avatar', label: 'Upload Avatar Profil' },
+      { id: 'profile_card', label: 'Digital Identity Card' },
+      { id: 'quiz_keuangan', label: 'Quiz Kepribadian Keuangan' },
       { id: 'dashboard_class_comparison', label: 'Perbandingan Kelas (Dashboard)' },
       { id: 'dashboard_trending_qna', label: 'Trending Q&A (Dashboard)' },
     ],

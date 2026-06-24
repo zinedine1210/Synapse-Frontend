@@ -7,6 +7,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button } from '@/components/ui';
 import { ChevronRight, Share2, RotateCcw, Sparkles } from 'lucide-react';
+import { FeatureGate } from '@/lib/feature-access';
 
 // ─── Quiz Data ─────────────────────────────────────────────────────────────────
 interface Question {
@@ -191,6 +192,7 @@ export default function FinancialQuizPage() {
 
   return (
     <AuthGuard>
+      <FeatureGate feature="quiz_keuangan">
       <div className="app-shell">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <div className="app-main">
@@ -334,6 +336,7 @@ export default function FinancialQuizPage() {
           </div>
         </div>
       </div>
+      </FeatureGate>
     </AuthGuard>
   );
 }

@@ -137,13 +137,14 @@ export default function SplitBillPage() {
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
     const wsBase = apiUrl.replace(/\/api\/v\d+\/?$/, '');
-    const socket = io(`${wsBase}/split-bill`, { transports: ['polling'], withCredentials: true });
+    const socket = io(`${wsBase}/split-bill`, { transports: ['polling'], withCredentials: true, reconnectionAttempts: 5, reconnectionDelay: 3000 });
     socketRef.current = socket;
 
     socket.on('connect', () => {
       setSocketLive(true);
       socket.emit('joinBill', { billId: selectedBill.id });
     });
+    socket.on('connect_error', () => {});
     socket.on('disconnect', () => setSocketLive(false));
 
     socket.on('split-bill:payment-updated', (data: { participantId: string; isPaid: boolean; bill: SplitBill }) => {

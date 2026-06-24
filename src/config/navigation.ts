@@ -87,6 +87,7 @@ export const secondaryNavItems: NavItem[] = [
     label: 'Quiz Keuangan',
     path: '/quiz-keuangan',
     icon: Gamepad2,
+    requiredFeature: 'quiz_keuangan',
     badge: 'NEW',
   },
 ];

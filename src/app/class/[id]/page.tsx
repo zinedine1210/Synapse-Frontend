@@ -7,7 +7,7 @@ import { useClassDetail } from '@/viewmodels/useClassDetail';
 import { classService } from '@/services/classService';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
-import { Button, Modal, useToast, useConfirm, PasswordInput, TextInput, SelectOption, TextArea } from '@/components/ui';
+import { Button, Modal, useToast, useConfirm, PasswordInput, TextInput, SelectOption, TextArea, UserAvatar } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
 import dynamic from 'next/dynamic';
 
@@ -719,11 +719,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
                                 border: isMe ? '1px solid rgba(var(--color-primary) / 0.15)' : '1px solid transparent',
                               }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
-                                  {m.user.avatarUrl ? (
-                                    <img src={m.user.avatarUrl} alt="" style={{ width: 28, height: 28, borderRadius: '50%' }} />
-                                  ) : (
-                                    <div style={{ width: 28, height: 28, borderRadius: '50%', background: isMe ? 'rgb(var(--color-primary))' : 'rgba(var(--color-primary) / 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 600, color: isMe ? '#fff' : 'rgb(var(--color-primary))' }}>{m.user.fullName.charAt(0)}</div>
-                                  )}
+                                  <UserAvatar name={m.user.fullName} avatarUrl={m.user.avatarUrl} size={28} />
                                   <div style={{ minWidth: 0 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap' }}>
                                       <span style={{ fontSize: 'var(--font-sm)', fontWeight: isMe ? 600 : 500, color: 'rgb(var(--text-primary))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -447,6 +447,14 @@ a:hover { opacity: 0.8; }
     display: none !important;
   }
 
+  .appbar-user-name {
+    display: none !important;
+  }
+
+  .appbar-user-pill {
+    padding: 0.3rem !important;
+  }
+
   .appbar-search-trigger {
     min-width: 34px !important;
     width: 34px !important;
@@ -1506,6 +1514,72 @@ body.hide-bottom-nav .quick-action-fab {
   }
   .feature-header h1 {
     font-size: 18px !important;
+  }
+
+  /* ═══ Makan page mobile fixes ═══ */
+  .makan-budget-card {
+    padding: 14px 14px !important;
+  }
+  .makan-budget-row {
+    gap: 14px !important;
+  }
+  .makan-budget-amount {
+    font-size: 1.35rem !important;
+  }
+  .makan-budget-stats {
+    gap: 10px !important;
+  }
+  .makan-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+  .makan-header-icon {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  .makan-header h1 {
+    font-size: 1.15rem !important;
+  }
+  .makan-pref-btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+  .makan-history-item {
+    padding: 10px 12px !important;
+  }
+  .makan-history-icon {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  .makan-history-budget {
+    display: none !important;
+  }
+  .makan-history-actions {
+    gap: 4px !important;
+    justify-content: flex-start !important;
+  }
+  .makan-history-actions button {
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+  }
+  .makan-dropzone {
+    padding: 1.5rem 1rem !important;
+  }
+  .makan-dropzone-circle {
+    width: 48px !important;
+    height: 48px !important;
+  }
+  .makan-menu-rec-row {
+    flex-direction: column !important;
+  }
+  .makan-meal-row {
+    flex-direction: column !important;
+    gap: 4px !important;
+  }
+  .makan-meal-price {
+    align-self: flex-end !important;
   }
 
   /* ═══ General mobile sizing ═══ */

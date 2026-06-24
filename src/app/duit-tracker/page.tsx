@@ -923,10 +923,10 @@ export default function DuitTrackerPage() {
                   { key: 'summary', label: '📊 Ringkasan', feature: 'duit_tracker_summary' },
                   { key: 'budget', label: '🎯 Budget', feature: 'duit_tracker_budget' },
                   { key: 'trees', label: '🌳 Tabungan', feature: 'duit_tracker_saving_tree' },
-                  { key: 'bills', label: '💳 Tagihan' },
-                  { key: 'debts', label: '🤝 Hutang' },
-                  { key: 'wishlist', label: '🛒 Wishlist' },
-                  { key: 'challenges', label: '🔥 Challenge' },
+                  { key: 'bills', label: '💳 Tagihan', feature: 'duit_tracker_bills' },
+                  { key: 'debts', label: '🤝 Hutang', feature: 'duit_tracker_debts' },
+                  { key: 'wishlist', label: '🛒 Wishlist', feature: 'duit_tracker_wishlist' },
+                  { key: 'challenges', label: '🔥 Challenge', feature: 'duit_tracker_challenges' },
                 ].filter(t => !t.feature || hasFeature(t.feature)).map(t => (
                   <button key={t.key} onClick={() => setTab(t.key as any)} style={{
                     padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
@@ -1338,7 +1338,9 @@ export default function DuitTrackerPage() {
                   <ForecastCard forecast={forecast} />
 
                   {/* What If Calculator + Time Machine */}
-                  <WhatIfCalculator transactions={transactions} />
+                  {hasFeature('what_if_calculator') && (
+                    <WhatIfCalculator transactions={transactions} />
+                  )}
 
                   {/* Spending Comparison (Peer) */}
                   <ComparisonCard comparison={comparison} />

@@ -650,23 +650,27 @@ export default function DashboardPage() {
               {/* ═══════ SECTION 9: VIRTUAL PET + STREAK CALENDAR ═══════ */}
               {hasFeature('gamification') && summary?.gamification && (
                 <>
-                  <VirtualPetWidget
-                    status={{
-                      name: 'Oren',
-                      streakDays: summary.gamification.currentStreak || 0,
-                      underBudget: true,
-                      daysSinceLastLog: 0,
-                      level: summary.gamification.level || 1,
-                    }}
-                    compact={false}
-                  />
-                  <div style={{ marginTop: 16 }}>
-                    <StreakCalendar
-                      activityMap={{}}
-                      currentStreak={summary.gamification.currentStreak || 0}
-                      longestStreak={summary.gamification.longestStreak || 0}
+                  {hasFeature('virtual_pet') && (
+                    <VirtualPetWidget
+                      status={{
+                        name: 'Oren',
+                        streakDays: summary.gamification.currentStreak || 0,
+                        underBudget: true,
+                        daysSinceLastLog: 0,
+                        level: summary.gamification.level || 1,
+                      }}
+                      compact={false}
                     />
-                  </div>
+                  )}
+                  {hasFeature('streak_calendar') && (
+                    <div style={{ marginTop: 16 }}>
+                      <StreakCalendar
+                        activityMap={{}}
+                        currentStreak={summary.gamification.currentStreak || 0}
+                        longestStreak={summary.gamification.longestStreak || 0}
+                      />
+                    </div>
+                  )}
                 </>
               )}
 

@@ -330,6 +330,7 @@ export default function MakanApaPage() {
       >
         <div
           onClick={toggleExpand}
+          className="makan-history-item"
           style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -339,8 +340,9 @@ export default function MakanApaPage() {
             userSelect: 'none',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
             <div
+              className="makan-history-icon"
               style={{
                 width: 38,
                 height: 38,
@@ -367,7 +369,7 @@ export default function MakanApaPage() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-            <div style={{ textAlign: 'right' }}>
+            <div className="makan-history-budget" style={{ textAlign: 'right' }}>
               {item.budget !== null && (
                 <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--color-primary))', fontWeight: 700 }}>
                   {isFridge ? `Sisa: ${fmt(item.budget)}` : fmt(item.budget)}
@@ -470,7 +472,7 @@ export default function MakanApaPage() {
                     </div>
                   )}
 
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 4, marginTop: 12 }}>
+                  <div className="makan-history-actions" style={{ display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 4, marginTop: 12 }}>
                     <Button
                       onClick={(e) => { e.stopPropagation(); handleToggleFavorite(recipe); }}
                       variant="ghost"
@@ -569,7 +571,7 @@ export default function MakanApaPage() {
             <div className="feature-container" style={{ maxWidth: 800, margin: '0 auto', paddingBottom: 'calc(var(--bottom-nav-height, 60px) + 16px)' }}>
               
               {/* Feature Header with Relocated Preference Button */}
-              <div style={{
+              <div className="makan-header" style={{
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -578,7 +580,7 @@ export default function MakanApaPage() {
                 gap: 12
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
+                  <div className="makan-header-icon" style={{
                     width: 42,
                     height: 42,
                     borderRadius: 'var(--radius-md)',
@@ -604,6 +606,7 @@ export default function MakanApaPage() {
                   onClick={() => setShowPrefModal(true)}
                   variant="outline"
                   size="sm"
+                  className="makan-pref-btn"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -622,6 +625,7 @@ export default function MakanApaPage() {
               {/* Budget Card with progress ring */}
               {!budgetLoading && budgetInfo && budgetInfo.budget > 0 && (
                 <Card
+                  className="makan-budget-card"
                   style={{
                     position: 'relative',
                     overflow: 'hidden',
@@ -657,7 +661,7 @@ export default function MakanApaPage() {
                     pointerEvents: 'none'
                   }} />
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 20, position: 'relative', zIndex: 1 }}>
+                  <div className="makan-budget-row" style={{ display: 'flex', alignItems: 'center', gap: 20, position: 'relative', zIndex: 1 }}>
                     {budgetInfo.remaining !== null ? (
                       <BudgetRing
                         fraction={spentFraction}
@@ -680,7 +684,7 @@ export default function MakanApaPage() {
                         </p>
                       </div>
                       
-                      <p style={{
+                      <p className="makan-budget-amount" style={{
                         fontSize: '1.75rem',
                         fontWeight: 800,
                         lineHeight: 1.1,
@@ -691,7 +695,7 @@ export default function MakanApaPage() {
                         {budgetInfo.remaining !== null ? fmt(budgetInfo.remaining) : 'Tidak ada budget'}
                       </p>
 
-                      <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
+                      <div className="makan-budget-stats" style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                           <span style={{ fontSize: '10px', color: 'rgb(var(--text-muted))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Budget Awal</span>
                           <span style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>{fmt(budgetInfo.budget)}</span>
@@ -1151,7 +1155,7 @@ export default function MakanApaPage() {
                             </div>
                             <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                               {day.meals.map((meal, mi) => (
-                                <div key={mi} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderBottom: mi < day.meals.length - 1 ? '1px solid var(--border-default)' : 'none' }}>
+                                <div key={mi} className="makan-meal-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderBottom: mi < day.meals.length - 1 ? '1px solid var(--border-default)' : 'none' }}>
                                   <div style={{ flex: 1 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                                       <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: 999, background: meal.type === 'lunch' ? 'rgba(var(--color-warning) / 0.1)' : 'rgba(var(--color-primary) / 0.1)', color: meal.type === 'lunch' ? 'rgb(var(--color-warning))' : 'rgb(var(--color-primary))', fontWeight: 700 }}>
@@ -1165,7 +1169,7 @@ export default function MakanApaPage() {
                                       {meal.protein && <span style={{ fontSize: '10px', color: 'rgb(var(--text-muted))' }}>💪 {meal.protein}g protein</span>}
                                     </div>
                                   </div>
-                                  <span style={{ fontWeight: 800, fontSize: 'var(--font-sm)', color: 'rgb(var(--color-primary))', whiteSpace: 'nowrap' }}>{fmt(meal.estimatedCost)}</span>
+                                  <span className="makan-meal-price" style={{ fontWeight: 800, fontSize: 'var(--font-sm)', color: 'rgb(var(--color-primary))', whiteSpace: 'nowrap' }}>{fmt(meal.estimatedCost)}</span>
                                 </div>
                               ))}
                             </div>

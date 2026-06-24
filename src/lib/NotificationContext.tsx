@@ -42,12 +42,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     const socket = io(`${wsBase}/notifications`, {
       transports: ['websocket', 'polling'],
       withCredentials: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 3000,
     });
     socketRef.current = socket;
 
     socket.on('connect', () => {
       socket.emit('joinUser', { userId });
     });
+
+    socket.on('connect_error', () => {});
 
     socket.on('newNotification', (notif: Notification) => {
       setNotifications((prev) => [notif, ...prev].slice(0, 50));

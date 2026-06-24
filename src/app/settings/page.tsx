@@ -10,6 +10,7 @@ import { Card, Button, useToast, useConfirm, TextInput, TagInput, TimePicker, Se
 import { apiFetch, apiUpload } from '@/lib/api';
 import { useCache } from '@/lib/cache';
 import { ProfileCard } from '@/components/gamification/ProfileCard';
+import { useFeatureAccess } from '@/lib/feature-access';
 
 import { usePushNotifications } from '@/lib/usePushNotifications';
 import {
@@ -473,6 +474,7 @@ function ProfileTab({
   onboardingLoading: boolean;
   handleSaveOnboardingProfile: () => void;
 }) {
+  const { hasFeature } = useFeatureAccess();
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       <Card style={{ padding: '1.5rem' }}>
@@ -635,21 +637,23 @@ function ProfileTab({
       </Card>
 
       {/* Digital Identity Card */}
-      <ProfileCard
-        data={{
-          name: user?.fullName || 'User',
-          avatarUrl: avatarUrl,
-          university: onboardingUniversity || undefined,
-          level: 1,
-          levelName: 'Pemula',
-          totalXp: 0,
-          currentStreak: 0,
-          longestStreak: 0,
-          achievementCount: 0,
-          totalSaved: 0,
-          memberSince: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : 'Jun 2026',
-        }}
-      />
+      {hasFeature('profile_card') && (
+        <ProfileCard
+          data={{
+            name: user?.fullName || 'User',
+            avatarUrl: avatarUrl,
+            university: onboardingUniversity || undefined,
+            level: 1,
+            levelName: 'Pemula',
+            totalXp: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            achievementCount: 0,
+            totalSaved: 0,
+            memberSince: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('id-ID', { month: 'short', year: 'numeric' }) : 'Jun 2026',
+          }}
+        />
+      )}
     </div>
   );
 }

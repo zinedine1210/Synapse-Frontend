@@ -45,6 +45,7 @@ export function PhotoDropzone({ loading, title, hint, onFile }: PhotoDropzonePro
       tabIndex={0}
       aria-label={title}
       aria-disabled={loading}
+      className="makan-dropzone"
       onClick={handleClick}
       onKeyDown={e => {
         if (loading) return;
@@ -83,6 +84,7 @@ export function PhotoDropzone({ loading, title, hint, onFile }: PhotoDropzonePro
       }}
     >
       <div
+        className="makan-dropzone-circle"
         style={{
           width: 64,
           height: 64,

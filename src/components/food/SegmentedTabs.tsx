@@ -22,12 +22,12 @@ interface SegmentedTabsProps<T extends string> {
  */
 export function SegmentedTabs<T extends string>({ tabs, value, onChange, style }: SegmentedTabsProps<T>) {
   const activeIndex = Math.max(0, tabs.findIndex(t => t.value === value));
-  const widthPct = 100 / tabs.length;
 
   return (
     <div
       role="tablist"
       aria-label="Mode rekomendasi"
+      className="seg-tabs-container"
       style={{
         position: 'relative',
         display: 'flex',
@@ -37,26 +37,13 @@ export function SegmentedTabs<T extends string>({ tabs, value, onChange, style }
         border: '1px solid var(--border-default)',
         borderRadius: 'var(--radius-lg)',
         marginBottom: 20,
-        overflow: 'hidden',
+        overflowX: 'auto',
+        overflowY: 'hidden',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none',
         ...style,
       }}
     >
-      {/* Sliding indicator */}
-      <span
-        aria-hidden
-        style={{
-          position: 'absolute',
-          top: 4,
-          bottom: 4,
-          left: `calc(${activeIndex * widthPct}% + 4px)`,
-          width: `calc(${widthPct}% - 6px)`,
-          background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
-          borderRadius: 'calc(var(--radius-lg) - 4px)',
-          boxShadow: '0 4px 14px rgba(var(--color-primary) / 0.35)',
-          transition: 'left 0.28s cubic-bezier(0.16, 1, 0.3, 1)',
-          zIndex: 0,
-        }}
-      />
       {tabs.map(tab => {
         const active = tab.value === value;
         return (
@@ -65,24 +52,29 @@ export function SegmentedTabs<T extends string>({ tabs, value, onChange, style }
             role="tab"
             aria-selected={active}
             onClick={() => onChange(tab.value)}
+            className="seg-tab-btn"
             style={{
               position: 'relative',
               zIndex: 1,
-              flex: 1,
+              flex: '0 0 auto',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
-              padding: '9px 6px',
+              padding: '9px 14px',
               border: 'none',
-              background: 'transparent',
+              background: active
+                ? 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))'
+                : 'transparent',
+              borderRadius: active ? 'calc(var(--radius-lg) - 4px)' : 'calc(var(--radius-lg) - 4px)',
+              boxShadow: active ? '0 4px 14px rgba(var(--color-primary) / 0.35)' : 'none',
               cursor: 'pointer',
               fontFamily: 'inherit',
               fontSize: 'var(--font-sm)',
               fontWeight: active ? 700 : 500,
               whiteSpace: 'nowrap',
               color: active ? 'rgb(var(--bg-base))' : 'rgb(var(--text-secondary))',
-              transition: 'color 0.2s ease',
+              transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
           >
             <span style={{ display: 'inline-flex' }}>{tab.icon}</span>
@@ -92,6 +84,15 @@ export function SegmentedTabs<T extends string>({ tabs, value, onChange, style }
       })}
 
       <style jsx>{`
+        .seg-tabs-container::-webkit-scrollbar {
+          display: none;
+        }
+        @media (max-width: 600px) {
+          .seg-tab-btn {
+            padding: 8px 12px !important;
+            font-size: 12px !important;
+          }
+        }
         @media (max-width: 420px) {
           .seg-tab-label {
             display: none;

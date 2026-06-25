@@ -345,7 +345,7 @@ export default function QnaPage() {
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16 }}>
                   <div>
-                    <h1 style={{ fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>❓ Q&A</h1>
+                    <h1 style={{ fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>Ruang Tanya</h1>
                     <p style={{ fontSize: 13, opacity: 0.45, marginTop: 2 }}>Tanya, jawab, bantu sesama — saling carry! 🤝</p>
                   </div>
                   <Button onClick={openAsk} size="sm" style={{ borderRadius: 12, flexShrink: 0 }}><Plus size={14} /> Tanya</Button>
@@ -359,10 +359,10 @@ export default function QnaPage() {
                 {/* Tab Pills */}
                 <div style={{ display: 'flex', gap: 4, marginBottom: 20, padding: 4, borderRadius: 12, background: 'var(--input-bg)', width: 'fit-content' }}>
                   {[
-                    { key: 'terbaru', label: 'Terbaru', icon: <Clock size={13} /> },
-                    { key: 'trending', label: 'Trending', icon: <Flame size={13} /> },
-                    { key: 'mine', label: 'Milikku', icon: <UserIcon size={13} /> },
-                    { key: 'bookmarks', label: 'Bookmark', icon: <Bookmark size={13} /> },
+                    { key: 'terbaru', label: 'Terbaru' },
+                    { key: 'trending', label: 'Trending' },
+                    { key: 'mine', label: 'Milikku' },
+                    { key: 'bookmarks', label: 'Bookmark' },
                   ].map(t => (
                     <button key={t.key} onClick={() => { setTab(t.key as any); setPage(1); }} style={{
                       padding: '8px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: tab === t.key ? 700 : 400,
@@ -371,7 +371,7 @@ export default function QnaPage() {
                       color: tab === t.key ? 'rgb(var(--color-primary))' : 'inherit',
                       boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
                       transition: 'all 0.2s',
-                    }}>{t.icon} {t.label}</button>
+                    }}>{t.label}</button>
                   ))}
                 </div>
 

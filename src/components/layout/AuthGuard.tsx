@@ -16,7 +16,7 @@ const TOUR_STEPS: TourStep[] = [
   { targetSelector: '[data-tour="dashboard"]', title: 'Dashboard', description: 'Pusat kendali kuliahmu. Lihat kelas, jadwal, dan ringkasan AI di satu tempat.', position: 'bottom' },
   { targetSelector: '[data-tour="duit-tracker"]', title: 'Duit Tracker', description: 'Catat pengeluaran, atur budget, dan tanam pohon tabungan virtual.', position: 'right' },
   { targetSelector: '[data-tour="todos"]', title: 'To-Do List', description: 'Kelola tugas dengan drag & drop, kategori, dan kalender.', position: 'right' },
-  { targetSelector: '[data-tour="qna"]', title: 'Q&A Forum', description: 'Tanya, jawab, dan bangun reputasi bersama pengguna lain.', position: 'right' },
+  { targetSelector: '[data-tour="qna"]', title: 'Ruang Tanya', description: 'Tanya, jawab, dan bangun reputasi bersama pengguna lain.', position: 'right' },
   { targetSelector: '[data-tour="search"]', title: 'Pencarian Cepat', description: 'Tekan Ctrl+K untuk mencari tugas, todo, transaksi, dan lainnya.', position: 'bottom', allowInteraction: true },
 ];
 

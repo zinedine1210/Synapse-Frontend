@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { brand } from '@/config/brand';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  Sparkles, BookOpen, Brain, FileText, Users, BarChart3,
+  Sparkles, Brain, FileText, Users, BarChart3,
   ChevronRight, Zap, MessageSquare, ArrowRight, Star,
   CheckCircle2, GraduationCap, Layers, Target, Sun, Moon, Globe,
   Shield, Wallet, ClipboardList, PenTool, Bell,
@@ -23,7 +23,7 @@ const T = {
     heroTitle1: 'Revolusi Cara',
     heroTitle2: 'Anak Muda Belajar',
     heroTitle3: 'dengan AI',
-    heroDesc: 'Rangkum materi dalam hitungan detik, latihan kuis adaptif, prediksi soal ujian, forum diskusi real-time, dan kelola kelas — semua dalam satu platform cerdas.',
+    heroDesc: 'Rangkum materi dalam detik, kuis adaptif, prediksi ujian, tracker keuangan + AI coach, rekomendasi makan, split bill, virtual pet — semua dalam satu app yang didesain untuk anak muda.',
     ctaPrimary: 'Mulai Gratis Sekarang',
     ctaSecondary: 'Lihat Demo',
     ctaTertiary: 'Pelajari Fitur',
@@ -54,29 +54,33 @@ const T = {
     highlightTitle2: 'Semua Kebutuhanmu',
     highlightSub: 'Tidak perlu lagi berpindah-pindah aplikasi. Synapse menyatukan semua yang kamu butuhkan untuk kuliah dalam satu dasbor yang elegan.',
     highlights: [
-      { title: 'AI yang Benar-Benar Membantu', desc: 'Bukan sekadar chatbot. AI kami memahami materi kuliahmu, membuat rangkuman terstruktur, dan menyesuaikan latihan soal dengan kelemahanmu.', icon: 'brain' },
-      { title: 'Kolaborasi Tim Tanpa Batas', desc: 'Forum diskusi per topik, kelompok belajar, kas kolektif, pembagian tugas otomatis — semua terintegrasi tanpa perlu WhatsApp terpisah.', icon: 'users' },
-      { title: 'Terstruktur & Rapi', desc: 'Sesi pertemuan fleksibel per kelas, materi terorganisir, tugas terlacak, dan progress jelas. Tidak ada lagi file berantakan di Google Drive.', icon: 'folder' },
+      { title: 'AI yang Benar-Benar Paham Kamu', desc: 'Bukan sekadar chatbot. AI kami rangkum materi, prediksi ujian, rekomendasiin makanan, jadi coach keuangan, dan bahkan jawab Q&A — semua personalized.', icon: 'brain' },
+      { title: 'All-in-One Life Platform', desc: 'Kuliah, keuangan, makan, to-do, split bill — semua dalam satu app. Gak perlu lagi install 10 aplikasi berbeda untuk hidup produktif.', icon: 'users' },
+      { title: 'Gamifikasi yang Bikin Nagih', desc: 'Virtual pet, streak calendar, XP & level-up, leaderboard, achievement badges, dan quiz keuangan. Belajar & produktif jadi seru kayak main game.', icon: 'folder' },
     ],
 
     // Features
     featBadge: 'Fitur Lengkap',
     featTitle1: 'Semua yang Kamu Butuhkan',
-    featTitle2: 'untuk Sukses di Kampus',
-    featSub: 'Fitur-fitur yang dirancang khusus untuk produktivitas anak muda Indonesia.',
+    featTitle2: 'untuk Hidup Produktif',
+    featSub: 'Bukan cuma buat kuliah — Synapse bantu semua aspek kehidupan anak muda Indonesia.',
     features: [
-      { title: 'AI Summarizer', desc: 'Upload PDF atau gambar materi kuliah, dan AI akan membuat rangkuman cerdas dengan poin-poin utama dalam hitungan detik. Hemat berjam-jam waktu belajar.', tag: 'AI' },
-      { title: 'Kuis Adaptif', desc: 'AI menganalisis kelemahanmu dari hasil kuis sebelumnya dan membuat soal yang tepat sasaran. Semakin sering latihan, semakin pintar AI-nya.', tag: 'AI' },
-      { title: 'Prediksi Ujian', desc: 'Berdasarkan seluruh materi yang sudah diupload, AI memprediksi soal-soal yang kemungkinan besar keluar di ujian. Persiapan jadi terarah.', tag: 'AI' },
-      { title: 'Sesi Pertemuan', desc: 'Struktur perkuliahan fleksibel — buat sesi pertemuan sesuai kebutuhan. Setiap sesi bisa berisi materi, tugas, kuis, dan catatan. Semua terorganisir rapi.', tag: 'Kelas' },
-      { title: 'Forum Diskusi Real-time', desc: 'Ruang diskusi per kelas dengan pembahasan terpisah, voting, rich text editor, indikator pesan belum dibaca, dan pencarian. Seperti Slack untuk kuliah.', tag: 'Sosial' },
-      { title: 'Canvas Kolaboratif', desc: 'Setiap pembahasan di forum punya canvas — catatan bersama yang bisa diedit siapa saja dengan rich text editor. Cocok untuk notulensi rapat kelompok.', tag: 'Sosial' },
-      { title: 'Kelompok Belajar', desc: 'Buat kelompok belajar dalam kelas, bagi tugas per kelompok, dan lihat anggota masing-masing kelompok. Tugas kelompok hanya terlihat oleh kelompok terkait.', tag: 'Tim' },
-      { title: 'Kas Kolektif', desc: 'Kelola kas kelas secara transparan — catat pemasukan, pengeluaran, dan saldo. Semua anggota bisa melihat histori transaksi.', tag: 'Tim' },
-      { title: 'Manajemen Tugas', desc: 'Buat tugas dengan deadline, assign ke individu atau kelompok, dan pantau progress pengumpulan. Dosen tahu siapa yang sudah dan belum mengumpulkan.', tag: 'Kelas' },
-      { title: 'Export PDF B5', desc: 'Semua rangkuman AI bisa di-export ke PDF format B5 — siap cetak untuk belajar offline. Layout profesional, langsung bisa dijilid.', tag: 'Tools' },
-      { title: 'Hak Akses & Peran', desc: 'Sistem permission yang fleksibel — atur siapa yang bisa membuat kuis, mengelola forum, menghapus materi, atau mengedit canvas per anggota.', tag: 'Admin' },
-      { title: 'Notifikasi Cerdas', desc: 'Dapatkan notifikasi untuk tugas baru, deadline mendekat, dan pesan belum dibaca. Tidak pernah ketinggalan informasi penting lagi.', tag: 'Tools' },
+      { title: 'AI Summarizer', desc: 'Upload PDF atau gambar materi kuliah, AI bikin rangkuman cerdas dengan poin-poin utama dalam hitungan detik. Hemat berjam-jam waktu belajar.', tag: 'AI' },
+      { title: 'Kuis Adaptif', desc: 'AI analisis kelemahanmu dari kuis sebelumnya dan bikin soal yang tepat sasaran. Makin sering latihan, makin pintar AI-nya.', tag: 'AI' },
+      { title: 'Prediksi Ujian + Kisi-kisi', desc: 'AI prediksi soal yang bakal keluar di ujian berdasarkan seluruh materi. Bisa juga upload kisi-kisi buat hasil lebih akurat.', tag: 'AI' },
+      { title: 'Daily Briefing & AI Insight', desc: 'Tiap pagi dapat briefing personal — deadline hari ini, tips belajar, dan insight AI tentang pola belajarmu. Auto-motivasi!', tag: 'AI' },
+      { title: 'Duit Tracker', desc: 'Catat pemasukan & pengeluaran, kelola tagihan, hutang-piutang, budget bulanan, saving tree, wishlist, bahkan financial challenges.', tag: 'Keuangan' },
+      { title: 'Si Bawel (AI Coach)', desc: 'AI financial coach yang inget kebiasaan finansialmu. Dia bakal "ngomel" kalau kamu boros dan kasih tips personalized. Punya memory!', tag: 'Keuangan' },
+      { title: 'Makan Apa (AI Food Rec)', desc: 'Bingung mau makan apa? AI rekomendasiin makanan berdasarkan budget, lokasi, preferensi diet, dan mood kamu hari ini.', tag: 'Lifestyle' },
+      { title: 'Split Bill & Receipt Scanner', desc: 'Scan struk belanja langsung pakai kamera, AI otomatis bagi-bagi biaya. Gak perlu lagi hitung manual pas makan bareng.', tag: 'Keuangan' },
+      { title: 'Forum Diskusi Real-time', desc: 'Ruang diskusi per kelas dengan thread terpisah, voting, rich text editor, canvas kolaboratif, dan indikator pesan baru.', tag: 'Sosial' },
+      { title: 'To-Do List Pro', desc: 'Bukan to-do biasa — ada calendar view, timeline, subtasks, recurring tasks, kategori, dan AI parsing. Produktivitas next-level.', tag: 'Produktivitas' },
+      { title: 'Virtual Pet & Gamifikasi', desc: 'Pelihara pixel pet yang tumbuh sesuai produktivitasmu! Streak calendar, XP, level-up, leaderboard, dan achievement badges.', tag: 'Lifestyle' },
+      { title: 'Q&A Forum + AI Answer', desc: 'Tanya apa aja di Q&A publik, voting jawaban terbaik, atau minta AI jawab langsung. Reputasi naik tiap jawaban kamu di-upvote.', tag: 'Sosial' },
+      { title: 'Kelompok & Kas Kolektif', desc: 'Bikin kelompok belajar, bagi tugas per anggota, dan kelola kas kelas secara transparan. Semua anggota bisa lihat histori.', tag: 'Tim' },
+      { title: 'Quiz Keuangan', desc: 'Tes literasi keuanganmu lewat quiz interaktif. Belajar financial planning sambil main — cocok buat pemula.', tag: 'Keuangan' },
+      { title: 'What-If Calculator', desc: 'Simulasi skenario keuangan — "kalau aku nabung 500rb/bulan, kapan bisa beli laptop?" AI hitung dan visualisasiin hasilnya.', tag: 'Keuangan' },
+      { title: 'Profile Card & Command Palette', desc: 'Kartu profil digital yang bisa di-share, plus command palette (Ctrl+K) untuk akses fitur apapun super cepat. Power user vibes.', tag: 'Produktivitas' },
     ],
 
     // How it works
@@ -85,10 +89,10 @@ const T = {
     howTitle2: 'Nilai Sempurna',
     howSub: 'Mulai dari nol hingga siap ujian — semuanya bisa dilakukan dalam hitungan menit.',
     steps: [
-      { num: '01', title: 'Buat atau Gabung Kelas', desc: 'Buat kelas baru untuk mata kuliahmu, atau gabung kelas yang sudah ada menggunakan kode undangan. Atur nama kelas, deskripsi, dan password jika perlu.', detail: 'Mendukung multi-kelas' },
-      { num: '02', title: 'Upload Materi Kuliah', desc: 'Upload file PDF atau gambar materi kuliah ke setiap sesi pertemuan. Sistem menyimpan semua file di cloud, aman dan bisa diakses kapan saja.', detail: 'PDF, Gambar, Multi-file' },
-      { num: '03', title: 'AI Memproses Otomatis', desc: 'AI merangkum materi, mengekstrak poin-poin penting, membuat kuis latihan, dan memprediksi soal ujian — semuanya otomatis tanpa perlu setting apapun.', detail: 'Powered by Gemini' },
-      { num: '04', title: 'Belajar & Kolaborasi', desc: 'Review rangkuman, latihan kuis adaptif, diskusi di forum, bagi tugas kelompok, dan pantau progress belajarmu. Siap hadapi ujian dengan percaya diri!', detail: 'Semua dalam satu app' },
+      { num: '01', title: 'Daftar 30 Detik', desc: 'Sign up gratis pakai email atau Google. Langsung bisa akses semua fitur dasar — kelas, duit tracker, to-do, virtual pet, dan lainnya.', detail: 'Tanpa kartu kredit' },
+      { num: '02', title: 'Setup Hidupmu', desc: 'Gabung atau buat kelas, set budget keuangan, atur to-do list, dan kenalan sama Si Bawel — AI coach yang bakal jadi temen curhatmu.', detail: 'Personalized setup' },
+      { num: '03', title: 'AI Bantu Semuanya', desc: 'Upload materi — AI rangkum. Bingung makan — AI rekomendasiin. Boros — Si Bawel ngomel. Mau ujian — AI prediksi soal. Semua otomatis.', detail: 'Powered by Gemini' },
+      { num: '04', title: 'Level Up Terus', desc: 'Streak naik, pet tumbuh, XP nambah, leaderboard naik. Semakin produktif, semakin seru. Kuliah & hidup jadi kayak main game!', detail: 'Gamifikasi penuh' },
     ],
 
     // Video demo
@@ -104,10 +108,10 @@ const T = {
     showcaseTitle2: 'Generasi Modern',
     showcaseSub: 'Interface yang bersih, responsif, dan mendukung dark mode. Semua fitur bisa diakses dalam hitungan klik.',
     showcaseItems: [
-      { title: 'Dashboard Kelas', desc: 'Lihat semua kelasmu, deadline mendekat, dan aktivitas terbaru dalam satu halaman.' },
-      { title: 'Pertemuan Terstruktur', desc: 'Sesi pertemuan fleksibel dengan materi, tugas, dan kuis yang terorganisir rapi.' },
-      { title: 'Forum Interaktif', desc: 'Diskusi real-time dengan pembahasan terpisah, voting, dan indikator pesan baru.' },
-      { title: 'AI Rangkuman', desc: 'Rangkuman otomatis dari materi kuliah, siap review atau export ke PDF.' },
+      { title: 'Dashboard All-in-One', desc: 'Kelas, deadline, keuangan, dan aktivitas terbaru — semua terlihat dalam satu halaman.' },
+      { title: 'Duit Tracker + Si Bawel', desc: 'Catat keuangan, budget, dan terima "omelan" AI coach yang tau kebiasaanmu.' },
+      { title: 'AI Food & Split Bill', desc: 'Rekomendasi makan sesuai budget, scan struk, dan bagi biaya otomatis.' },
+      { title: 'Virtual Pet & Gamifikasi', desc: 'Pixel pet yang tumbuh sesuai produktivitas, leaderboard, dan achievement.' },
     ],
 
     // Testimonials
@@ -129,12 +133,12 @@ const T = {
     faqTitle1: 'Pertanyaan',
     faqTitle2: 'yang Sering Ditanyakan',
     faqs: [
-      { q: 'Apakah Synapse benar-benar gratis?', a: 'Ya! Kamu bisa menggunakan semua fitur utama secara gratis. Kami juga menyediakan paket Pro untuk fitur premium seperti AI tanpa batas dan penyimpanan lebih besar.' },
-      { q: 'AI-nya menggunakan model apa?', a: 'Synapse menggunakan Google Gemini AI (gemini-1.5-flash) yang telah dioptimasi khusus untuk konten akademik berbahasa Indonesia dan Inggris.' },
-      { q: 'Apakah data materi kuliah saya aman?', a: 'Tentu! Semua file disimpan di Supabase Storage yang terenkripsi. Hanya anggota kelas yang bisa mengakses materi kelas tersebut.' },
-      { q: 'Bisa digunakan untuk jurusan apa saja?', a: 'Synapse dirancang untuk semua jurusan — dari Teknik, Kedokteran, Hukum, Ekonomi, hingga Seni. AI kami bisa memproses materi dalam berbagai bidang ilmu.' },
-      { q: 'Berapa jumlah anggota per kelas?', a: 'Tidak ada batasan jumlah anggota per kelas. Kamu bisa mengundang seluruh angkatan jika diperlukan.' },
-      { q: 'Apakah bisa diakses dari HP?', a: 'Ya, Synapse fully responsive dan bisa diakses dari browser HP, tablet, atau laptop. Tidak perlu download aplikasi tambahan.' },
+      { q: 'Apakah Synapse benar-benar gratis?', a: 'Ya! Kamu bisa pakai semua fitur dasar gratis selamanya — kelas, forum, duit tracker, to-do list, virtual pet, dan 10 AI request/bulan. Upgrade ke Pro untuk fitur unlimited.' },
+      { q: 'AI-nya menggunakan model apa?', a: 'Synapse pakai Google Gemini AI (gemini-2.0-flash) yang udah dioptimasi khusus untuk konten akademik dan keuangan berbahasa Indonesia.' },
+      { q: 'Fitur keuangan seperti apa?', a: 'Lengkap banget — catat pemasukan/pengeluaran, tagihan, hutang-piutang, budget, saving tree, wishlist, financial challenges, split bill, scan struk, dan Si Bawel (AI coach yang inget kebiasaanmu).' },
+      { q: 'Bisa digunakan untuk jurusan apa saja?', a: 'Synapse dirancang untuk semua jurusan. Fitur akademik (AI summarizer, kuis, prediksi) support semua bidang. Fitur lifestyle (duit, makan, to-do) bisa dipakai siapa aja.' },
+      { q: 'Apakah data saya aman?', a: 'Tentu! Semua data terenkripsi di Supabase. File hanya bisa diakses anggota kelas. Data keuangan bersifat pribadi dan tidak bisa dilihat orang lain.' },
+      { q: 'Apakah bisa diakses dari HP?', a: 'Ya, Synapse fully responsive dan bisa di-install sebagai PWA (Progressive Web App) di HP. Rasanya kayak native app tanpa perlu download dari store.' },
     ],
 
     // CTA
@@ -143,7 +147,7 @@ const T = {
     ctaDesc: 'Bergabung dengan ribuan anak muda yang sudah merasakan kemudahan belajar dengan AI. Gratis, tanpa batas waktu, tanpa kartu kredit.',
     ctaBtn: 'Mulai Gratis Sekarang',
     ctaNote: 'Gratis selamanya • Setup dalam 30 detik • Tanpa kartu kredit',
-    ctaFeatures: ['AI Summarizer & Kuis', 'Forum Diskusi Real-time', 'Prediksi Soal Ujian', 'Manajemen Tugas & Kelompok'],
+    ctaFeatures: ['AI Summarizer & Kuis Adaptif', 'Duit Tracker + Si Bawel', 'Makan Apa & Split Bill', 'Virtual Pet & Gamifikasi'],
 
     // Pricing
     pricingBadge: 'Harga',
@@ -154,13 +158,13 @@ const T = {
     pricingFreePrice: 'Rp 0',
     pricingFreePeriod: 'selamanya',
     pricingFreeDesc: 'Semua fitur dasar untuk belajar efektif.',
-    pricingFreeFeatures: ['AI Summarizer (5x/hari)', 'Kuis Adaptif (3 kuis/hari)', 'Forum Diskusi', 'Manajemen Kelas', 'Kelompok Belajar', 'Notifikasi'],
+    pricingFreeFeatures: ['Kelas & Forum Diskusi', 'Duit Tracker (bills & debts)', 'To-Do List + Kategori', 'Q&A Forum', '10 AI Request / bulan', 'Virtual Pet & Streak', 'Gamifikasi & Quiz Keuangan'],
     pricingFreeCta: 'Mulai Gratis',
     pricingPro: 'Pro',
-    pricingProPrice: 'Rp 29.900',
+    pricingProPrice: 'Rp 49.000',
     pricingProPeriod: '/bulan',
     pricingProDesc: 'Fitur lengkap tanpa batas untuk kamu yang serius.',
-    pricingProFeatures: ['AI Summarizer Unlimited', 'Kuis Adaptif Unlimited', 'Prediksi Soal Ujian', 'Export PDF B5', 'Duit Tracker + Si Bawel', 'To-Do List + AI Parsing', 'Q&A Forum + Reputasi', 'Gamifikasi & XP', 'Priority Support'],
+    pricingProFeatures: ['200 AI Request / bulan', 'Quiz & Kuis Adaptif Unlimited', 'Prediksi Ujian + Kisi-kisi', 'AI Insight & Daily Briefing', 'Si Bawel + Split Bill', 'Makan Apa (AI Food Rec)', 'Receipt Scanner', 'To-Do: Calendar, Timeline, Recurring', 'Q&A Voting + AI Answer', 'Leaderboard & Gamifikasi Pro', 'Profile Card & Command Palette'],
     pricingProCta: 'Upgrade ke Pro',
     pricingProBadge: 'Populer',
 
@@ -180,7 +184,7 @@ const T = {
     heroTitle1: 'Revolutionize How',
     heroTitle2: 'Students Learn',
     heroTitle3: 'with AI',
-    heroDesc: 'Summarize materials in seconds, adaptive quizzes, exam predictions, real-time discussion forums, and class management — all in one smart platform.',
+    heroDesc: 'Summarize materials in seconds, adaptive quizzes, exam predictions, financial tracker + AI coach, food recommendations, split bills, virtual pet — all in one app designed for young people.',
     ctaPrimary: 'Start Free Now',
     ctaSecondary: 'Watch Demo',
     ctaTertiary: 'Explore Features',
@@ -207,30 +211,34 @@ const T = {
     highlightBadge: 'Why Synapse?',
     highlightTitle1: 'One Platform,',
     highlightTitle2: 'Everything You Need',
-    highlightSub: 'Stop switching between apps. Synapse unifies everything you need for college in one elegant dashboard.',
+    highlightSub: 'Stop switching between apps. Synapse unifies academics, finances, food, and productivity in one elegant dashboard.',
     highlights: [
-      { title: 'AI That Actually Helps', desc: 'Not just a chatbot. Our AI understands your course materials, creates structured summaries, and adapts quizzes to your weaknesses.', icon: 'brain' },
-      { title: 'Seamless Team Collaboration', desc: 'Topic-based forums, study groups, collective funds, auto task assignments — all integrated without needing separate WhatsApp groups.', icon: 'users' },
-      { title: 'Structured & Organized', desc: 'Flexible sessions per class, organized materials, tracked assignments, and clear progress. No more scattered files in Google Drive.', icon: 'folder' },
+      { title: 'AI That Truly Gets You', desc: 'Not just a chatbot. Our AI summarizes materials, predicts exams, recommends food, coaches your finances, and answers Q&A — all personalized.', icon: 'brain' },
+      { title: 'All-in-One Life Platform', desc: 'College, finances, food, to-do, split bills — all in one app. No need to install 10 different apps to live productively.', icon: 'users' },
+      { title: 'Gamification That Hooks You', desc: 'Virtual pet, streak calendar, XP & level-up, leaderboard, achievement badges, and finance quizzes. Learning & productivity feels like gaming.', icon: 'folder' },
     ],
 
     featBadge: 'Full Features',
     featTitle1: 'Everything You Need',
-    featTitle2: 'to Succeed in College',
-    featSub: 'Features designed specifically for productivity of young Indonesians.',
+    featTitle2: 'to Live Productively',
+    featSub: 'Not just for college — Synapse helps every aspect of young Indonesian life.',
     features: [
-      { title: 'AI Summarizer', desc: 'Upload PDF or image course materials, and AI creates smart summaries with key points in seconds. Save hours of study time.', tag: 'AI' },
-      { title: 'Adaptive Quiz', desc: 'AI analyzes your weaknesses from previous quiz results and creates targeted questions. The more you practice, the smarter the AI gets.', tag: 'AI' },
-      { title: 'Exam Prediction', desc: 'Based on all uploaded materials, AI predicts questions most likely to appear on exams. Preparation becomes focused.', tag: 'AI' },
-      { title: 'Class Sessions', desc: 'Flexible course structure — create sessions as needed. Each session can contain materials, tasks, quizzes, and notes. Everything organized neatly.', tag: 'Class' },
-      { title: 'Real-time Discussion Forum', desc: 'Discussion per class with separate threads, voting, rich text editor, unread indicators, and search. Like Slack for college.', tag: 'Social' },
-      { title: 'Collaborative Canvas', desc: 'Each forum discussion has a canvas — shared notes editable by anyone with a rich text editor. Perfect for meeting notes.', tag: 'Social' },
-      { title: 'Study Groups', desc: 'Create study groups in class, assign tasks per group, and view members. Group tasks are only visible to the relevant group.', tag: 'Team' },
-      { title: 'Collective Funds', desc: 'Manage class funds transparently — record income, expenses, and balance. All members can view transaction history.', tag: 'Team' },
-      { title: 'Task Management', desc: 'Create tasks with deadlines, assign to individuals or groups, and track submission progress. Know who has and hasn\'t submitted.', tag: 'Class' },
-      { title: 'Export PDF B5', desc: 'All AI summaries can be exported to B5 PDF format — ready to print for offline study. Professional layout, ready to bind.', tag: 'Tools' },
-      { title: 'Access Control & Roles', desc: 'Flexible permission system — control who can create quizzes, manage forums, delete materials, or edit canvas per member.', tag: 'Admin' },
-      { title: 'Smart Notifications', desc: 'Get notified for new tasks, approaching deadlines, and unread messages. Never miss important information again.', tag: 'Tools' },
+      { title: 'AI Summarizer', desc: 'Upload PDF or image course materials, AI creates smart summaries with key points in seconds. Save hours of study time.', tag: 'AI' },
+      { title: 'Adaptive Quiz', desc: 'AI analyzes your weaknesses from previous quizzes and creates targeted questions. The more you practice, the smarter it gets.', tag: 'AI' },
+      { title: 'Exam Prediction + Study Guide', desc: 'AI predicts questions likely to appear on exams based on all materials. Upload study guides for even more accurate results.', tag: 'AI' },
+      { title: 'Daily Briefing & AI Insight', desc: 'Get a personal briefing every morning — today\'s deadlines, study tips, and AI insights about your learning patterns. Auto-motivation!', tag: 'AI' },
+      { title: 'Duit Tracker', desc: 'Track income & expenses, manage bills, debts, monthly budgets, saving tree, wishlist, and even financial challenges.', tag: 'Finance' },
+      { title: 'Si Bawel (AI Coach)', desc: 'AI financial coach that remembers your habits. It\'ll "nag" you when you overspend and give personalized tips. Has memory!', tag: 'Finance' },
+      { title: 'Makan Apa (AI Food Rec)', desc: 'Can\'t decide what to eat? AI recommends food based on your budget, location, dietary preferences, and today\'s mood.', tag: 'Lifestyle' },
+      { title: 'Split Bill & Receipt Scanner', desc: 'Scan receipts with camera, AI auto-splits costs. No more manual calculations when eating out with friends.', tag: 'Finance' },
+      { title: 'Real-time Discussion Forum', desc: 'Discussion per class with separate threads, voting, rich text editor, collaborative canvas, and new message indicators.', tag: 'Social' },
+      { title: 'Pro To-Do List', desc: 'Not your average to-do — calendar view, timeline, subtasks, recurring tasks, categories, and AI parsing. Next-level productivity.', tag: 'Productivity' },
+      { title: 'Virtual Pet & Gamification', desc: 'Raise a pixel pet that grows with your productivity! Streak calendar, XP, level-up, leaderboard, and achievement badges.', tag: 'Lifestyle' },
+      { title: 'Q&A Forum + AI Answer', desc: 'Ask anything in public Q&A, vote best answers, or ask AI to answer directly. Your reputation grows with each upvoted answer.', tag: 'Social' },
+      { title: 'Groups & Collective Funds', desc: 'Create study groups, assign tasks per member, and manage class funds transparently. All members can view history.', tag: 'Team' },
+      { title: 'Finance Quiz', desc: 'Test your financial literacy with interactive quizzes. Learn financial planning while playing — perfect for beginners.', tag: 'Finance' },
+      { title: 'What-If Calculator', desc: 'Simulate financial scenarios — "if I save 500k/month, when can I buy a laptop?" AI calculates and visualizes results.', tag: 'Finance' },
+      { title: 'Profile Card & Command Palette', desc: 'Shareable digital profile card, plus command palette (Ctrl+K) for super-fast feature access. Power user vibes.', tag: 'Productivity' },
     ],
 
     howBadge: 'How It Works',
@@ -238,10 +246,10 @@ const T = {
     howTitle2: 'Perfect Grades',
     howSub: 'From zero to exam-ready — everything can be done in minutes.',
     steps: [
-      { num: '01', title: 'Create or Join a Class', desc: 'Create a new class for your course, or join an existing one using an invite code. Set the class name, description, and password if needed.', detail: 'Multi-class support' },
-      { num: '02', title: 'Upload Course Materials', desc: 'Upload PDF or image course materials to each session. The system stores all files in the cloud, safe and accessible anytime.', detail: 'PDF, Images, Multi-file' },
-      { num: '03', title: 'AI Processes Automatically', desc: 'AI summarizes materials, extracts key points, creates practice quizzes, and predicts exam questions — all automatically with zero configuration.', detail: 'Powered by Gemini' },
-      { num: '04', title: 'Learn & Collaborate', desc: 'Review summaries, practice adaptive quizzes, discuss in forums, divide group tasks, and track your learning progress. Ace your exams with confidence!', detail: 'All in one app' },
+      { num: '01', title: 'Sign Up in 30 Seconds', desc: 'Register free with email or Google. Instantly access all basic features — classes, duit tracker, to-do, virtual pet, and more.', detail: 'No credit card needed' },
+      { num: '02', title: 'Setup Your Life', desc: 'Join or create classes, set financial budgets, organize your to-do list, and meet Si Bawel — the AI coach who\'ll be your buddy.', detail: 'Personalized setup' },
+      { num: '03', title: 'AI Handles Everything', desc: 'Upload materials — AI summarizes. Can\'t decide food — AI recommends. Overspending — Si Bawel nags. Exam coming — AI predicts. All automatic.', detail: 'Powered by Gemini' },
+      { num: '04', title: 'Keep Leveling Up', desc: 'Streaks rise, pet grows, XP accumulates, leaderboard climbs. The more productive you are, the more fun it gets. Life becomes a game!', detail: 'Full gamification' },
     ],
 
     // Video demo
@@ -256,10 +264,10 @@ const T = {
     showcaseTitle2: 'Modern Learners',
     showcaseSub: 'Clean interface, responsive, and dark mode support. All features accessible in a few clicks.',
     showcaseItems: [
-      { title: 'Class Dashboard', desc: 'See all your classes, approaching deadlines, and recent activity in one page.' },
-      { title: 'Structured Sessions', desc: 'Flexible sessions with organized materials, tasks, and quizzes.' },
-      { title: 'Interactive Forum', desc: 'Real-time discussions with separate threads, voting, and new message indicators.' },
-      { title: 'AI Summaries', desc: 'Auto-generated summaries from course materials, ready to review or export to PDF.' },
+      { title: 'All-in-One Dashboard', desc: 'Classes, deadlines, finances, and recent activity — all visible in one page.' },
+      { title: 'Duit Tracker + Si Bawel', desc: 'Track finances, budget, and receive AI coach "nagging" that knows your habits.' },
+      { title: 'AI Food & Split Bill', desc: 'Food recommendations within budget, scan receipts, and auto-split costs.' },
+      { title: 'Virtual Pet & Gamification', desc: 'Pixel pet that grows with your productivity, leaderboard, and achievements.' },
     ],
 
     testiBadge: 'Testimonials',
@@ -279,12 +287,12 @@ const T = {
     faqTitle1: 'Frequently Asked',
     faqTitle2: 'Questions',
     faqs: [
-      { q: 'Is Synapse really free?', a: 'Yes! You can use all core features for free. We also offer a Pro plan for premium features like unlimited AI and more storage.' },
-      { q: 'What AI model does it use?', a: 'Synapse uses Google Gemini AI (gemini-1.5-flash) optimized specifically for academic content in Indonesian and English.' },
-      { q: 'Is my course data safe?', a: 'Absolutely! All files are stored in encrypted Supabase Storage. Only class members can access that class\'s materials.' },
-      { q: 'Can it be used for any major?', a: 'Synapse is designed for all majors — from Engineering, Medicine, Law, Economics, to Arts. Our AI can process materials across fields.' },
-      { q: 'How many members per class?', a: 'There is no limit on members per class. You can invite your entire batch if needed.' },
-      { q: 'Can I access it from my phone?', a: 'Yes, Synapse is fully responsive and accessible from any phone, tablet, or laptop browser. No additional app download needed.' },
+      { q: 'Is Synapse really free?', a: 'Yes! You can use all core features for free forever — classes, forums, duit tracker, to-do list, virtual pet, and 10 AI requests/month. Upgrade to Pro for unlimited features.' },
+      { q: 'What AI model does it use?', a: 'Synapse uses Google Gemini AI (gemini-2.0-flash) optimized for academic and financial content in Indonesian and English.' },
+      { q: 'What financial features are included?', a: 'Super comprehensive — income/expense tracking, bills, debts, budgets, saving tree, wishlist, financial challenges, split bill, receipt scanner, and Si Bawel (AI coach with memory).' },
+      { q: 'Can it be used for any major?', a: 'Synapse is designed for all majors. Academic features (AI summarizer, quizzes, predictions) work across all fields. Lifestyle features (finances, food, to-do) work for everyone.' },
+      { q: 'Is my data safe?', a: 'Absolutely! All data is encrypted on Supabase. Files are only accessible to class members. Financial data is private and cannot be seen by others.' },
+      { q: 'Can I access it from my phone?', a: 'Yes, Synapse is fully responsive and installable as a PWA (Progressive Web App) on your phone. Feels like a native app without downloading from the store.' },
     ],
 
     ctaTitle1: 'Ready to Revolutionize',
@@ -292,7 +300,7 @@ const T = {
     ctaDesc: 'Join thousands of young learners who already experience the ease of learning with AI. Free, no time limits, no credit card.',
     ctaBtn: 'Start Free Now',
     ctaNote: 'Free forever • 30s setup • No credit card',
-    ctaFeatures: ['AI Summarizer & Quiz', 'Real-time Forum', 'Exam Prediction', 'Task & Group Management'],
+    ctaFeatures: ['AI Summarizer & Adaptive Quiz', 'Duit Tracker + Si Bawel', 'Makan Apa & Split Bill', 'Virtual Pet & Gamification'],
 
     // Pricing
     pricingBadge: 'Pricing',
@@ -303,13 +311,13 @@ const T = {
     pricingFreePrice: 'Rp 0',
     pricingFreePeriod: 'forever',
     pricingFreeDesc: 'All essential features for effective learning.',
-    pricingFreeFeatures: ['AI Summarizer (5x/day)', 'Adaptive Quiz (3 quizzes/day)', 'Discussion Forum', 'Class Management', 'Study Groups', 'Notifications'],
+    pricingFreeFeatures: ['Class & Discussion Forum', 'Duit Tracker (bills & debts)', 'To-Do List + Categories', 'Q&A Forum', '10 AI Requests / month', 'Virtual Pet & Streak', 'Gamification & Finance Quiz'],
     pricingFreeCta: 'Start Free',
     pricingPro: 'Pro',
-    pricingProPrice: 'Rp 29,900',
+    pricingProPrice: 'Rp 49,000',
     pricingProPeriod: '/month',
     pricingProDesc: 'Unlimited features for serious learners.',
-    pricingProFeatures: ['Unlimited AI Summarizer', 'Unlimited Adaptive Quiz', 'Exam Prediction', 'Export PDF B5', 'Duit Tracker + Si Bawel', 'To-Do List + AI Parsing', 'Q&A Forum + Reputation', 'Gamification & XP', 'Priority Support'],
+    pricingProFeatures: ['200 AI Requests / month', 'Unlimited Quiz & Adaptive Quiz', 'Exam Prediction + Study Guide', 'AI Insight & Daily Briefing', 'Si Bawel + Split Bill', 'Food Recommend (AI)', 'Receipt Scanner', 'To-Do: Calendar, Timeline, Recurring', 'Q&A Voting + AI Answer', 'Leaderboard & Pro Gamification', 'Profile Card & Command Palette'],
     pricingProCta: 'Upgrade to Pro',
     pricingProBadge: 'Popular',
 
@@ -329,15 +337,19 @@ const FEAT_META: { icon: typeof Brain; color: string; gradient: string }[] = [
   { icon: Brain, color: '#00D4FF', gradient: 'linear-gradient(135deg, #00D4FF, #0096FF)' },
   { icon: Target, color: '#00F5A0', gradient: 'linear-gradient(135deg, #00F5A0, #00D68F)' },
   { icon: BarChart3, color: '#f093fb', gradient: 'linear-gradient(135deg, #f093fb, #f5576c)' },
-  { icon: BookOpen, color: '#a18cd1', gradient: 'linear-gradient(135deg, #a18cd1, #fbc2eb)' },
-  { icon: MessageSquare, color: '#4facfe', gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)' },
-  { icon: PenTool, color: '#43e97b', gradient: 'linear-gradient(135deg, #43e97b, #38f9d7)' },
-  { icon: Users, color: '#fa709a', gradient: 'linear-gradient(135deg, #fa709a, #fee140)' },
+  { icon: Sparkles, color: '#a18cd1', gradient: 'linear-gradient(135deg, #a18cd1, #fbc2eb)' },
   { icon: Wallet, color: '#f6d365', gradient: 'linear-gradient(135deg, #f6d365, #fda085)' },
-  { icon: ClipboardList, color: '#667eea', gradient: 'linear-gradient(135deg, #667eea, #764ba2)' },
-  { icon: FileText, color: '#FF6B6B', gradient: 'linear-gradient(135deg, #FF6B6B, #ee5a24)' },
-  { icon: Shield, color: '#a29bfe', gradient: 'linear-gradient(135deg, #a29bfe, #6c5ce7)' },
-  { icon: Bell, color: '#fdcb6e', gradient: 'linear-gradient(135deg, #fdcb6e, #e17055)' },
+  { icon: MessageSquare, color: '#fa709a', gradient: 'linear-gradient(135deg, #fa709a, #fee140)' },
+  { icon: Zap, color: '#43e97b', gradient: 'linear-gradient(135deg, #43e97b, #38f9d7)' },
+  { icon: FileText, color: '#4facfe', gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)' },
+  { icon: Users, color: '#667eea', gradient: 'linear-gradient(135deg, #667eea, #764ba2)' },
+  { icon: ClipboardList, color: '#FF6B6B', gradient: 'linear-gradient(135deg, #FF6B6B, #ee5a24)' },
+  { icon: Star, color: '#fdcb6e', gradient: 'linear-gradient(135deg, #fdcb6e, #e17055)' },
+  { icon: GraduationCap, color: '#a29bfe', gradient: 'linear-gradient(135deg, #a29bfe, #6c5ce7)' },
+  { icon: FolderOpen, color: '#00D4FF', gradient: 'linear-gradient(135deg, #00D4FF, #00F5A0)' },
+  { icon: Shield, color: '#f093fb', gradient: 'linear-gradient(135deg, #f093fb, #a18cd1)' },
+  { icon: PenTool, color: '#00F5A0', gradient: 'linear-gradient(135deg, #00F5A0, #43e97b)' },
+  { icon: Bell, color: '#4facfe', gradient: 'linear-gradient(135deg, #4facfe, #667eea)' },
 ];
 
 const TAG_COLORS: Record<string, { bg: string; color: string; bgLight: string; colorLight: string }> = {
@@ -350,6 +362,11 @@ const TAG_COLORS: Record<string, { bg: string; color: string; bgLight: string; c
   'Team':   { bg: 'rgba(250,112,154,0.12)', color: '#fa709a', bgLight: 'rgba(220,80,120,0.1)', colorLight: '#d04870' },
   'Tools':  { bg: 'rgba(246,211,101,0.12)', color: '#f6d365', bgLight: 'rgba(200,170,60,0.1)', colorLight: '#b8960a' },
   'Admin':  { bg: 'rgba(162,155,254,0.12)', color: '#a29bfe', bgLight: 'rgba(130,120,220,0.1)', colorLight: '#6c5ce7' },
+  'Keuangan': { bg: 'rgba(246,211,101,0.12)', color: '#f6d365', bgLight: 'rgba(200,170,60,0.1)', colorLight: '#b89000' },
+  'Finance':  { bg: 'rgba(246,211,101,0.12)', color: '#f6d365', bgLight: 'rgba(200,170,60,0.1)', colorLight: '#b89000' },
+  'Lifestyle': { bg: 'rgba(67,233,123,0.12)', color: '#43e97b', bgLight: 'rgba(50,180,100,0.1)', colorLight: '#1a9a50' },
+  'Produktivitas': { bg: 'rgba(102,126,234,0.12)', color: '#667eea', bgLight: 'rgba(80,100,200,0.1)', colorLight: '#4a5fc0' },
+  'Productivity': { bg: 'rgba(102,126,234,0.12)', color: '#667eea', bgLight: 'rgba(80,100,200,0.1)', colorLight: '#4a5fc0' },
 };
 
 /* ═══ Hooks ═══ */
@@ -495,7 +512,7 @@ export default function LandingPage() {
   const c = useThemeColors(isDark);
 
   const stats1 = useCounter(16, 1500);
-  const stats2 = useCounter(12, 1800);
+  const stats2 = useCounter(30, 1800);
   const stats3 = useCounter(98, 2000);
   const stats4 = useCounter(10, 1200);
 
@@ -544,26 +561,137 @@ export default function LandingPage() {
           0%, 100% { opacity: 0.6; transform: scale(1); }
           50% { opacity: 1; transform: scale(1.05); }
         }
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+        @keyframes borderGlow {
+          0%, 100% { border-color: rgba(0,212,255,0.15); }
+          50% { border-color: rgba(0,245,160,0.3); }
+        }
+        @keyframes textGlow {
+          0%, 100% { text-shadow: 0 0 20px rgba(0,212,255,0.3); }
+          50% { text-shadow: 0 0 40px rgba(0,212,255,0.6), 0 0 80px rgba(0,245,160,0.2); }
+        }
+        @keyframes slideInUp {
+          from { opacity: 0; transform: translateY(40px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes slideInLeft {
+          from { opacity: 0; transform: translateX(-30px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.85); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes bounceIn {
+          0% { opacity: 0; transform: scale(0.3); }
+          50% { opacity: 1; transform: scale(1.05); }
+          70% { transform: scale(0.95); }
+          100% { transform: scale(1); }
+        }
+        @keyframes floatUp {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+        @keyframes rotateGlow {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes morphBlob {
+          0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+          25% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+          50% { border-radius: 50% 60% 30% 60% / 30% 40% 70% 60%; }
+          75% { border-radius: 60% 30% 60% 40% / 70% 60% 40% 30%; }
+        }
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        @keyframes typewriter {
+          from { width: 0; }
+          to { width: 100%; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-5px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes gentlePulse {
+          0%, 100% { opacity: 0.5; transform: translateY(0); }
+          50% { opacity: 1; transform: translateY(3px); }
+        }
+        .landing-hero-gradient-text {
+          background: linear-gradient(135deg, #00D4FF 0%, #00F5A0 30%, #A78BFA 60%, #00D4FF 100%);
+          background-size: 300% 300%;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          animation: gradientShift 6s ease-in-out infinite;
+        }
+        .landing-card-shine {
+          position: relative;
+          overflow: hidden;
+        }
+        .landing-card-shine::after {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 50%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+          animation: shimmer 4s ease-in-out infinite;
+          pointer-events: none;
+        }
+        .landing-stagger-1 { animation-delay: 0.05s !important; }
+        .landing-stagger-2 { animation-delay: 0.1s !important; }
+        .landing-stagger-3 { animation-delay: 0.15s !important; }
+        .landing-stagger-4 { animation-delay: 0.2s !important; }
+        .landing-stagger-5 { animation-delay: 0.25s !important; }
+        .landing-stagger-6 { animation-delay: 0.3s !important; }
+        .landing-blob {
+          animation: morphBlob 8s ease-in-out infinite;
+        }
+        .landing-float {
+          animation: floatUp 3s ease-in-out infinite;
+        }
+        .landing-float-delay {
+          animation: floatUp 3.5s ease-in-out infinite 0.5s;
+        }
         @media (prefers-reduced-motion: reduce) {
           .landing-cta-primary, .landing-cta-primary:hover {
             animation: none !important;
             transition: none !important;
           }
+          .landing-hero-gradient-text { animation: none !important; }
+          .landing-card-shine::after { animation: none !important; }
+          .landing-blob { animation: none !important; border-radius: 50% !important; }
+          .landing-float, .landing-float-delay { animation: none !important; }
         }
         .landing-cta-primary:hover {
-          transform: translateY(-2px) !important;
-          filter: brightness(1.1);
+          transform: translateY(-3px) scale(1.02) !important;
+          filter: brightness(1.15);
         }
         .landing-cta-secondary:hover {
           background: ${isDark ? 'rgba(0,212,255,0.12)' : 'rgba(0,180,220,0.12)'} !important;
-          transform: translateY(-1px);
+          transform: translateY(-2px) scale(1.01);
         }
         .landing-card:hover {
-          transform: translateY(-4px);
-          border-color: ${isDark ? 'rgba(0,212,255,0.2)' : 'rgba(0,180,220,0.25)'} !important;
-          box-shadow: ${isDark ? '0 12px 40px rgba(0,0,0,0.3)' : '0 12px 40px rgba(0,0,0,0.08)'};
+          transform: translateY(-6px) scale(1.01);
+          border-color: ${isDark ? 'rgba(0,212,255,0.25)' : 'rgba(0,180,220,0.3)'} !important;
+          box-shadow: ${isDark ? '0 20px 60px rgba(0,0,0,0.4), 0 0 30px rgba(0,212,255,0.1)' : '0 20px 60px rgba(0,0,0,0.1), 0 0 30px rgba(0,180,220,0.08)'};
         }
         .landing-nav-link:hover { color: ${isDark ? '#00D4FF' : '#0095b3'} !important; }
+        .landing-pricing-card-pro {
+          animation: borderGlow 3s ease-in-out infinite;
+        }
+        .landing-pricing-card-pro:hover {
+          transform: translateY(-8px) scale(1.02) !important;
+          box-shadow: 0 30px 80px rgba(0,212,255,0.2), 0 0 40px rgba(0,245,160,0.1) !important;
+        }
+        .landing-badge-pulse {
+          animation: glowPulse 2s ease-in-out infinite;
+        }
         @media (max-width: 768px) {
           .landing-nav-center { display: none !important; }
           .landing-hero-title { font-size: 2.2rem !important; }
@@ -633,10 +761,19 @@ export default function LandingPage() {
 
       {/* ═══ HERO ═══ */}
       <section ref={heroAnim.ref} className="landing-section" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '7rem 1.5rem 4rem', position: 'relative' }}>
+        {/* Animated grid pattern */}
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: `radial-gradient(circle, ${isDark ? 'rgba(0,212,255,0.03)' : 'rgba(0,150,200,0.03)'} 1px, transparent 1px)`, backgroundSize: '40px 40px', pointerEvents: 'none', opacity: 0.8 }} />
+        
         {/* Glow orbs */}
-        <div style={{ position: 'absolute', top: '-30%', left: '30%', width: 900, height: 900, borderRadius: '50%', background: c.glowOrb1, pointerEvents: 'none', filter: 'blur(40px)', animation: 'floatOrb 20s ease-in-out infinite' }} />
-        <div style={{ position: 'absolute', bottom: '0%', right: '-15%', width: 600, height: 600, borderRadius: '50%', background: c.glowOrb2, pointerEvents: 'none', filter: 'blur(40px)', animation: 'floatOrb 15s ease-in-out infinite reverse' }} />
-        <div style={{ position: 'absolute', top: '20%', left: '-10%', width: 400, height: 400, borderRadius: '50%', background: isDark ? 'radial-gradient(circle, rgba(161,140,209,0.04) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(140,120,190,0.04) 0%, transparent 70%)', pointerEvents: 'none', filter: 'blur(20px)' }} />
+        <div className="landing-blob" style={{ position: 'absolute', top: '-20%', left: '25%', width: 800, height: 800, background: c.glowOrb1, pointerEvents: 'none', filter: 'blur(60px)', animation: 'floatOrb 20s ease-in-out infinite, morphBlob 8s ease-in-out infinite' }} />
+        <div className="landing-blob" style={{ position: 'absolute', bottom: '-10%', right: '-10%', width: 600, height: 600, background: c.glowOrb2, pointerEvents: 'none', filter: 'blur(50px)', animation: 'floatOrb 15s ease-in-out infinite reverse, morphBlob 10s ease-in-out infinite 2s' }} />
+        <div style={{ position: 'absolute', top: '15%', left: '-5%', width: 350, height: 350, borderRadius: '50%', background: isDark ? 'radial-gradient(circle, rgba(167,139,250,0.06) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(140,120,190,0.05) 0%, transparent 70%)', pointerEvents: 'none', filter: 'blur(20px)', animation: 'floatOrb 12s ease-in-out infinite 3s' }} />
+        
+        {/* Floating decorative elements */}
+        <div className="landing-float" style={{ position: 'absolute', top: '20%', right: '15%', width: 12, height: 12, borderRadius: '50%', background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', opacity: 0.4, pointerEvents: 'none' }} />
+        <div className="landing-float-delay" style={{ position: 'absolute', top: '35%', left: '12%', width: 8, height: 8, borderRadius: '50%', background: 'linear-gradient(135deg, #A78BFA, #00D4FF)', opacity: 0.3, pointerEvents: 'none' }} />
+        <div className="landing-float" style={{ position: 'absolute', bottom: '25%', right: '20%', width: 6, height: 6, borderRadius: 3, background: '#00F5A0', opacity: 0.4, pointerEvents: 'none' }} />
+        <div className="landing-float-delay" style={{ position: 'absolute', bottom: '30%', left: '18%', width: 10, height: 10, borderRadius: '50%', background: '#f093fb', opacity: 0.25, pointerEvents: 'none' }} />
 
         {/* Badge */}
         <div style={{
@@ -662,14 +799,14 @@ export default function LandingPage() {
         </div>
 
         {/* Title */}
-        <h1 style={{
+        <h1 className="landing-hero-title" style={{
           fontSize: 'clamp(2.5rem, 6.5vw, 4.8rem)', fontWeight: 800, letterSpacing: '-0.04em',
           lineHeight: 1.08, maxWidth: 860, marginBottom: '1.5rem',
           opacity: heroAnim.inView ? 1 : 0, transform: heroAnim.inView ? 'translateY(0)' : 'translateY(30px)',
           transition: 'all 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s',
         }}>
           <span style={{ color: c.subtitleColor }}>{t.heroTitle1}</span><br />
-          <span style={{ background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t.heroTitle2}</span><br />
+          <span className="landing-hero-gradient-text">{t.heroTitle2}</span><br />
           <span style={{ color: c.subtitleColor }}>{t.heroTitle3}</span>
         </h1>
 
@@ -734,6 +871,8 @@ export default function LandingPage() {
 
       {/* ═══ STATS ═══ */}
       <section style={{ padding: '3.5rem 2rem', position: 'relative' }}>
+        {/* Separator gradient line */}
+        <div style={{ position: 'absolute', top: 0, left: '10%', right: '10%', height: 1, background: `linear-gradient(90deg, transparent, ${isDark ? 'rgba(0,212,255,0.2)' : 'rgba(0,180,220,0.15)'}, transparent)` }} />
         <div className="landing-stats-grid" style={{ maxWidth: 1000, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
           {[
             { counter: stats1, suffix: '', label: t.statSessions, sub: t.statSessionsSub, gradient: 'linear-gradient(135deg, #00D4FF, #0096FF)' },
@@ -741,10 +880,10 @@ export default function LandingPage() {
             { counter: stats3, suffix: '%', label: t.statAccuracy, sub: t.statAccuracySub, gradient: 'linear-gradient(135deg, #f093fb, #f5576c)' },
             { counter: stats4, suffix: 'x', label: t.statFaster, sub: t.statFasterSub, gradient: 'linear-gradient(135deg, #f6d365, #fda085)' },
           ].map((stat, i) => (
-            <div key={i} ref={stat.counter.ref} style={{
+            <div key={i} ref={stat.counter.ref} className="landing-card landing-card-shine" style={{
               padding: '1.5rem 1rem', borderRadius: 16, textAlign: 'center',
               background: c.statCardBg, border: `1px solid ${c.statCardBorder}`,
-              backdropFilter: 'blur(8px)',
+              backdropFilter: 'blur(8px)', transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
             }}>
               <div style={{ fontSize: 'clamp(1.8rem, 3.5vw, 2.8rem)', fontWeight: 800, background: stat.gradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1.1 }}>
                 <AnimatedNumber
@@ -781,7 +920,7 @@ export default function LandingPage() {
             </span>
             <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.6rem)', fontWeight: 800, letterSpacing: '-0.03em', marginTop: '0.85rem', marginBottom: '0.75rem' }}>
               {t.highlightTitle1}<br />
-              <span style={{ background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t.highlightTitle2}</span>
+              <span className="landing-hero-gradient-text">{t.highlightTitle2}</span>
             </h2>
             <p style={{ fontSize: '1rem', color: c.textMuted, maxWidth: 600, margin: '0 auto', lineHeight: 1.65 }}>{t.highlightSub}</p>
           </div>
@@ -791,13 +930,13 @@ export default function LandingPage() {
               const Icon = HIGHLIGHT_ICONS[i];
               const colors = ['#00D4FF', '#00F5A0', '#a18cd1'];
               return (
-                <div key={i} className="landing-card" style={{
+                <div key={i} className="landing-card landing-card-shine" style={{
                   padding: '2rem 1.75rem', borderRadius: 20,
                   background: c.highlightCardBg, border: `1px solid ${c.highlightCardBorder}`,
-                  transition: 'all 0.3s ease', cursor: 'default',
+                  transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)', cursor: 'default',
                   opacity: highlightAnim.inView ? 1 : 0,
-                  transform: highlightAnim.inView ? 'translateY(0)' : 'translateY(30px)',
-                  transitionDelay: `${0.1 + i * 0.1}s`,
+                  transform: highlightAnim.inView ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.95)',
+                  transitionDelay: `${0.1 + i * 0.15}s`,
                 }}>
                   <div style={{
                     width: 52, height: 52, borderRadius: 14,
@@ -836,7 +975,7 @@ export default function LandingPage() {
             </span>
             <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.6rem)', fontWeight: 800, letterSpacing: '-0.03em', marginTop: '0.85rem', marginBottom: '0.75rem' }}>
               {t.featTitle1}<br />
-              <span style={{ background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t.featTitle2}</span>
+              <span className="landing-hero-gradient-text">{t.featTitle2}</span>
             </h2>
             <p style={{ fontSize: '1rem', color: c.textMuted, maxWidth: 550, margin: '0 auto', lineHeight: 1.6 }}>{t.featSub}</p>
           </div>
@@ -877,13 +1016,13 @@ export default function LandingPage() {
               const Icon = m.icon;
               const tc = TAG_COLORS[f.tag] || TAG_COLORS['Tools'];
               return (
-                <div key={origIdx} className="card-interactive" style={{
+                <div key={origIdx} className="landing-card landing-card-shine" style={{
                   padding: '1.5rem', borderRadius: 18,
                   background: c.cardBg, border: `1px solid ${c.cardBorder}`,
-                  transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)', cursor: 'default',
+                  transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)', cursor: 'default',
                   opacity: featAnim.inView ? 1 : 0,
-                  transform: featAnim.inView ? 'translateY(0)' : 'translateY(20px)',
-                  transitionDelay: `${Math.min(i * 0.05, 0.4)}s`,
+                  transform: featAnim.inView ? 'translateY(0) scale(1)' : 'translateY(25px) scale(0.97)',
+                  transitionDelay: `${Math.min(i * 0.06, 0.5)}s`,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.85rem' }}>
                     <div style={{
@@ -943,13 +1082,13 @@ export default function LandingPage() {
             {t.steps.map((s, i) => {
               const stepColors = ['#00D4FF', '#00F5A0', '#a18cd1', '#f093fb'];
               return (
-                <div key={i} style={{
+                <div key={i} className="landing-card-shine" style={{
                   padding: '1.75rem 1.25rem', borderRadius: 18, textAlign: 'center',
                   background: c.cardBg, border: `1px solid ${c.cardBorder}`,
                   position: 'relative', zIndex: 1,
                   opacity: howAnim.inView ? 1 : 0,
-                  transform: howAnim.inView ? 'translateY(0)' : 'translateY(30px)',
-                  transition: `all 0.6s cubic-bezier(0.16, 1, 0.3, 1) ${0.1 + i * 0.12}s`,
+                  transform: howAnim.inView ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.93)',
+                  transition: `all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) ${0.1 + i * 0.15}s`,
                 }}>
                   <div style={{
                     width: 52, height: 52, borderRadius: '50%', margin: '0 auto 1rem',
@@ -978,7 +1117,9 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ VIDEO DEMO (Req 14.4) ═══ */}
-      <section ref={videoAnim.ref} style={{ padding: '5rem 1.5rem' }}>
+      <section ref={videoAnim.ref} style={{ padding: '5rem 1.5rem', position: 'relative' }}>
+        {/* Gradient separator */}
+        <div style={{ position: 'absolute', top: 0, left: '15%', right: '15%', height: 1, background: `linear-gradient(90deg, transparent, ${isDark ? 'rgba(240,147,251,0.2)' : 'rgba(200,80,180,0.12)'}, transparent)` }} />
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div style={{
             textAlign: 'center', marginBottom: '2.5rem',
@@ -1071,7 +1212,9 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ DEVICE MOCKUP WITH APP SCREENSHOTS (Req 14.2) ═══ */}
-      <section ref={showcaseAnim.ref} style={{ padding: '5rem 1.5rem' }}>
+      <section ref={showcaseAnim.ref} style={{ padding: '5rem 1.5rem', position: 'relative' }}>
+        {/* Gradient separator */}
+        <div style={{ position: 'absolute', top: 0, left: '15%', right: '15%', height: 1, background: `linear-gradient(90deg, transparent, ${isDark ? 'rgba(79,172,254,0.2)' : 'rgba(60,140,220,0.12)'}, transparent)` }} />
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{
             textAlign: 'center', marginBottom: '3rem',
@@ -1102,15 +1245,15 @@ export default function LandingPage() {
             transition: 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s',
           }}>
             {/* Phone mockup */}
-            <div className="landing-phone-mockup" style={{
+            <div className="landing-phone-mockup landing-float" style={{
               position: 'relative',
               width: 280, height: 560,
               borderRadius: 36,
               background: isDark ? '#1a1a2e' : '#f8f8f8',
               border: isDark ? '8px solid #2d2d44' : '8px solid #d4d4d4',
               boxShadow: isDark
-                ? '0 30px 80px rgba(0,0,0,0.6), inset 0 0 0 2px rgba(255,255,255,0.05)'
-                : '0 30px 60px rgba(0,0,0,0.12), inset 0 0 0 2px rgba(255,255,255,0.8)',
+                ? '0 30px 80px rgba(0,0,0,0.6), inset 0 0 0 2px rgba(255,255,255,0.05), 0 0 60px rgba(0,212,255,0.08)'
+                : '0 30px 60px rgba(0,0,0,0.12), inset 0 0 0 2px rgba(255,255,255,0.8), 0 0 40px rgba(0,180,220,0.06)',
               overflow: 'hidden',
             }}>
               {/* Phone notch */}
@@ -1181,7 +1324,7 @@ export default function LandingPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 340 }}>
               {t.showcaseItems.map((item, i) => {
                 const showcaseColors = ['#00D4FF', '#a18cd1', '#4facfe', '#00F5A0'];
-                const showcaseIcons = [Layers, BookOpen, MessageSquare, Brain];
+                const showcaseIcons = [Layers, Wallet, Zap, Star];
                 const SIcon = showcaseIcons[i];
                 return (
                   <div key={i} style={{
@@ -1244,12 +1387,12 @@ export default function LandingPage() {
               ];
               const [c1, c2] = avatarColors[i % avatarColors.length];
               return (
-                <div key={i} className="card-interactive" style={{
+                <div key={i} className="landing-card landing-card-shine" style={{
                   padding: '1.5rem', borderRadius: 18,
                   background: c.cardBg, border: `1px solid ${c.cardBorder}`,
                   opacity: testiAnim.inView ? 1 : 0,
-                  transform: testiAnim.inView ? 'translateY(0)' : 'translateY(20px)',
-                  transition: `all 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${0.1 + i * 0.08}s`,
+                  transform: testiAnim.inView ? 'translateY(0) scale(1)' : 'translateY(25px) scale(0.97)',
+                  transition: `all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) ${0.1 + i * 0.08}s`,
                 }}>
                   <div style={{ display: 'flex', gap: '0.2rem', marginBottom: '0.75rem' }}>
                     {[1,2,3,4,5].map(s => <Star key={s} size={12} fill="#f6d365" style={{ color: '#f6d365' }} />)}
@@ -1284,7 +1427,7 @@ export default function LandingPage() {
             </span>
             <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.6rem)', fontWeight: 800, letterSpacing: '-0.03em', marginTop: '0.85rem', marginBottom: '0.75rem' }}>
               {t.pricingTitle1}<br />
-              <span style={{ background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t.pricingTitle2}</span>
+              <span className="landing-hero-gradient-text">{t.pricingTitle2}</span>
             </h2>
             <p style={{ fontSize: '1rem', color: c.textMuted, maxWidth: 500, margin: '0 auto' }}>{t.pricingSub}</p>
           </div>
@@ -1322,15 +1465,15 @@ export default function LandingPage() {
             </div>
 
             {/* PRO plan */}
-            <div style={{
+            <div className="landing-pricing-card-pro landing-card-shine" style={{
               padding: '2rem', borderRadius: 22, position: 'relative',
               background: isDark ? 'rgba(0,212,255,0.03)' : 'rgba(0,180,220,0.03)',
               border: isDark ? '1.5px solid rgba(0,212,255,0.2)' : '1.5px solid rgba(0,180,220,0.25)',
               display: 'flex', flexDirection: 'column',
               boxShadow: isDark ? '0 0 40px rgba(0,212,255,0.06)' : '0 0 30px rgba(0,180,220,0.06)',
-              transition: 'all 0.3s ease',
+              transition: 'all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
             }}>
-              <span style={{
+              <span className="landing-badge-pulse" style={{
                 position: 'absolute', top: '-0.6rem', right: '1.5rem',
                 padding: '0.25rem 0.75rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700,
                 background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', color: '#060B18',
@@ -1417,12 +1560,17 @@ export default function LandingPage() {
       </section>
 
       {/* ═══ FINAL CTA ═══ */}
-      <section style={{ padding: '5rem 1.5rem', textAlign: 'center', background: c.ctaSectionBg, position: 'relative' }}>
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 700, height: 500, borderRadius: '50%', background: c.ctaGlow, pointerEvents: 'none', filter: 'blur(40px)' }} />
+      <section style={{ padding: '5rem 1.5rem', textAlign: 'center', background: c.ctaSectionBg, position: 'relative', overflow: 'hidden' }}>
+        {/* Animated grid background */}
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: `radial-gradient(circle, ${isDark ? 'rgba(0,212,255,0.02)' : 'rgba(0,150,200,0.02)'} 1px, transparent 1px)`, backgroundSize: '30px 30px', pointerEvents: 'none' }} />
+        <div className="landing-blob" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 700, height: 500, background: c.ctaGlow, pointerEvents: 'none', filter: 'blur(60px)' }} />
+        {/* Extra floating orbs */}
+        <div className="landing-float" style={{ position: 'absolute', top: '20%', left: '10%', width: 150, height: 150, borderRadius: '50%', background: isDark ? 'rgba(167,139,250,0.04)' : 'rgba(140,120,190,0.04)', filter: 'blur(30px)', pointerEvents: 'none' }} />
+        <div className="landing-float-delay" style={{ position: 'absolute', bottom: '20%', right: '10%', width: 120, height: 120, borderRadius: '50%', background: isDark ? 'rgba(0,245,160,0.04)' : 'rgba(0,200,140,0.04)', filter: 'blur(25px)', pointerEvents: 'none' }} />
         <div style={{ position: 'relative', maxWidth: 650, margin: '0 auto' }}>
           <h2 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.8rem)', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: '1rem' }}>
             {t.ctaTitle1}<br />
-            <span style={{ background: 'linear-gradient(135deg, #00D4FF, #00F5A0)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t.ctaTitle2}</span>
+            <span className="landing-hero-gradient-text">{t.ctaTitle2}</span>
           </h2>
           <p style={{ fontSize: '1rem', color: c.textMuted, marginBottom: '1.5rem', lineHeight: 1.65, maxWidth: 500, margin: '0 auto 1.5rem' }}>{t.ctaDesc}</p>
 
@@ -1435,11 +1583,12 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <Link href="/auth" style={{
+          <Link href="/auth" className="landing-cta-primary" style={{
             display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
             padding: '1rem 2.5rem', borderRadius: 14, fontSize: '1.05rem', fontWeight: 700,
             color: '#060B18', background: 'linear-gradient(135deg, #00D4FF, #00F5A0)',
             textDecoration: 'none', boxShadow: c.ctaBtnShadow, transition: 'all 0.25s ease',
+            animation: 'ctaGlow 3s ease-in-out infinite',
           }}>
             {t.ctaBtn} <ArrowRight size={18} />
           </Link>

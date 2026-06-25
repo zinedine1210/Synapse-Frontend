@@ -3,7 +3,7 @@
    CSS custom properties driven. Switch via data-theme="light|dark".
    ===================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 /* ─── Dark Theme (Default) ───────────────────────────────────────────── */
 :root,
@@ -215,7 +215,7 @@ html {
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   background-color: rgb(var(--bg-base));
   color: rgb(var(--text-primary));
   font-size: var(--font-base);

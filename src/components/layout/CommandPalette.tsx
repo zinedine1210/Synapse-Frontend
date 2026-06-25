@@ -25,7 +25,7 @@ export const SEARCH_CATEGORIES: SearchCategory[] = [
   { id: 'tugas', label: 'Tugas', icon: BookOpen },
   { id: 'todo', label: 'To-Do', icon: CheckSquare },
   { id: 'transaksi', label: 'Transaksi', icon: Wallet },
-  { id: 'qna', label: 'Q&A', icon: HelpCircle },
+  { id: 'qna', label: 'Ruang Tanya', icon: HelpCircle },
   { id: 'pertemuan', label: 'Pertemuan', icon: Calendar },
   { id: 'navigasi', label: 'Navigasi', icon: LayoutDashboard },
 ];
@@ -41,7 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, keywords: ['dashboard', 'home', 'beranda'] },
   { label: 'Duit Tracker', path: '/duit-tracker', icon: Wallet, keywords: ['duit', 'keuangan', 'uang', 'tracker', 'transaksi'], requiredFeature: 'duit_tracker' },
   { label: 'To-Do List', path: '/todos', icon: CheckSquare, keywords: ['todo', 'tugas', 'task', 'to-do'], requiredFeature: 'todo_list' },
-  { label: 'Q&A', path: '/qna', icon: HelpCircle, keywords: ['qna', 'tanya', 'jawab', 'pertanyaan'], requiredFeature: 'qna_public' },
+  { label: 'Ruang Tanya', path: '/qna', icon: HelpCircle, keywords: ['qna', 'tanya', 'jawab', 'pertanyaan', 'ruang'], requiredFeature: 'qna_public' },
   { label: 'Kelas Saya', path: '/classes', icon: BookOpen, keywords: ['kelas', 'class', 'mata kuliah'], requiredFeature: 'class' },
   { label: 'Makan Apa', path: '/makan', icon: UtensilsCrossed, keywords: ['makan', 'food', 'rekomendasi'], requiredFeature: 'food_recommend' },
   { label: 'Split Bill', path: '/split-bill', icon: Receipt, keywords: ['split', 'bill', 'bagi', 'bayar'], requiredFeature: 'split_bill' },

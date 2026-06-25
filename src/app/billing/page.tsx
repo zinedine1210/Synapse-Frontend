@@ -198,10 +198,17 @@ export default function BillingPage() {
                     }}
                   >
                     {[
-                      'Maks. 5 upload file per bulan',
-                      'Maks. ukuran file 10 MB',
-                      '10 request AI per bulan',
-                      'Kuis & Rangkuman Materi',
+                      '5 upload file / bulan',
+                      'Maks ukuran file 10 MB',
+                      '10 request AI / bulan',
+                      '1 daily briefing / hari',
+                      'Kelas & Forum Diskusi',
+                      'Duit Tracker (bills & debts)',
+                      'To-Do List + Kategori',
+                      'Q&A Forum',
+                      'Virtual Pet & Streak',
+                      'Quiz Keuangan',
+                      'Gamifikasi & Notifikasi',
                     ].map((feature, idx) => (
                       <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))' }}>
                         <Check size={14} style={{ color: 'rgb(var(--color-primary))', flexShrink: 0 }} />
@@ -292,12 +299,22 @@ export default function BillingPage() {
                     }}
                   >
                     {[
-                      'Maks. 50 upload file per bulan',
-                      'Maks. ukuran file 25 MB',
-                      '200 request AI per bulan',
-                      'Semua fitur Free + Prioritas AI',
-                      'Kuis gabungan multi-pertemuan',
-                      'Lencana PRO premium',
+                      '50 upload file / bulan',
+                      'Maks ukuran file 25 MB',
+                      '200 request AI / bulan',
+                      '5 daily briefing / hari',
+                      'Semua fitur FREE +',
+                      'Quiz & Kuis Adaptif Unlimited',
+                      'Task AI Solver & Image OCR',
+                      'Prediksi Ujian & Kisi-kisi',
+                      'AI Insight & Daily Briefing',
+                      'Si Bawel + Split Bill',
+                      'Makan Apa (AI Food Rec)',
+                      'Receipt Scanner',
+                      'To-Do: Calendar, Timeline, Recurring',
+                      'Q&A Voting + AI Answer',
+                      'Gamifikasi: Leaderboard & Streak',
+                      'Profile Card & Command Palette',
                     ].map((feature, idx) => (
                       <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))' }}>
                         <Check size={14} style={{ color: 'rgb(var(--color-secondary))', flexShrink: 0 }} />

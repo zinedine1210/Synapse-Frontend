@@ -5,9 +5,10 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
 import { HtmlRenderer, Button, useToast, useConfirm, UserAvatar } from '@/components/ui';
+import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { qnaService } from '@/services/qnaService';
-import { ThumbsUp, CheckCircle, MessageSquare, Eye, Clock, ArrowLeft, LogIn, Flag, Loader2, Share2, Hash, HelpCircle, Award, Bookmark, BookmarkCheck, Pencil, Sparkles } from 'lucide-react';
+import { ThumbsUp, CheckCircle, MessageSquare, Eye, Clock, ArrowLeft, LogIn, Flag, Loader2, Share2, Hash, HelpCircle, Award, Bookmark, BookmarkCheck, Pencil } from 'lucide-react';
 import { brand } from '@/config/brand';
 
 // Lazy-load Tiptap editor (heavy, no SSR needed)
@@ -323,7 +324,7 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
       }}>
         <Link href="/qna" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontWeight: 800, fontSize: 'var(--font-lg)', color: 'rgb(var(--color-primary))' }}>{brand.name}</span>
-          <span style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))' }}>Q&A</span>
+          <span style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))' }}>Ruang Tanya</span>
         </Link>
         {user ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -362,16 +363,10 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
             <h3 style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.4, marginBottom: 10 }}>Info</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Clock size={13} style={{ opacity: 0.4, flexShrink: 0 }} />
                 <span style={{ opacity: 0.65 }}>{formatDate(question.createdAt)}</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Eye size={13} style={{ opacity: 0.4, flexShrink: 0 }} />
-                <span style={{ opacity: 0.65 }}>{question.viewCount} kali dilihat</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <MessageSquare size={13} style={{ opacity: 0.4, flexShrink: 0 }} />
-                <span style={{ opacity: 0.65 }}>{answers.length} jawaban</span>
+                <span style={{ opacity: 0.65 }}>{question.viewCount} dilihat · {answers.length} jawaban</span>
               </div>
             </div>
           </div>
@@ -454,15 +449,14 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
             {question.aiAnswer && (
               <div style={{ padding: '18px 22px', borderRadius: 16, marginBottom: 32, background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.04), rgba(139, 92, 246, 0.03))', border: '1px solid rgba(var(--color-primary), 0.12)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <Sparkles size={16} style={{ color: 'rgb(var(--color-primary))' }} />
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'rgb(var(--color-primary))' }}>Jawaban AI</span>
                   <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 12, background: 'rgba(var(--color-primary), 0.1)', color: 'rgb(var(--color-primary))', fontWeight: 600 }}>Auto-generated</span>
                 </div>
                 <div style={{ lineHeight: 1.8, fontSize: 14 }}>
-                  <HtmlRenderer content={question.aiAnswer} />
+                  <MarkdownRenderer content={question.aiAnswer} />
                 </div>
                 <p style={{ fontSize: 11, opacity: 0.4, marginTop: 12, fontStyle: 'italic' }}>
-                  ⚠️ Jawaban ini dihasilkan AI dan mungkin tidak 100% akurat. Tunggu jawaban dari komunitas untuk verifikasi.
+                  Jawaban ini dihasilkan AI dan mungkin tidak 100% akurat. Tunggu jawaban dari komunitas untuk verifikasi.
                 </p>
               </div>
             )}
@@ -471,7 +465,7 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
           {/* Answers */}
           <section>
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 12, borderBottom: '1px solid var(--border-default)' }}>
-              <MessageSquare size={20} /> {answers.length} Jawaban
+              {answers.length} Jawaban
             </h2>
 
             {answers.length === 0 ? (

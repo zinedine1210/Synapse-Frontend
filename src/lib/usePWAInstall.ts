@@ -2,53 +2,83 @@
 
 import { useState, useEffect, useCallback } from 'react';
 
-const VISIT_COUNT_KEY = 'synapse_pwa_visit_count';
-const INSTALL_DISMISSED_KEY = 'synapse_pwa_install_dismissed';
-const VISIT_THRESHOLD = 3;
+/**
+ * Session-only dismiss key (cleared when browser tab closes).
+ * NOT localStorage — so next session will show popup again if not installed.
+ */
+const SESSION_DISMISSED_KEY = 'synapse_pwa_dismissed';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|iPhone|iPad|iPod|Mobile|webOS/i.test(navigator.userAgent);
+}
+
+function isStandaloneMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  // iOS standalone detection
+  if ('standalone' in window.navigator && (window.navigator as any).standalone) return true;
+  // Standard display-mode detection (Chrome/Android/Edge)
+  if (window.matchMedia('(display-mode: standalone)').matches) return true;
+  // TWA / fullscreen PWA
+  if (window.matchMedia('(display-mode: fullscreen)').matches) return true;
+  return false;
+}
+
 /**
  * Hook for managing PWA install prompt.
- * Tracks visits in localStorage and shows the install prompt after 3 visits.
- * Uses the `beforeinstallprompt` event to defer and control install timing.
+ * 
+ * Detection uses display-mode (standalone) — NOT localStorage.
+ * This means if the user removes the app from home screen, the popup
+ * will appear again on their next visit.
+ * 
+ * Dismiss uses sessionStorage (cleared per tab), so it won't annoy
+ * during the same browsing session but will re-appear next session.
  */
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showPrompt, setShowPrompt] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Check if already installed (standalone mode)
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    // Already running as installed app — don't show anything
+    if (isStandaloneMode()) {
       setIsInstalled(true);
       return;
     }
 
-    // Track visit count
-    const currentCount = parseInt(localStorage.getItem(VISIT_COUNT_KEY) || '0', 10);
-    const newCount = currentCount + 1;
-    localStorage.setItem(VISIT_COUNT_KEY, String(newCount));
+    // Only show on mobile devices
+    if (!isMobileDevice()) return;
 
-    // Check if user previously dismissed the prompt
-    const isDismissed = localStorage.getItem(INSTALL_DISMISSED_KEY) === 'true';
+    // Check session dismiss (only lasts for this tab session)
+    const dismissed = sessionStorage.getItem(SESSION_DISMISSED_KEY) === '1';
+    if (dismissed) return;
 
-    // Determine if we should show the prompt
-    const shouldShow = newCount >= VISIT_THRESHOLD && !isDismissed;
+    // Detect iOS (no beforeinstallprompt — needs manual instructions)
+    const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    setIsIOS(isiOS);
 
+    if (isiOS) {
+      // iOS: show prompt immediately (with manual instructions)
+      setIsInstallable(true);
+      setShowPrompt(true);
+      return;
+    }
+
+    // Android/Chrome: listen for beforeinstallprompt
+    let promptFired = false;
     const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
+      promptFired = true;
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
-
-      if (shouldShow) {
-        setShowPrompt(true);
-      }
+      setShowPrompt(true);
     };
 
     const handleAppInstalled = () => {
@@ -61,7 +91,17 @@ export function usePWAInstall() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
+    // Fallback: if beforeinstallprompt doesn't fire within 3s,
+    // still show a manual install prompt for Android
+    const fallbackTimer = setTimeout(() => {
+      if (!promptFired) {
+        setIsInstallable(true);
+        setShowPrompt(true);
+      }
+    }, 3000);
+
     return () => {
+      clearTimeout(fallbackTimer);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
@@ -85,12 +125,15 @@ export function usePWAInstall() {
 
   const dismissPrompt = useCallback(() => {
     setShowPrompt(false);
-    localStorage.setItem(INSTALL_DISMISSED_KEY, 'true');
+    // Session-only dismiss — will show again next browser session
+    sessionStorage.setItem(SESSION_DISMISSED_KEY, '1');
   }, []);
 
   return {
     isInstallable,
     isInstalled,
+    isIOS,
+    canNativeInstall: deferredPrompt !== null,
     showPrompt,
     installApp,
     dismissPrompt,

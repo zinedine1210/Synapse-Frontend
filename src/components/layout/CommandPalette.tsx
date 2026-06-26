@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import {
   Search, Wallet, CheckSquare, HelpCircle, BookOpen,
   Settings, LayoutDashboard, CreditCard, Command, Calendar,
-  Clock, Hash, CornerDownLeft, ArrowUpDown, UtensilsCrossed, Receipt, Lightbulb,
+  Clock, Hash, CornerDownLeft, ArrowUpDown, UtensilsCrossed, Receipt, Lightbulb, GraduationCap,
 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { fuzzyMatch } from '@/lib/fuzzy-match';
@@ -46,6 +46,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Makan Apa', path: '/makan', icon: UtensilsCrossed, keywords: ['makan', 'food', 'rekomendasi'], requiredFeature: 'food_recommend' },
   { label: 'Split Bill', path: '/split-bill', icon: Receipt, keywords: ['split', 'bill', 'bagi', 'bayar'], requiredFeature: 'split_bill' },
   { label: 'Insight', path: '/insight', icon: Lightbulb, keywords: ['insight', 'analisis', 'laporan'], requiredFeature: 'ai_insight' },
+  { label: 'Skripsweet', path: '/skripsweet', icon: GraduationCap, keywords: ['skripsi', 'thesis', 'skripsweet', 'bimbingan', 'jurnal', 'daftar pustaka'], requiredFeature: 'skripsweet' },
   { label: 'Billing', path: '/billing', icon: CreditCard, keywords: ['billing', 'bayar', 'paket', 'plan'] },
   { label: 'Pengaturan', path: '/settings', icon: Settings, keywords: ['setting', 'pengaturan', 'profil', 'akun'] },
 ];

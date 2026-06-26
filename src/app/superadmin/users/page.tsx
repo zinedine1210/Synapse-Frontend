@@ -8,7 +8,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Button, Alert, Modal, useToast, useConfirm, DataTable, Card, SelectOption, TextInput, PasswordInput } from '@/components/ui';
 import type { Column } from '@/components/ui';
-import { useCache } from '@/lib/cache';
+import { useCache, clearCache } from '@/lib/cache';
 import { Users, Shield, Trash2, UserPlus } from 'lucide-react';
 
 interface UserListItem {
@@ -76,6 +76,7 @@ export default function SuperadminUsersPage() {
     try {
       await superadminService.assignUserPlan(selectedUser.id, assignPlanName);
       showToast(`Berhasil mengubah paket ${selectedUser.fullName} menjadi ${assignPlanName}!`, 'success');
+      clearCache('superadmin:users');
       await loadData();
       setShowAssignModal(false);
     } catch (err) {

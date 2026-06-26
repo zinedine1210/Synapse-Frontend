@@ -1,4 +1,4 @@
-import { BookOpen, LayoutDashboard, GraduationCap, CreditCard, Settings, TrendingUp, Users, Layers, MessageSquare, School, Wallet, CheckSquare, HelpCircle, UtensilsCrossed, Receipt, Lightbulb, Gamepad2, Database } from 'lucide-react';
+import { BookOpen, LayoutDashboard, GraduationCap, CreditCard, Settings, TrendingUp, Users, Layers, MessageSquare, School, Wallet, CheckSquare, HelpCircle, UtensilsCrossed, Receipt, Lightbulb, Gamepad2, Database, FileText } from 'lucide-react';
 
 /**
  * 🗺️ Centralized Navigation Registry
@@ -57,6 +57,13 @@ export const primaryNavItems: NavItem[] = [
     label: 'Billing',
     path: '/billing',
     icon: CreditCard,
+  },
+  {
+    label: 'Skripsweet',
+    path: '/skripsweet',
+    icon: GraduationCap,
+    requiredFeature: 'skripsweet',
+    badge: 'NEW',
   },
 ];
 

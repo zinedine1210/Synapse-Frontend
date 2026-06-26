@@ -136,6 +136,7 @@ export default function DashboardPage() {
   const handleRefreshAiBriefing = useCallback(async () => {
     if (aiBriefingGenerating || aiBriefingRefreshing) return;
     setAiBriefingRefreshing(true);
+    showToast('Briefing sedang diperbarui, tunggu sebentar... ⏳', 'info');
     try {
       await aiBriefingJob.trigger(() => dashboardService.generateAiBriefing());
       refetchAiBriefing();
@@ -151,6 +152,7 @@ export default function DashboardPage() {
   const handleGenerateAiBriefing = async () => {
     if (aiBriefingGenerating || aiBriefingRefreshing) return;
     setAiBriefingRefreshing(true);
+    showToast('Briefing sedang diproses, tunggu sebentar ya... ⏳', 'info');
     try {
       await aiBriefingJob.trigger(() => dashboardService.generateAiBriefing());
       refetchAiBriefing();

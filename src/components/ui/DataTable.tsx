@@ -30,8 +30,8 @@ interface DataTableProps<T> {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const tableContainerStyle: React.CSSProperties = {
-  background: 'rgba(10, 15, 30, 0.5)',
-  border: '1px solid rgba(255,255,255,0.06)',
+  background: 'rgb(var(--bg-surface))',
+  border: '1px solid var(--border-default)',
   borderRadius: '14px',
   overflow: 'hidden',
 };
@@ -43,7 +43,7 @@ const toolbarStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: '1rem 1.25rem',
-  borderBottom: '1px solid rgba(255,255,255,0.06)',
+  borderBottom: '1px solid var(--border-default)',
 };
 
 const searchBoxStyle: React.CSSProperties = {
@@ -52,8 +52,8 @@ const searchBoxStyle: React.CSSProperties = {
   gap: '0.5rem',
   padding: '0.5rem 0.875rem',
   borderRadius: '10px',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'var(--input-bg)',
+  border: '1px solid var(--input-border)',
   flex: '1 1 260px',
   maxWidth: '360px',
 };
@@ -63,7 +63,7 @@ const searchInputStyle: React.CSSProperties = {
   background: 'transparent',
   border: 'none',
   outline: 'none',
-  color: 'white',
+  color: 'rgb(var(--text-primary))',
   fontSize: '0.85rem',
 };
 
@@ -71,7 +71,7 @@ const thStyle: React.CSSProperties = {
   padding: '0.75rem 1rem',
   fontSize: '0.75rem',
   fontWeight: 700,
-  color: 'rgba(160,160,200,0.6)',
+  color: 'rgb(var(--text-muted))',
   textTransform: 'uppercase',
   letterSpacing: '0.05em',
   whiteSpace: 'nowrap',
@@ -81,7 +81,7 @@ const thStyle: React.CSSProperties = {
 const tdStyle: React.CSSProperties = {
   padding: '0.75rem 1rem',
   fontSize: '0.85rem',
-  color: 'rgba(220,220,240,0.9)',
+  color: 'rgb(var(--text-primary))',
   whiteSpace: 'nowrap',
 };
 
@@ -92,17 +92,17 @@ const footerStyle: React.CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: '0.75rem 1.25rem',
-  borderTop: '1px solid rgba(255,255,255,0.06)',
+  borderTop: '1px solid var(--border-default)',
   fontSize: '0.8rem',
-  color: 'rgba(160,160,200,0.6)',
+  color: 'rgb(var(--text-muted))',
 };
 
 const selectStyle: React.CSSProperties = {
   padding: '0.35rem 0.5rem',
   borderRadius: '8px',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  color: 'white',
+  background: 'var(--input-bg)',
+  border: '1px solid var(--input-border)',
+  color: 'rgb(var(--text-primary))',
   fontSize: '0.8rem',
   outline: 'none',
   cursor: 'pointer',
@@ -111,9 +111,9 @@ const selectStyle: React.CSSProperties = {
 const pageBtnStyle = (disabled: boolean): React.CSSProperties => ({
   padding: '0.35rem 0.5rem',
   borderRadius: '8px',
-  background: disabled ? 'transparent' : 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  color: disabled ? 'rgba(100,100,140,0.4)' : 'rgba(200,200,220,0.8)',
+  background: disabled ? 'transparent' : 'var(--input-bg)',
+  border: '1px solid var(--input-border)',
+  color: disabled ? 'rgb(var(--text-muted))' : 'rgb(var(--text-secondary))',
   cursor: disabled ? 'not-allowed' : 'pointer',
   display: 'flex',
   alignItems: 'center',
@@ -122,9 +122,9 @@ const pageBtnStyle = (disabled: boolean): React.CSSProperties => ({
 const exportBtnStyle: React.CSSProperties = {
   padding: '0.45rem 0.875rem',
   borderRadius: '10px',
-  background: 'rgba(0, 212, 255, 0.12)',
-  border: '1px solid rgba(0, 212, 255, 0.2)',
-  color: 'rgb(0, 212, 255)',
+  background: 'rgba(var(--color-primary), 0.12)',
+  border: '1px solid rgba(var(--color-primary), 0.2)',
+  color: 'rgb(var(--color-primary))',
   fontSize: '0.8rem',
   fontWeight: 600,
   cursor: 'pointer',
@@ -237,7 +237,7 @@ export function DataTable<T>({
       {/* Toolbar */}
       <div style={toolbarStyle}>
         <div style={searchBoxStyle}>
-          <Search size={16} style={{ color: 'rgba(160,160,200,0.5)', flexShrink: 0 }} />
+          <Search size={16} style={{ color: 'rgb(var(--text-muted))', flexShrink: 0 }} />
           <input
             type="text"
             placeholder={searchPlaceholder}
@@ -247,7 +247,7 @@ export function DataTable<T>({
           />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'rgba(160,160,200,0.5)' }}>
+          <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>
             {sorted.length} data
           </span>
           <button onClick={handleExportCSV} style={exportBtnStyle} title="Export CSV">
@@ -261,7 +261,7 @@ export function DataTable<T>({
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '700px' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.01)' }}>
+            <tr style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--input-bg)' }}>
               {columns.map((col) => (
                 <th
                   key={col.key}
@@ -282,7 +282,7 @@ export function DataTable<T>({
               <tr>
                 <td
                   colSpan={columns.length + (actions ? 1 : 0)}
-                  style={{ ...tdStyle, textAlign: 'center', padding: '3rem 1rem', color: 'rgba(160,160,200,0.4)' }}
+                  style={{ ...tdStyle, textAlign: 'center', padding: '3rem 1rem', color: 'rgb(var(--text-muted))' }}
                 >
                   {emptyMessage}
                 </td>
@@ -291,9 +291,9 @@ export function DataTable<T>({
               pageData.map((row) => (
                 <tr
                   key={getRowKey(row)}
-                  style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.15s', cursor: onRowClick ? 'pointer' : undefined }}
+                  style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 0.15s', cursor: onRowClick ? 'pointer' : undefined }}
                   onClick={() => onRowClick?.(row)}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--input-bg)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   {columns.map((col) => (

@@ -494,7 +494,7 @@ export default function DuitTrackerPage() {
     finally { setWishlistLoading(false); }
   }, [wishlistLoaded]);
 
-  useEffect(() => { if (tab === 'wishlist') fetchWishlist(); }, [tab, fetchWishlist]);
+  useEffect(() => { if (tab === 'wishlist' || tab === 'summary') fetchWishlist(); }, [tab, fetchWishlist]);
 
   const filteredWishlist = useMemo(() => {
     if (wishlistFilter === 'all') return wishlist;
@@ -639,6 +639,13 @@ export default function DuitTrackerPage() {
     const custom = customCategories.filter(c => c.type === 'expense').map(c => ({ id: c.name, label: c.name.charAt(0).toUpperCase() + c.name.slice(1), emoji: c.emoji }));
     return [...EXPENSE_CATEGORIES, ...custom];
   }, [customCategories]);
+
+  const allIncomeCategories = useMemo(() => {
+    const custom = customCategories.filter(c => c.type === 'income').map(c => ({ id: c.name, label: c.name.charAt(0).toUpperCase() + c.name.slice(1), emoji: c.emoji }));
+    return [...INCOME_CATEGORIES, ...custom];
+  }, [customCategories]);
+
+  const allCategories = useMemo(() => [...allExpenseCategories, ...allIncomeCategories], [allExpenseCategories, allIncomeCategories]);
 
   // Pie chart data for summary
   const pieChartData = useMemo(() => {
@@ -841,7 +848,7 @@ export default function DuitTrackerPage() {
   };
 
   const handleDeleteBudget = async (budget: CategoryBudget) => {
-    const catInfo = EXPENSE_CATEGORIES.find(c => c.id === budget.category);
+    const catInfo = allExpenseCategories.find(c => c.id === budget.category);
     const catLabel = catInfo?.label || budget.category;
     if (!await confirm({ message: `Yakin hapus budget ${catLabel} bulan ini?`, variant: 'danger' })) return;
 
@@ -1008,7 +1015,7 @@ export default function DuitTrackerPage() {
                           placeholder="📂 Semua Kategori"
                           options={[
                             { value: '', label: '📂 Semua Kategori' },
-                            ...[...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES]
+                            ...allCategories
                               .filter((c, i, arr) => arr.findIndex(x => x.id === c.id) === i)
                               .map(c => ({ value: c.id, label: `${c.emoji} ${c.label}` })),
                           ]}
@@ -1291,7 +1298,7 @@ export default function DuitTrackerPage() {
                     {summary.categoryReport.length === 0 ? <p style={{ opacity: 0.5, fontSize: 14 }}>Belum ada data nih, catat transaksi dulu ya~</p> : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                         {summary.categoryReport.sort((a, b) => b.spent - a.spent).map(cr => {
-                          const catInfo = EXPENSE_CATEGORIES.find(c => c.id === cr.category);
+                          const catInfo = allExpenseCategories.find(c => c.id === cr.category);
                           return (
                             <div key={cr.category}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -1339,7 +1346,7 @@ export default function DuitTrackerPage() {
 
                   {/* What If Calculator + Time Machine */}
                   {hasFeature('what_if_calculator') && (
-                    <WhatIfCalculator transactions={transactions} />
+                    <WhatIfCalculator transactions={transactions} wishlist={wishlist} />
                   )}
 
                   {/* Spending Comparison (Peer) */}
@@ -1405,7 +1412,7 @@ export default function DuitTrackerPage() {
                       {budgets.map(b => {
                         const spent = summary?.categoryReport.find(c => c.category === b.category)?.spent ?? 0;
                         const pct = Math.round((spent / b.amount) * 100);
-                        const catInfo = EXPENSE_CATEGORIES.find(c => c.id === b.category);
+                        const catInfo = allExpenseCategories.find(c => c.id === b.category);
                         return (
                           <div key={b.id} style={{ padding: '16px 18px', borderRadius: 14, background: 'var(--card-bg)', border: '1px solid var(--dt-card-border)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -1825,8 +1832,8 @@ export default function DuitTrackerPage() {
               editingTx={editingTx}
               submitting={submitting}
               onSubmit={handleAddTransaction}
-              expenseCategories={EXPENSE_CATEGORIES}
-              incomeCategories={INCOME_CATEGORIES}
+              expenseCategories={allExpenseCategories}
+              incomeCategories={allIncomeCategories}
             />
 
             <ReceiptScannerModal
@@ -1937,7 +1944,7 @@ export default function DuitTrackerPage() {
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, display: 'block', opacity: 0.6 }}>Kategori</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {EXPENSE_CATEGORIES.map(c => (
+                    {allExpenseCategories.map(c => (
                       <button key={c.id} type="button" onClick={() => setBudgetForm({ ...budgetForm, category: c.id })} style={{
                         padding: '6px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 12,
                         fontWeight: budgetForm.category === c.id ? 600 : 400,

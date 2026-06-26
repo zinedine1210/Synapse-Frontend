@@ -307,17 +307,18 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
         }
         return;
       }
-      // Skip if this is our own post (already added optimistically)
-      if (post.authorId === userId && lastSentPostRef.current) {
-        // Replace temp post with real post from socket
+      // Skip if this is our own post (already added optimistically and replaced by API response)
+      if (post.authorId === userId) {
         setPosts((prev) => {
+          // If we already have this post (replaced from API response), skip
+          if (prev.some(p => p.id === post.id)) return prev;
+          // If there's still a temp post, replace it with the real one
           const hasTemp = prev.some(p => p.id.startsWith('temp-'));
           if (hasTemp) {
             return prev.map(p => p.id.startsWith('temp-') ? { ...post } : p);
           }
-          // Already replaced by API response, skip duplicate
-          if (prev.some(p => p.id === post.id)) return prev;
-          return [...prev, post];
+          // Otherwise skip — the API response already handled it
+          return prev;
         });
         lastSentPostRef.current = null;
       } else {
@@ -1006,7 +1007,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
               {tabMenuId === ct.id && (
                 <>
                   <div style={{ position: 'fixed', inset: 0, zIndex: 98 }} onClick={() => setTabMenuId(null)} />
-                  <div style={{ position: 'absolute', left: 0, top: '100%', zIndex: 99, background: 'rgb(var(--bg-surface))', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', padding: '0.25rem', minWidth: 130 }}>
+                  <div style={{ position: 'fixed', zIndex: 99, background: 'rgb(var(--bg-surface))', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', padding: '0.25rem', minWidth: 130, marginTop: '0.25rem' }}>
                     <button onClick={() => { setRenamingTabId(ct.id); setRenameValue(ct.name); setTabMenuId(null); }} style={{ width: '100%', padding: '0.4rem 0.6rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--font-xs)', color: 'rgb(var(--text-primary))', textAlign: 'left', borderRadius: 'var(--radius-sm)', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'rgba(var(--color-primary) / 0.05)')} onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                       <Pencil size={12} /> Rename

@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card } from '@/components/ui';
 import {
   Calculator, TrendingUp, Coffee, ShoppingBag, UtensilsCrossed, Car, Bus, Gamepad2,
-  Smartphone, Plane, GraduationCap, Shirt, Zap,
+  Smartphone, Plane, GraduationCap, Shirt, Zap, Star, Gift, Target, ChevronDown, ChevronUp,
 } from 'lucide-react';
-import { Transaction } from '@/services/duitTrackerService';
+import { Transaction, WishlistItem } from '@/services/duitTrackerService';
 
 interface WhatIfCalculatorProps {
   transactions: Transaction[];
+  wishlist?: WishlistItem[];
 }
 
 // ─── Equivalence items: what your money could buy ───
@@ -24,12 +25,18 @@ const EQUIVALENCES = [
   { label: 'Jajan online', amount: 150000, icon: ShoppingBag },
 ];
 
-const SAVINGS_GOALS = [
+const FALLBACK_GOALS = [
   { label: 'iPhone 16', amount: 18000000, icon: Smartphone },
   { label: 'Trip Bali', amount: 5000000, icon: Plane },
   { label: 'Kursus Online', amount: 1500000, icon: GraduationCap },
   { label: 'Motor Bekas', amount: 12000000, icon: Car },
 ];
+
+const PRIORITY_ICONS: Record<string, React.ElementType> = {
+  high: Star,
+  medium: Target,
+  low: Gift,
+};
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   makanan: UtensilsCrossed,
@@ -52,7 +59,10 @@ interface SpendingInsight {
   monthly: number;
 }
 
-export function WhatIfCalculator({ transactions }: WhatIfCalculatorProps) {
+export function WhatIfCalculator({ transactions, wishlist = [] }: WhatIfCalculatorProps) {
+  const [showAllEquiv, setShowAllEquiv] = useState(false);
+  const [selectedCatIdx, setSelectedCatIdx] = useState<number | null>(null);
+
   const insights = useMemo(() => {
     const expenses = transactions.filter(t => t.type === 'expense');
     if (expenses.length === 0) return null;
@@ -161,67 +171,170 @@ export function WhatIfCalculator({ transactions }: WhatIfCalculatorProps) {
         </div>
       </div>
 
-      {/* What your spending equals */}
-      <div style={{ borderRadius: 14, padding: 16, background: 'linear-gradient(135deg, rgba(var(--color-warning), 0.06), rgba(var(--color-primary), 0.04))', border: '1px solid rgba(var(--color-warning), 0.15)', marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>💡 Pengeluaranmu per MINGGU setara:</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {EQUIVALENCES.map(eq => {
-            const count = Math.floor(insights.weeklyExpense / eq.amount);
-            if (count < 1) return null;
-            const Icon = eq.icon;
-            return (
-              <div key={eq.label} style={{ padding: '8px 12px', borderRadius: 10, background: 'rgb(var(--bg-surface))', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                <Icon size={13} style={{ opacity: 0.6 }} />
-                <span><b>{count}x</b> {eq.label}</span>
-              </div>
-            );
-          }).filter(Boolean)}
-        </div>
-      </div>
+      {/* ─── Wishlist Goals: How long to save ─── */}
+      {(() => {
+        const pendingWishlist = wishlist.filter(w => !w.isPurchased && w.estimatedPrice > 0);
+        const hasWishlist = pendingWishlist.length > 0;
+        const goals = hasWishlist
+          ? pendingWishlist
+              .sort((a, b) => {
+                const priorityOrder = { high: 0, medium: 1, low: 2 };
+                return (priorityOrder[a.priority] ?? 1) - (priorityOrder[b.priority] ?? 1);
+              })
+              .slice(0, 8)
+          : null;
 
-      {/* What your monthly spending equals */}
-      <div style={{ borderRadius: 14, padding: 16, background: 'linear-gradient(135deg, rgba(var(--color-danger), 0.06), rgba(var(--color-warning), 0.04))', border: '1px solid rgba(var(--color-danger), 0.12)', marginBottom: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>🔥 Pengeluaranmu per BULAN setara:</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {EQUIVALENCES.map(eq => {
-            const count = Math.floor(insights.monthlyExpense / eq.amount);
-            if (count < 1) return null;
-            const Icon = eq.icon;
-            return (
-              <div key={eq.label} style={{ padding: '8px 12px', borderRadius: 10, background: 'rgb(var(--bg-surface))', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                <Icon size={13} style={{ opacity: 0.6 }} />
-                <span><b>{count}x</b> {eq.label}</span>
-              </div>
-            );
-          }).filter(Boolean)}
-        </div>
-      </div>
+        // Selected category for "What if I save from this category"
+        const selectedCat = selectedCatIdx !== null ? insights.categories[selectedCatIdx] : null;
+        const savingAmount = selectedCat ? selectedCat.daily : insights.dailyExpense;
+        const savingLabel = selectedCat ? `hemat dari ${selectedCat.category}` : 'total pengeluaranmu';
 
-      {/* If you SAVED instead — how fast to goals */}
-      <div style={{ borderRadius: 14, padding: 16, background: 'linear-gradient(135deg, rgba(var(--color-success), 0.08), rgba(var(--color-primary), 0.05))', border: '1px solid rgba(var(--color-success), 0.2)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-          <TrendingUp size={14} style={{ color: 'rgb(var(--color-success))' }} />
-          <span style={{ fontSize: 12, fontWeight: 700 }}>Kalau kamu nabung sebesar pengeluaranmu...</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {SAVINGS_GOALS.map(goal => {
-            const months = Math.ceil(goal.amount / insights.monthlyExpense);
-            const Icon = goal.icon;
-            return (
-              <div key={goal.label} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
-                <Icon size={15} style={{ opacity: 0.6 }} />
-                <span style={{ flex: 1 }}>{goal.label} <span style={{ opacity: 0.5 }}>({fmt(goal.amount)})</span></span>
-                <span style={{ fontWeight: 800, color: months <= 6 ? 'rgb(var(--color-success))' : months <= 12 ? 'rgb(var(--color-primary))' : 'rgb(var(--color-warning))' }}>
-                  {months <= 1 ? '< 1 bulan' : `${months} bulan`}
+        return (
+          <>
+            {/* Category selector for What-If */}
+            <div style={{ borderRadius: 14, padding: 16, background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.06), rgba(var(--color-success), 0.04))', border: '1px solid rgba(var(--color-primary), 0.15)', marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>🤔 What If — Kalau kamu hemat dari:</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                <button
+                  onClick={() => setSelectedCatIdx(null)}
+                  style={{
+                    padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s',
+                    border: selectedCatIdx === null ? '1.5px solid rgb(var(--color-primary))' : '1px solid var(--border-default)',
+                    background: selectedCatIdx === null ? 'rgba(var(--color-primary), 0.1)' : 'var(--input-bg)',
+                    color: selectedCatIdx === null ? 'rgb(var(--color-primary))' : 'inherit',
+                  }}
+                >
+                  Semua ({fmt(Math.round(insights.dailyExpense))}/hari)
+                </button>
+                {insights.categories.map((cat, idx) => (
+                  <button
+                    key={cat.category}
+                    onClick={() => setSelectedCatIdx(selectedCatIdx === idx ? null : idx)}
+                    style={{
+                      padding: '6px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', textTransform: 'capitalize',
+                      border: selectedCatIdx === idx ? '1.5px solid rgb(var(--color-primary))' : '1px solid var(--border-default)',
+                      background: selectedCatIdx === idx ? 'rgba(var(--color-primary), 0.1)' : 'var(--input-bg)',
+                      color: selectedCatIdx === idx ? 'rgb(var(--color-primary))' : 'inherit',
+                    }}
+                  >
+                    {cat.category} ({fmt(Math.round(cat.daily))}/hari)
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: 'var(--input-bg)' }}>
+                💡 Kalau kamu {selectedCat ? <span>stop pengeluaran <b style={{ textTransform: 'capitalize' }}>{selectedCat.category}</b></span> : 'nabung semua'}, kamu bisa hemat <b style={{ color: 'rgb(var(--color-success))' }}>{fmt(Math.round(savingAmount))}/hari</b> = <b style={{ color: 'rgb(var(--color-success))' }}>{fmt(Math.round(savingAmount * 7))}/minggu</b> = <b style={{ color: 'rgb(var(--color-success))' }}>{fmt(Math.round(savingAmount * 30))}/bulan</b>
+              </div>
+
+              {/* Equivalence chips */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {(showAllEquiv ? EQUIVALENCES : EQUIVALENCES.slice(0, 4)).map(eq => {
+                  const weeklySaving = savingAmount * 7;
+                  const count = Math.floor(weeklySaving / eq.amount);
+                  if (count < 1) return null;
+                  const Icon = eq.icon;
+                  return (
+                    <div key={eq.label} style={{ padding: '7px 11px', borderRadius: 10, background: 'rgb(var(--bg-surface))', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                      <Icon size={13} style={{ opacity: 0.6 }} />
+                      <span><b>{count}x</b> {eq.label}/minggu</span>
+                    </div>
+                  );
+                }).filter(Boolean)}
+                {!showAllEquiv && (
+                  <button onClick={() => setShowAllEquiv(true)} style={{ padding: '7px 11px', borderRadius: 10, background: 'var(--input-bg)', border: '1px solid var(--border-default)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, opacity: 0.7 }}>
+                    <ChevronDown size={12} /> Lainnya
+                  </button>
+                )}
+                {showAllEquiv && (
+                  <button onClick={() => setShowAllEquiv(false)} style={{ padding: '7px 11px', borderRadius: 10, background: 'var(--input-bg)', border: '1px solid var(--border-default)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, opacity: 0.7 }}>
+                    <ChevronUp size={12} /> Tutup
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Wishlist / Savings Goals */}
+            <div style={{ borderRadius: 14, padding: 16, background: 'linear-gradient(135deg, rgba(var(--color-success), 0.08), rgba(var(--color-primary), 0.05))', border: '1px solid rgba(var(--color-success), 0.2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <TrendingUp size={14} style={{ color: 'rgb(var(--color-success))' }} />
+                <span style={{ fontSize: 12, fontWeight: 700 }}>
+                  {hasWishlist ? '🎯 Kapan wishlist-mu tercapai?' : '💭 Kalau kamu nabung sebesar pengeluaranmu...'}
                 </span>
               </div>
-            );
-          })}
-        </div>
-        <div style={{ marginTop: 12, fontSize: 11, opacity: 0.5, textAlign: 'center' }}>
-          Bayangkan kalau kamu hemat 50% aja — goals tercapai 2x lebih cepat! 🚀
-        </div>
-      </div>
+              {hasWishlist && (
+                <p style={{ fontSize: 11, opacity: 0.5, margin: '2px 0 12px' }}>
+                  Berdasarkan {savingLabel} ({fmt(Math.round(savingAmount))}/hari)
+                </p>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {hasWishlist && goals ? goals.map(item => {
+                  const dailySaving = savingAmount;
+                  const daysNeeded = Math.ceil(item.estimatedPrice / dailySaving);
+                  const weeksNeeded = Math.ceil(daysNeeded / 7);
+                  const monthsNeeded = Math.ceil(daysNeeded / 30);
+                  const PIcon = PRIORITY_ICONS[item.priority] || Gift;
+                  const priorityColor = item.priority === 'high' ? 'rgb(var(--color-danger))' : item.priority === 'medium' ? 'rgb(var(--color-warning))' : 'rgb(var(--color-primary))';
+
+                  return (
+                    <div key={item.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, fontSize: 12,
+                      padding: '10px 12px', borderRadius: 10, background: 'rgba(var(--bg-surface), 0.8)',
+                      border: '1px solid var(--border-default)',
+                    }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${priorityColor}15`, flexShrink: 0 }}>
+                        <PIcon size={13} style={{ color: priorityColor }} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+                        <div style={{ fontSize: 11, opacity: 0.5 }}>{fmt(item.estimatedPrice)}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{
+                          fontWeight: 800, fontSize: 13,
+                          color: daysNeeded <= 7 ? 'rgb(var(--color-success))' : daysNeeded <= 30 ? 'rgb(var(--color-primary))' : monthsNeeded <= 3 ? 'rgb(var(--color-warning))' : 'rgb(var(--color-danger))',
+                        }}>
+                          {daysNeeded <= 7 ? `${daysNeeded} hari` : daysNeeded <= 60 ? `${weeksNeeded} minggu` : `${monthsNeeded} bulan`}
+                        </div>
+                        <div style={{ fontSize: 10, opacity: 0.4 }}>
+                          {daysNeeded <= 7 ? '🔥 Dikit lagi!' : daysNeeded <= 30 ? '💪 Semangat!' : daysNeeded <= 90 ? '📅 Bisa kok!' : '🎯 Nabung terus!'}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }) : FALLBACK_GOALS.map(goal => {
+                  const months = Math.ceil(goal.amount / (savingAmount * 30));
+                  const Icon = goal.icon;
+                  return (
+                    <div key={goal.label} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
+                      <Icon size={15} style={{ opacity: 0.6 }} />
+                      <span style={{ flex: 1 }}>{goal.label} <span style={{ opacity: 0.5 }}>({fmt(goal.amount)})</span></span>
+                      <span style={{ fontWeight: 800, color: months <= 6 ? 'rgb(var(--color-success))' : months <= 12 ? 'rgb(var(--color-primary))' : 'rgb(var(--color-warning))' }}>
+                        {months <= 1 ? '< 1 bulan' : `${months} bulan`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {hasWishlist && (
+                <div style={{ marginTop: 14, padding: '10px 14px', borderRadius: 10, background: 'rgba(var(--color-success), 0.06)', border: '1px solid rgba(var(--color-success), 0.12)', fontSize: 12, textAlign: 'center' }}>
+                  {selectedCat ? (
+                    <span>Stop <b style={{ textTransform: 'capitalize' }}>{selectedCat.category}</b> selama <b>{Math.ceil(((goals?.[0]?.estimatedPrice ?? 0) / savingAmount) / 7)} minggu</b> = bisa beli <b>{goals?.[0]?.name}</b>! 🎉</span>
+                  ) : (
+                    <span>Coba klik kategori di atas untuk lihat &quot;kalau hemat dari kategori X, berapa lama bisa beli wishlist?&quot; 👆</span>
+                  )}
+                </div>
+              )}
+
+              {!hasWishlist && (
+                <div style={{ marginTop: 12, fontSize: 11, opacity: 0.5, textAlign: 'center' }}>
+                  Tambahkan wishlist di tab 🛒 Wishlist biar insight-nya lebih personal! 🚀
+                </div>
+              )}
+            </div>
+          </>
+        );
+      })()}
     </Card>
   );
 }

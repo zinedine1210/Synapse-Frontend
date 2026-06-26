@@ -204,10 +204,10 @@ export default function QuizPage() {
                 }}
               >
                 <ShieldAlert size={60} style={{ color: 'rgb(0, 212, 255)', margin: '0 auto 1.5rem' }} />
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '0.75rem' }}>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--text-primary))', marginBottom: '0.75rem' }}>
                   Fitur Kuis AI Custom Premium
                 </h3>
-                <p style={{ fontSize: '0.9rem', color: 'rgba(160, 160, 200, 0.8)', lineHeight: 1.6, marginBottom: '2rem' }}>
+                <p style={{ fontSize: '0.9rem', color: 'rgb(var(--text-secondary))', lineHeight: 1.6, marginBottom: '2rem' }}>
                   Dapatkan kemampuan untuk menggabungkan beberapa sesi kuliah sekaligus (Flexible Quiz Predictor) untuk mensimulasikan kuis kisi-kisi UTS/UAS secara instan. Fitur ini eksklusif untuk pengguna **PRO**.
                 </p>
                 <Link href="/billing" style={{ textDecoration: 'none' }}>
@@ -235,11 +235,11 @@ export default function QuizPage() {
             
             {/* Title */}
             <div style={{ marginBottom: '2rem' }}>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'rgb(var(--text-primary))', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <GraduationCap style={{ color: 'rgb(0, 212, 255)' }} />
                 Flexible Quiz Predictor (PRO)
               </h2>
-              <p style={{ color: 'rgba(160, 160, 200, 0.7)', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+              <p style={{ color: 'rgb(var(--text-secondary))', fontSize: '0.9rem', marginTop: '0.25rem' }}>
                 Pilih kelas dan kustomisasi sesi pertemuan mana saja yang ingin diujikan oleh AI untuk kisi-kisi ujian.
               </p>
             </div>
@@ -256,8 +256,8 @@ export default function QuizPage() {
               </div>
             ) : classes.length === 0 ? (
               <Card style={{ textAlign: 'center', padding: '3rem 2rem', border: '1px dashed rgba(255, 255, 255, 0.08)' }}>
-                <BookOpen size={48} style={{ color: 'rgba(160, 160, 200, 0.2)', marginBottom: '1rem' }} />
-                <p style={{ color: 'rgba(160, 160, 200, 0.8)', marginBottom: '1.5rem' }}>
+                <BookOpen size={48} style={{ color: 'rgb(var(--text-muted))', marginBottom: '1rem' }} />
+                <p style={{ color: 'rgb(var(--text-secondary))', marginBottom: '1.5rem' }}>
                   Anda belum memiliki kelas. Bikin kelas dulu yuk di dashboard.
                 </p>
                 <Link href="/dashboard" style={{ textDecoration: 'none' }}>
@@ -281,7 +281,7 @@ export default function QuizPage() {
 
                     {/* Sessions Checklist */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(240, 240, 255, 0.8)' }}>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgb(var(--text-primary))' }}>
                         Pilih Pertemuan Kuliah (Bisa Multi-Sesi)
                       </label>
 
@@ -354,8 +354,8 @@ export default function QuizPage() {
             ) : quizSubmitted ? (
               // Quiz Results View
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <Card style={{ textAlign: 'center', padding: '2.5rem 1.5rem', border: '1px solid rgba(255, 255, 255, 0.06)', background: 'rgba(15, 25, 52, 0.4)' }}>
-                  <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'white', marginBottom: '0.25rem' }}>
+                <Card style={{ textAlign: 'center', padding: '2.5rem 1.5rem', border: '1px solid var(--border-default)' }}>
+                  <h4 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'rgb(var(--text-primary))', marginBottom: '0.25rem' }}>
                     Hasil Evaluasi Kuis Custom
                   </h4>
                   <div style={{ fontSize: '3.5rem', fontWeight: 800, color: quizScore >= 70 ? 'rgb(0, 245, 160)' : 'rgb(248, 113, 113)', margin: '0.5rem 0' }}>
@@ -364,7 +364,7 @@ export default function QuizPage() {
                   <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem', borderRadius: 999, background: quizScore >= 70 ? 'rgba(0, 245, 160, 0.15)' : 'rgba(248, 113, 113, 0.15)', color: quizScore >= 70 ? 'rgb(0, 245, 160)' : 'rgb(248, 113, 113)', fontWeight: 700 }}>
                     {quizScore >= 70 ? 'LULUS EVALUASI' : 'BELUM LULUS'}
                   </span>
-                  <p style={{ fontSize: '0.85rem', color: 'rgba(160, 160, 200, 0.7)', marginTop: '1rem', marginBottom: '1.5rem' }}>
+                  <p style={{ fontSize: '0.85rem', color: 'rgb(var(--text-secondary))', marginTop: '1rem', marginBottom: '1.5rem' }}>
                     {quizScore >= 70
                       ? 'Gokil! Jawaban prediksi lo mantap banget.'
                       : 'Cek materi yang salah di bawah dan coba lagi kuis prediksinya ya.'}
@@ -376,7 +376,7 @@ export default function QuizPage() {
 
                 {/* Question Review */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'white' }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: 'rgb(var(--text-primary))' }}>
                     Bahas Kuis:
                   </h4>
                   {quizQuizzes.map((q, idx) => {
@@ -399,7 +399,7 @@ export default function QuizPage() {
                             <XCircle size={18} style={{ color: 'rgb(248, 113, 113)', flexShrink: 0, marginTop: 2 }} />
                           )}
                           <div>
-                            <h5 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'white', lineHeight: 1.4 }}>
+                            <h5 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'rgb(var(--text-primary))', lineHeight: 1.4 }}>
                               {idx + 1}. {q.question}
                             </h5>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem', marginTop: '0.75rem' }}>
@@ -425,7 +425,7 @@ export default function QuizPage() {
                                         ? 'rgb(52, 211, 153)'
                                         : isUserSelected
                                         ? 'rgb(248, 113, 113)'
-                                        : 'rgba(160,160,200,0.8)',
+                                        : 'rgb(var(--text-secondary))',
                                       fontWeight: isCorrectKey || isUserSelected ? 600 : 400,
                                     }}
                                   >
@@ -435,7 +435,7 @@ export default function QuizPage() {
                               })}
                             </div>
                             {q.explanation && (
-                              <p style={{ fontSize: '0.8rem', color: 'rgba(160, 160, 200, 0.7)', marginTop: '0.75rem', paddingLeft: '0.5rem', borderLeft: '2px solid rgba(255,255,255,0.1)' }}>
+                              <p style={{ fontSize: '0.8rem', color: 'rgb(var(--text-secondary))', marginTop: '0.75rem', paddingLeft: '0.5rem', borderLeft: '2px solid var(--border-default)' }}>
                                 💡 <b>Bahas Detail:</b> {q.explanation}
                               </p>
                             )}
@@ -452,8 +452,8 @@ export default function QuizPage() {
                 const q = quizQuizzes[currentIdx];
                 return (
                   <Card style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
-                      <span style={{ fontSize: '0.85rem', color: 'rgba(160, 160, 200, 0.8)', fontWeight: 600 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-default)', paddingBottom: '0.75rem' }}>
+                      <span style={{ fontSize: '0.85rem', color: 'rgb(var(--text-secondary))', fontWeight: 600 }}>
                         Pertanyaan {currentIdx + 1} dari {quizQuizzes.length}
                       </span>
                       <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'rgba(0, 212, 255, 0.1)', color: 'rgb(0, 212, 255)', fontWeight: 600 }}>
@@ -462,7 +462,7 @@ export default function QuizPage() {
                     </div>
 
                     <div>
-                      <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white', lineHeight: 1.5 }}>
+                      <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'rgb(var(--text-primary))', lineHeight: 1.5 }}>
                         {q.question}
                       </h4>
                     </div>

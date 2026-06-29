@@ -224,31 +224,6 @@ export function Sidebar({ userRole = 'USER', collapsed: controlledCollapsed, onT
         </ul>
       </nav>
 
-      {/* Billing CTA - subtle prompt for users to discover billing */}
-      {!collapsed && !isSuperadmin && pathname !== '/billing' && (
-        <Link
-          href="/billing"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            margin: '0 0.5rem 0.5rem',
-            padding: '0.6rem 0.75rem',
-            borderRadius: 'var(--radius-md)',
-            background: 'linear-gradient(135deg, rgba(var(--color-primary) / 0.08) 0%, rgba(var(--color-accent-purple, var(--color-primary)) / 0.05) 100%)',
-            border: '1px solid rgba(var(--color-primary) / 0.15)',
-            textDecoration: 'none',
-            transition: 'var(--transition-fast)',
-          }}
-        >
-          <CreditCard size={14} style={{ color: 'rgb(var(--color-primary))', flexShrink: 0 }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgb(var(--text-primary))', display: 'block' }}>Upgrade Plan ✨</span>
-            <span style={{ fontSize: '10px', color: 'rgb(var(--text-muted))', display: 'block' }}>Buka fitur premium & kuota AI</span>
-          </div>
-        </Link>
-      )}
-
       {/* Bottom section */}
       <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '0.5rem' }}>
         {/* XP Bar */}
@@ -283,6 +258,37 @@ export function Sidebar({ userRole = 'USER', collapsed: controlledCollapsed, onT
             </span>
           )}
         </button>
+
+        {/* Billing */}
+        {!isSuperadmin && (
+          <Link
+            href="/billing"
+            title={collapsed ? 'Billing' : undefined}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.6rem',
+              padding: collapsed ? '0.6rem' : '0.5rem 0.75rem',
+              borderRadius: 'var(--radius-sm)',
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              textDecoration: 'none',
+              position: 'relative',
+              background: pathname === '/billing' ? 'rgba(var(--color-primary) / 0.1)' : 'transparent',
+              transition: 'var(--transition-fast)',
+              color: pathname === '/billing' ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))',
+            }}
+          >
+            {pathname === '/billing' && (
+              <span style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: '55%', borderRadius: '0 3px 3px 0', background: 'rgb(var(--color-primary))' }} />
+            )}
+            <CreditCard size={18} style={{ flexShrink: 0 }} />
+            {!collapsed && (
+              <span style={{ fontSize: 'var(--font-sm)', fontWeight: pathname === '/billing' ? 600 : 400, whiteSpace: 'nowrap' }}>
+                Billing
+              </span>
+            )}
+          </Link>
+        )}
 
         {/* Settings */}
         {(() => {

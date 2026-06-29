@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useTheme } from '@/lib/ThemeContext';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
@@ -92,8 +93,27 @@ export default function SettingsPage() {
   const { setTheme } = useTheme();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>('profile');
+
+  const validTabs: TabId[] = ['profile', 'notifications', 'appearance', 'data', 'account'];
+  const tabFromUrl = searchParams.get('tab') as TabId | null;
+  const [activeTab, setActiveTab] = useState<TabId>(tabFromUrl && validTabs.includes(tabFromUrl) ? tabFromUrl : 'profile');
+
+  const handleTabChange = (tab: TabId) => {
+    setActiveTab(tab);
+    router.replace(`/settings?tab=${tab}`, { scroll: false });
+  };
+
+  // Sync tab from URL changes (e.g. back/forward navigation)
+  useEffect(() => {
+    const t = searchParams.get('tab') as TabId | null;
+    if (t && validTabs.includes(t) && t !== activeTab) {
+      setActiveTab(t);
+    }
+  }, [searchParams]);
+
   const [saving, setSaving] = useState(false);
 
   // Profile state
@@ -363,7 +383,7 @@ export default function SettingsPage() {
               {TABS.map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   style={{
                     display: 'flex',
                     alignItems: 'center',

@@ -7,7 +7,7 @@ import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, Alert, useToast } from '@/components/ui';
-import { Check, CreditCard, ShieldCheck, Zap, Crown } from 'lucide-react';
+import { Check, CreditCard, ShieldCheck, Zap, Crown, Clock, RefreshCw, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
 interface PlanData {
@@ -30,6 +30,16 @@ interface PlanData {
   features: string[];
   price: number;
   durationDays: number;
+}
+
+interface PaymentHistory {
+  id: string;
+  orderId: string;
+  plan: string;
+  grossAmount: number;
+  transactionStatus: string;
+  snapToken: string | null;
+  createdAt: string;
 }
 
 // Maps feature IDs to user-friendly labels
@@ -125,12 +135,18 @@ export default function BillingPage() {
   const [paymentSuccess, setPaymentSuccess] = useState<string | null>(null);
   const [plans, setPlans] = useState<PlanData[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
+  const [payments, setPayments] = useState<PaymentHistory[]>([]);
+  const [resumingId, setResumingId] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<PlanData[]>('/payments/plans')
       .then(data => setPlans(data))
       .catch(() => setPlans([]))
       .finally(() => setLoadingPlans(false));
+    // Fetch payment history
+    apiFetch<PaymentHistory[]>('/payments/history')
+      .then(data => setPayments(data))
+      .catch(() => setPayments([]));
   }, []);
 
   const handleUpgrade = async (planName: string) => {
@@ -178,14 +194,21 @@ export default function BillingPage() {
               );
               showToast('Akun berhasil ditingkatkan!', 'success');
               await refetchProfile();
+              apiFetch<PaymentHistory[]>('/payments/history').then(setPayments).catch(() => {});
             } catch {
               showToast('Gagal memverifikasi status pembayaran.', 'warning');
             }
             setTimeout(() => window.location.reload(), 2000);
           },
-          onPending: () => showToast('Pembayaran tertunda. Silakan selesaikan.', 'warning'),
+          onPending: () => {
+            showToast('Pembayaran tertunda. Cek riwayat untuk melanjutkan.', 'warning');
+            apiFetch<PaymentHistory[]>('/payments/history').then(setPayments).catch(() => {});
+          },
           onError: () => { setPaymentError('Pembayaran gagal. Silakan coba lagi.'); showToast('Pembayaran gagal.', 'error'); },
-          onClose: () => {},
+          onClose: () => {
+            // User closed popup — refresh history so pending payment shows up
+            apiFetch<PaymentHistory[]>('/payments/history').then(setPayments).catch(() => {});
+          },
         });
       } else {
         throw new Error('Midtrans Snap SDK tidak termuat. Muat ulang halaman.');
@@ -198,6 +221,69 @@ export default function BillingPage() {
   };
 
   const currentPlanName = user?.pricingPlan?.name || user?.plan || 'FREE';
+  const hasPendingPayment = payments.some(p => p.transactionStatus === 'pending');
+
+  const handleResume = async (orderId: string) => {
+    setResumingId(orderId);
+    setPaymentError(null);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/payments/resume`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ orderId }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Gagal melanjutkan pembayaran.' }));
+        throw new Error(errorData.message || 'Gagal melanjutkan pembayaran.');
+      }
+
+      const data = await response.json();
+      if (!(window as any).snap) throw new Error('Midtrans Snap SDK tidak termuat. Muat ulang halaman.');
+
+      (window as any).snap.pay(data.snapToken, {
+        onSuccess: async (result: any) => {
+          setPaymentSuccess('Pembayaran berhasil! Memverifikasi...');
+          showToast('Pembayaran berhasil!', 'success');
+          try {
+            await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/payments/verify`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+                body: JSON.stringify({ orderId: result.order_id || data.orderId }),
+              }
+            );
+            showToast('Akun berhasil ditingkatkan!', 'success');
+            await refetchProfile();
+            apiFetch<PaymentHistory[]>('/payments/history').then(setPayments).catch(() => {});
+          } catch {
+            showToast('Gagal memverifikasi.', 'warning');
+          }
+          setTimeout(() => window.location.reload(), 2000);
+        },
+        onPending: () => {
+          showToast('Pembayaran tertunda. Cek riwayat untuk melanjutkan.', 'warning');
+          apiFetch<PaymentHistory[]>('/payments/history').then(setPayments).catch(() => {});
+        },
+        onError: () => { setPaymentError('Pembayaran gagal.'); showToast('Pembayaran gagal.', 'error'); },
+        onClose: () => {
+          apiFetch<PaymentHistory[]>('/payments/history').then(setPayments).catch(() => {});
+        },
+      });
+    } catch (err) {
+      setPaymentError(err instanceof Error ? err.message : 'Terjadi kesalahan.');
+      showToast(err instanceof Error ? err.message : 'Gagal melanjutkan pembayaran.', 'error');
+    } finally {
+      setResumingId(null);
+    }
+  };
 
   return (
     <AuthGuard>
@@ -221,6 +307,38 @@ export default function BillingPage() {
                 Tingkatkan kuota AI, upload, dan akses fitur premium.
               </p>
             </div>
+
+            {/* Current plan info with expiry */}
+            {currentPlanName !== 'FREE' && (user as any)?.planExpiresAt && (
+              <Card style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(var(--color-primary) / 0.05)', border: '1px solid rgba(var(--color-primary) / 0.15)' }}>
+                <Crown size={20} style={{ color: 'rgb(var(--color-primary))', flexShrink: 0 }} />
+                <div>
+                  <span style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>
+                    Paket {currentPlanName} aktif
+                  </span>
+                  <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginLeft: 8 }}>
+                    Berlaku hingga {new Date((user as any).planExpiresAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                </div>
+              </Card>
+            )}
+
+            {/* Data retention warning — shown when plan expired but data still retained */}
+            {currentPlanName === 'FREE' && (user as any)?.dataRetentionDeadline && (
+              <Card style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                <AlertCircle size={20} style={{ color: '#ef4444', flexShrink: 0 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontSize: 'var(--font-sm)', fontWeight: 600, color: '#ef4444' }}>
+                    Data premium kamu akan dihapus!
+                  </span>
+                  <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>
+                    Langganan telah berakhir. Data fitur premium (briefing AI, food history, receipt scan, dll) masih tersimpan hingga{' '}
+                    <strong>{new Date((user as any).dataRetentionDeadline).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
+                    {' '}Upgrade kembali sebelum tanggal tersebut agar data tidak hilang.
+                  </span>
+                </div>
+              </Card>
+            )}
 
             {paymentError && <div style={{ marginBottom: '1.5rem' }}><Alert type="error" message={paymentError} /></div>}
             {paymentSuccess && <div style={{ marginBottom: '1.5rem' }}><Alert type="success" message={paymentSuccess} /></div>}
@@ -319,6 +437,14 @@ export default function BillingPage() {
                           <Button variant="secondary" disabled style={{ width: '100%', justifyContent: 'center' }}>
                             Gratis
                           </Button>
+                        ) : plan.price < (plans.find(p => p.name === currentPlanName)?.price || 0) ? (
+                          <Button variant="secondary" disabled style={{ width: '100%', justifyContent: 'center', opacity: 0.5 }}>
+                            Paket lebih rendah
+                          </Button>
+                        ) : hasPendingPayment ? (
+                          <Button variant="secondary" disabled style={{ width: '100%', justifyContent: 'center', opacity: 0.7 }}>
+                            Ada pembayaran tertunda ↓
+                          </Button>
                         ) : (
                           <Button
                             onClick={() => handleUpgrade(plan.name)}
@@ -338,6 +464,79 @@ export default function BillingPage() {
                   );
                 })}
               </div>
+            )}
+
+            {/* Payment History */}
+            {payments.length > 0 && (
+              <Card style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 700, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Clock size={16} /> Riwayat Pembayaran
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {payments.map(payment => {
+                    const isPending = payment.transactionStatus === 'pending';
+                    const isSettlement = payment.transactionStatus === 'settlement';
+                    const isExpired = payment.transactionStatus === 'expire';
+                    const isCancelled = payment.transactionStatus === 'cancel';
+
+                    const statusConfig = isSettlement
+                      ? { label: 'Berhasil', color: '#22c55e', bg: 'rgba(34,197,94,0.1)', icon: <CheckCircle size={14} /> }
+                      : isPending
+                      ? { label: 'Menunggu', color: '#eab308', bg: 'rgba(234,179,8,0.1)', icon: <AlertCircle size={14} /> }
+                      : isExpired
+                      ? { label: 'Kadaluarsa', color: '#6b7280', bg: 'rgba(107,114,128,0.1)', icon: <XCircle size={14} /> }
+                      : isCancelled
+                      ? { label: 'Dibatalkan', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: <XCircle size={14} /> }
+                      : { label: payment.transactionStatus, color: '#6b7280', bg: 'rgba(107,114,128,0.1)', icon: <AlertCircle size={14} /> };
+
+                    return (
+                      <div
+                        key={payment.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '0.75rem 1rem', borderRadius: 8,
+                          border: '1px solid var(--border-default)', background: 'var(--input-bg)',
+                          flexWrap: 'wrap', gap: '0.5rem',
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>
+                            {payment.plan} — {formatPrice(payment.grossAmount)}
+                          </span>
+                          <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>
+                            {new Date(payment.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span style={{
+                            display: 'flex', alignItems: 'center', gap: 4,
+                            fontSize: 'var(--font-xs)', fontWeight: 600,
+                            padding: '0.2rem 0.5rem', borderRadius: 4,
+                            background: statusConfig.bg, color: statusConfig.color,
+                          }}>
+                            {statusConfig.icon} {statusConfig.label}
+                          </span>
+                          {isPending && payment.snapToken && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleResume(payment.orderId)}
+                              isLoading={resumingId === payment.orderId}
+                              leftIcon={<RefreshCw size={12} />}
+                              style={{
+                                fontSize: 'var(--font-xs)',
+                                background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',
+                                color: 'rgb(var(--bg-base))', border: 'none',
+                              }}
+                            >
+                              Lanjutkan
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
             )}
 
             {/* Security banner */}

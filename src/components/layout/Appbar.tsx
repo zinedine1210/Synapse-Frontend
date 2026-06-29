@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, CheckCheck, Search } from 'lucide-react';
+import { Bell, CheckCheck, Search, User, BellRing, LogOut } from 'lucide-react';
 import { Notification } from '@/services/notificationService';
 import { useAuth } from '@/lib/AuthContext';
 import { useNotifications } from '@/lib/NotificationContext';
@@ -24,24 +24,29 @@ export function Appbar({
   unreadCount: initialUnread = 0,
   sidebarCollapsed = false,
 }: AppbarProps) {
-  const { user: authUser } = useAuth();
+  const { user: authUser, signOut } = useAuth();
   const router = useRouter();
   const resolvedUserName = userName || authUser?.fullName || 'Mahasiswa';
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [showPanel, setShowPanel] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   // Close panel on outside click
   useEffect(() => {
-    if (!showPanel) return;
+    if (!showPanel && !showProfileMenu) return;
     const handler = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+      if (showPanel && panelRef.current && !panelRef.current.contains(e.target as Node)) {
         setShowPanel(false);
+      }
+      if (showProfileMenu && profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [showPanel]);
+  }, [showPanel, showProfileMenu]);
 
   const handleNotifClick = (notif: Notification) => {
     if (!notif.isRead) markAsRead(notif.id);
@@ -244,22 +249,90 @@ export function Appbar({
           )}
         </div>
 
-        <div
-          className="appbar-user-pill"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '0.3rem 0.65rem 0.3rem 0.3rem',
-            background: 'var(--input-bg)',
-            border: '1px solid var(--border-default)',
-            borderRadius: 'var(--radius-sm)',
-          }}
-        >
-          <UserAvatar name={resolvedUserName} avatarUrl={authUser?.avatarUrl} size={26} style={{ borderRadius: 'var(--radius-sm)' }} />
-          <span className="appbar-user-name" style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))' }}>
-            {resolvedUserName}
-          </span>
+        <div ref={profileRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowProfileMenu((p) => !p)}
+            className="appbar-user-pill"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.3rem 0.65rem 0.3rem 0.3rem',
+              background: showProfileMenu ? 'rgba(var(--color-primary) / 0.06)' : 'var(--input-bg)',
+              border: `1px solid ${showProfileMenu ? 'rgb(var(--color-primary))' : 'var(--border-default)'}`,
+              borderRadius: 'var(--radius-sm)',
+              cursor: 'pointer',
+              transition: 'var(--transition-fast)',
+              fontFamily: 'inherit',
+            }}
+          >
+            <UserAvatar name={resolvedUserName} avatarUrl={authUser?.avatarUrl} size={26} style={{ borderRadius: 'var(--radius-sm)' }} />
+            <span className="appbar-user-name" style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'rgb(var(--text-primary))', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {resolvedUserName.length > 10 ? resolvedUserName.slice(0, 10) + '…' : resolvedUserName}
+            </span>
+          </button>
+
+          {/* Profile Dropdown */}
+          {showProfileMenu && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: '0.5rem',
+              width: 200,
+              background: 'var(--modal-bg)',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-md)',
+              boxShadow: 'var(--shadow-lg)',
+              zIndex: 50,
+              overflow: 'hidden',
+              padding: '0.35rem',
+            }}>
+              <button
+                onClick={() => { setShowProfileMenu(false); router.push('/settings'); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%',
+                  padding: '0.5rem 0.65rem', background: 'none', border: 'none',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--color-primary) / 0.06)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+              >
+                <User size={14} /> Profil Saya
+              </button>
+              <button
+                onClick={() => { setShowProfileMenu(false); router.push('/settings?tab=notifications'); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%',
+                  padding: '0.5rem 0.65rem', background: 'none', border: 'none',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--color-primary) / 0.06)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+              >
+                <BellRing size={14} /> Notifikasi
+              </button>
+              <div style={{ height: 1, background: 'var(--border-default)', margin: '0.3rem 0' }} />
+              <button
+                onClick={async () => { setShowProfileMenu(false); await signOut(); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%',
+                  padding: '0.5rem 0.65rem', background: 'none', border: 'none',
+                  borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontFamily: 'inherit',
+                  fontSize: 'var(--font-sm)', color: 'rgb(var(--color-error))',
+                  transition: 'background 0.1s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--color-error) / 0.06)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+              >
+                <LogOut size={14} /> Logout
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

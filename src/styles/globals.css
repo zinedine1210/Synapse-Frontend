@@ -1772,6 +1772,18 @@ body.hide-bottom-nav .quick-action-fab {
     overflow: hidden;
     width: 100%;
     max-width: 100%;
+    height: 100% !important;
+  }
+
+  /* When forum chat is showing, remove app-main padding so container fills screen */
+  body.hide-bottom-nav .app-main {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+  body.hide-bottom-nav .class-feature-content {
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
   }
 
   /* Sidebar fills full width on mobile — JS controls visibility */
@@ -1817,9 +1829,13 @@ body.hide-bottom-nav .quick-action-fab {
 
   /* ── Class page — prevent overflow ── */
   .class-page-container {
-    height: 100dvh !important;
+    height: calc(100dvh - var(--appbar-height) - 12px - 60px - env(safe-area-inset-bottom, 0px)) !important;
     max-width: 100vw !important;
-    overflow-x: hidden !important;
+    overflow: hidden !important;
+  }
+  /* When in chat mode, bottom nav is hidden so reclaim that space */
+  body.hide-bottom-nav .class-page-container {
+    height: 100dvh !important;
   }
   .class-feature-content {
     overflow-x: hidden !important;
@@ -1979,7 +1995,7 @@ body.hide-bottom-nav .quick-action-fab {
   }
   .class-page-container {
     max-width: 100vw !important;
-    overflow-x: hidden !important;
+    overflow: hidden !important;
   }
   .class-feature-content {
     overflow-x: hidden !important;
@@ -1988,6 +2004,9 @@ body.hide-bottom-nav .quick-action-fab {
     padding: 0.75rem !important;
     overflow-x: hidden !important;
     word-break: break-word !important;
+  }
+  .class-feature-content > .forum-container {
+    padding: 0 !important;
   }
 
   /* ── Forum chat bubbles ── */

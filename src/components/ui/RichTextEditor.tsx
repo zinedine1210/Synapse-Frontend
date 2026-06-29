@@ -6,10 +6,12 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
 import Link from '@tiptap/extension-link';
+import Image from '@tiptap/extension-image';
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   Code, Heading1, Heading2, List, ListOrdered,
   Quote, CodeSquare, Undo2, Redo2, Link as LinkIcon, Minus,
+  ImageIcon,
 } from 'lucide-react';
 
 interface RichTextEditorProps {
@@ -19,6 +21,8 @@ interface RichTextEditorProps {
   readOnly?: boolean;
   minHeight?: number;
   autoFocus?: boolean;
+  /** Callback for image upload. Return the URL of the uploaded image. */
+  onImageUpload?: (file: File) => Promise<string>;
 }
 
 const ToolbarButton = ({ onClick, active, disabled, children, title }: {
@@ -49,7 +53,9 @@ const ToolbarButton = ({ onClick, active, disabled, children, title }: {
 
 const Divider = () => <div style={{ width: 1, height: 18, background: 'var(--border-default)', margin: '0 2px', flexShrink: 0 }} />;
 
-export function RichTextEditor({ content, onChange, placeholder, readOnly, minHeight = 200, autoFocus }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange, placeholder, readOnly, minHeight = 200, autoFocus, onImageUpload }: RichTextEditorProps) {
+  const imageInputRef = React.useRef<HTMLInputElement>(null);
+  const [isUploadingImage, setIsUploadingImage] = React.useState(false);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -59,6 +65,7 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly, minHe
       Underline,
       Placeholder.configure({ placeholder: placeholder || 'Tulis sesuatu...' }),
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'rte-link' } }),
+      ...(onImageUpload ? [Image.configure({ inline: false, allowBase64: false })] : []),
     ],
     content,
     editable: !readOnly,
@@ -92,6 +99,21 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly, minHe
     const url = window.prompt('URL:');
     if (url) {
       editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onImageUpload) return;
+    if (file.size > 10 * 1024 * 1024) return;
+    setIsUploadingImage(true);
+    try {
+      const url = await onImageUpload(file);
+      editor.chain().focus().setImage({ src: url }).run();
+    } catch { /* handled by caller */ }
+    finally {
+      setIsUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
     }
   };
 
@@ -159,6 +181,14 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly, minHe
           <ToolbarButton onClick={addLink} active={editor.isActive('link')} title="Add Link">
             <LinkIcon size={14} />
           </ToolbarButton>
+          {onImageUpload && (
+            <>
+              <input ref={imageInputRef} type="file" accept="image/*" onChange={handleImageUpload} style={{ display: 'none' }} />
+              <ToolbarButton onClick={() => imageInputRef.current?.click()} disabled={isUploadingImage} title="Sisipkan Gambar">
+                <ImageIcon size={14} />
+              </ToolbarButton>
+            </>
+          )}
 
           <div style={{ flex: 1 }} />
 
@@ -211,6 +241,7 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly, minHe
           margin: 0.75em 0;
         }
         .rte-content a { color: rgb(var(--color-primary)); text-decoration: underline; }
+        .rte-content img { max-width: 100%; height: auto; border-radius: 6px; margin: 0.5em 0; }
         .rte-content strong { font-weight: 700; }
         .rte-content em { font-style: italic; }
         .rte-content u { text-decoration: underline; }

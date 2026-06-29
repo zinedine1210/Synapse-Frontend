@@ -413,7 +413,7 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
               <Loader2 className="animate-spin" size={32} style={{ color: 'rgb(var(--color-primary))' }} />
             </div>
           ) : (
-            <div className="class-page-container" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxWidth: '100vw', overflowX: 'hidden' }}>
+            <div className="class-page-container" style={{ display: 'flex', flexDirection: 'column', height: '100dvh', maxWidth: '100vw', overflow: 'hidden' }}>
               {/* Class header bar */}
               <div className="class-header-bar" style={{
                 padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--border-default)',

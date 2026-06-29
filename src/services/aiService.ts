@@ -18,6 +18,10 @@ export const aiService = {
   deleteMaterial: (materialId: string) =>
     apiFetch<{ message: string }>(`/materials/${materialId}`, { method: 'DELETE' }),
 
+  /** Retry AI processing untuk material yang gagal */
+  retryMaterial: (materialId: string) =>
+    apiFetch<{ materialId: string; status: string }>(`/materials/${materialId}/retry`, { method: 'POST' }),
+
   /** Generate soal kuis dari sesi yang dipilih */
   generateQuiz: (sessionIds: string[], count?: number) =>
     apiFetch<any>('/quizzes/generate', {
@@ -31,6 +35,10 @@ export const aiService = {
       method: 'POST',
       body: JSON.stringify({ quizId, score, answers }),
     }),
+
+  /** Get quiz attempts for a session (history + leaderboard) */
+  getQuizAttempts: (sessionId: string) =>
+    apiFetch<any[]>(`/quizzes/attempts/${sessionId}`),
 
   /** Upload gambar jadwal kuliah untuk diurai oleh AI Gemini */
   parseSchedule: (file: File) => {

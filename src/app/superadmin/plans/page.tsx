@@ -20,6 +20,7 @@ interface PricingPlan {
   aiRequestLimit: number;
   aiBriefingLimit: number;
   aiWeeklyRoastLimit: number;
+  aiFoodLimit: number;
   features: string[];
   price: number;
   durationDays: number;
@@ -156,6 +157,7 @@ export default function SuperadminPlansPage() {
   const [planAiLimit, setPlanAiLimit] = useState(10);
   const [planBriefingLimit, setPlanBriefingLimit] = useState(1);
   const [planWeeklyRoastLimit, setPlanWeeklyRoastLimit] = useState(1);
+  const [planFoodLimit, setPlanFoodLimit] = useState(5);
   const [planDurationDays, setPlanDurationDays] = useState(0);
   const [planFeatures, setPlanFeatures] = useState<string[]>(['class', 'pdf_export']);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
@@ -182,6 +184,7 @@ export default function SuperadminPlansPage() {
       setPlanAiLimit(plan.aiRequestLimit);
       setPlanBriefingLimit(plan.aiBriefingLimit ?? 1);
       setPlanWeeklyRoastLimit(plan.aiWeeklyRoastLimit ?? 1);
+      setPlanFoodLimit(plan.aiFoodLimit ?? 5);
       setPlanDurationDays(plan.durationDays || 0);
       setPlanFeatures(plan.features);
     } else {
@@ -193,6 +196,7 @@ export default function SuperadminPlansPage() {
       setPlanAiLimit(10);
       setPlanBriefingLimit(1);
       setPlanWeeklyRoastLimit(1);
+      setPlanFoodLimit(5);
       setPlanDurationDays(0);
       setPlanFeatures(['class', 'pdf_export']);
     }
@@ -216,6 +220,7 @@ export default function SuperadminPlansPage() {
       aiRequestLimit: Number(planAiLimit),
       aiBriefingLimit: Number(planBriefingLimit),
       aiWeeklyRoastLimit: Number(planWeeklyRoastLimit),
+      aiFoodLimit: Number(planFoodLimit),
       durationDays: Number(planDurationDays),
       features: planFeatures,
     };
@@ -358,9 +363,10 @@ export default function SuperadminPlansPage() {
           <div>AI: <b>{row.aiRequestLimit}</b> req</div>
           <div>Briefing: <b>{row.aiBriefingLimit ?? 1}</b>/hari</div>
           <div>Roast: <b>{row.aiWeeklyRoastLimit ?? 1}</b>/minggu</div>
+          <div>Food AI: <b>{row.aiFoodLimit ?? 5}</b>/hari</div>
         </div>
       ),
-      exportValue: (row) => `Upload:${row.maxUploadPerMonth} File:${row.maxFileSizeMb}MB AI:${row.aiRequestLimit} Briefing:${row.aiBriefingLimit}/day Roast:${row.aiWeeklyRoastLimit}/week`,
+      exportValue: (row) => `Upload:${row.maxUploadPerMonth} File:${row.maxFileSizeMb}MB AI:${row.aiRequestLimit} Briefing:${row.aiBriefingLimit}/day Roast:${row.aiWeeklyRoastLimit}/week Food:${row.aiFoodLimit}/day`,
     },
     {
       key: 'features',
@@ -537,9 +543,10 @@ export default function SuperadminPlansPage() {
               <NumberInput label="Kuota AI / Bulan" value={String(planAiLimit)} onChange={v => setPlanAiLimit(Number(v))} min={0} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
               <NumberInput label="Briefing AI / Hari" value={String(planBriefingLimit)} onChange={v => setPlanBriefingLimit(Number(v))} min={0} />
               <NumberInput label="Weekly Roast / Minggu" value={String(planWeeklyRoastLimit)} onChange={v => setPlanWeeklyRoastLimit(Number(v))} min={0} />
+              <NumberInput label="Food AI / Hari" value={String(planFoodLimit)} onChange={v => setPlanFoodLimit(Number(v))} min={0} />
             </div>
             <p style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))', marginTop: '-0.5rem' }}>
               Nilai 0 = tak terbatas. Batasan AI berlaku per periode (hari/minggu).

@@ -5,6 +5,7 @@ import { taskService, Task, TaskSubmission } from '@/services/taskService';
 import { classService } from '@/services/classService';
 import { groupService, TaskGroupFull } from '@/services/groupService';
 import { aiService } from '@/services/aiService';
+import { forumService } from '@/services/forumService';
 import { Card, Button, Modal, useToast, useConfirm, MarkdownRenderer, HtmlRenderer, TextInput, SelectOption, DateTimePicker, TextArea } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
 import dynamic from 'next/dynamic';
@@ -55,8 +56,9 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
   const [taskImage, setTaskImage] = useState<File | null>(null);
   const [taskImagePreview, setTaskImagePreview] = useState<string | null>(null);
   const taskImageRef = useRef<HTMLInputElement>(null);
-  const [descMode, setDescMode] = useState<'manual' | 'ai-ocr' | 'image-only'>('manual');
+  const [descMode, setDescMode] = useState<'manual' | 'ai-ocr'>('manual');
   const [isReadingImage, setIsReadingImage] = useState(false);
+  const [newDescHtml, setNewDescHtml] = useState('');
 
   // Lists for assignment
   const [members, setMembers] = useState<any[]>([]);
@@ -117,7 +119,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
-    if ((descMode === 'ai-ocr' || descMode === 'image-only') && !taskImage) {
+    if (descMode === 'ai-ocr' && !taskImage) {
       showToast('Silakan upload gambar soal terlebih dahulu.', 'error');
       return;
     }
@@ -130,20 +132,22 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
         imageBase64 = Buffer.from(buffer).toString('base64');
         imageMimeType = taskImage.type;
       }
+      const descriptionValue = descMode === 'manual' ? (newDescHtml.replace(/<[^>]+>/g, '').trim() ? newDescHtml : undefined) : (newDesc.trim() || undefined);
       await taskService.createTask(classId, {
         title: newTitle.trim(),
-        description: descMode === 'image-only' ? undefined : (newDesc.trim() || undefined),
+        description: descriptionValue,
         deadline: newDeadline || undefined,
         assignType,
         assignedUserIds: assignType === 'INDIVIDUAL' ? assignedUserIds : undefined,
         taskGroupId: assignType === 'GROUP' ? taskGroupId : undefined,
         sessionId: sessionId || undefined,
-        imageBase64: (descMode === 'ai-ocr' || descMode === 'image-only') ? imageBase64 : undefined,
-        imageMimeType: (descMode === 'ai-ocr' || descMode === 'image-only') ? imageMimeType : undefined,
+        imageBase64: imageBase64,
+        imageMimeType: imageMimeType,
       });
       setShowNewTask(false);
       setNewTitle('');
       setNewDesc('');
+      setNewDescHtml('');
       setNewDeadline('');
       setAssignType('ALL');
       setAssignedUserIds([]);
@@ -441,7 +445,11 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
                selectedTask.assignType === 'GROUP' ? '👥 Kelompok' : '🌐 Semua'}
             </span>
           </div>
-          {selectedTask.description && <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', marginTop: '0.5rem', margin: '0.5rem 0 0 0' }}>{selectedTask.description}</p>}
+          {selectedTask.description && (
+            selectedTask.description.startsWith('<') ?
+              <div style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', marginTop: '0.5rem' }}><HtmlRenderer content={selectedTask.description} compact /></div> :
+              <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', marginTop: '0.5rem', margin: '0.5rem 0 0 0' }}>{selectedTask.description}</p>
+          )}
           {selectedTask.descriptionImageUrl && (
             <img src={selectedTask.descriptionImageUrl} alt="Foto Soal" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: 'var(--radius-md)', marginTop: '0.5rem', border: '1px solid var(--border-default)' }} />
           )}
@@ -718,7 +726,11 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
                        task.assignType === 'GROUP' ? 'Kelompok' : 'Semua'}
                     </span>
                   </div>
-                  {task.description && <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-secondary))', marginTop: '0.35rem' }} className="line-clamp-2">{task.description}</p>}
+                  {task.description && (
+                    task.description.startsWith('<') ?
+                      <div style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-secondary))', marginTop: '0.35rem' }} className="line-clamp-2"><HtmlRenderer content={task.description} compact /></div> :
+                      <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-secondary))', marginTop: '0.35rem' }} className="line-clamp-2">{task.description}</p>
+                  )}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.65rem', marginTop: '1rem' }}>
                   <div style={{ display: 'flex', gap: '0.35rem', fontSize: '0.65rem' }}>
@@ -744,11 +756,10 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
               {([
                 { key: 'manual' as const, label: '✏️ Ketik Manual' },
                 ...(hasFeature('task_image_ocr') ? [{ key: 'ai-ocr' as const, label: '🤖 Upload + AI Baca' }] : []),
-                { key: 'image-only' as const, label: '🖼️ Upload Gambar Saja' },
               ]).map((m) => (
-                <button key={m.key} type="button" onClick={() => { setDescMode(m.key); setTaskImage(null); setTaskImagePreview(null); setNewDesc(''); if (taskImageRef.current) taskImageRef.current.value = ''; }}
+                <button key={m.key} type="button" onClick={() => { setDescMode(m.key); setTaskImage(null); setTaskImagePreview(null); setNewDesc(''); setNewDescHtml(''); if (taskImageRef.current) taskImageRef.current.value = ''; }}
                   style={{
-                    flex: 1, padding: '0.35rem 0.3rem', borderRadius: 'var(--radius-sm)', fontSize: '0.65rem', fontWeight: descMode === m.key ? 700 : 500,
+                    flex: 1, padding: '0.35rem 0.3rem', borderRadius: 'var(--radius-sm)', fontSize: 'var(--font-xs)', fontWeight: descMode === m.key ? 700 : 500,
                     border: descMode === m.key ? '1.5px solid rgb(var(--color-primary))' : '1px solid var(--border-default)',
                     background: descMode === m.key ? 'rgba(var(--color-primary) / 0.08)' : 'transparent',
                     color: descMode === m.key ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))',
@@ -759,9 +770,36 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
               ))}
             </div>
 
-            {/* Mode: Manual */}
+            {/* Mode: Manual — Rich text editor + optional image */}
             {descMode === 'manual' && (
-              <TextArea value={newDesc} onChange={setNewDesc} placeholder="Tulis instruksi pengerjaan tugas..." rows={3} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <RichTextEditor
+                  content={newDescHtml}
+                  onChange={setNewDescHtml}
+                  placeholder="Tulis instruksi pengerjaan tugas (bisa kombinasi teks & gambar)..."
+                  minHeight={150}
+                  onImageUpload={async (file) => {
+                    const res = await forumService.uploadFile(classId, file);
+                    return res.fileUrl;
+                  }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input ref={taskImageRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) { setTaskImage(file); const reader = new FileReader(); reader.onloadend = () => setTaskImagePreview(reader.result as string); reader.readAsDataURL(file); }
+                  }} />
+                  <Button type="button" variant="outline" size="sm" style={{ borderRadius: 'var(--radius-md)' }} onClick={() => taskImageRef.current?.click()}>
+                    <Camera className="w-4 h-4 mr-1" /> {taskImage ? 'Ganti Gambar' : 'Tambah Gambar'}
+                  </Button>
+                  {taskImage && <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>{taskImage.name}</span>}
+                </div>
+                {taskImagePreview && (
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <img src={taskImagePreview} alt="Preview" style={{ maxHeight: '120px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }} />
+                    <button type="button" onClick={() => { setTaskImage(null); setTaskImagePreview(null); if (taskImageRef.current) taskImageRef.current.value = ''; }} style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', fontSize: '12px' }}>✕</button>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Mode: AI OCR */}
@@ -790,32 +828,6 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
                   </div>
                 )}
                 <TextArea value={newDesc} onChange={setNewDesc} placeholder={isReadingImage ? 'AI sedang membaca gambar...' : 'Hasil AI akan muncul di sini, atau ketik manual...'} rows={3} />
-              </div>
-            )}
-
-            {/* Mode: Image only */}
-            {descMode === 'image-only' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <input ref={taskImageRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) { setTaskImage(file); const reader = new FileReader(); reader.onloadend = () => setTaskImagePreview(reader.result as string); reader.readAsDataURL(file); }
-                }} />
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <Button type="button" variant="outline" size="sm" style={{ borderRadius: 'var(--radius-md)' }} onClick={() => taskImageRef.current?.click()}>
-                    <Camera className="w-4 h-4 mr-1" /> Upload Gambar Soal
-                  </Button>
-                  {taskImage && <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>{taskImage.name}</span>}
-                </div>
-                {taskImagePreview ? (
-                  <div style={{ position: 'relative' }}>
-                    <img src={taskImagePreview} alt="Preview" style={{ maxHeight: '200px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }} />
-                    <button type="button" onClick={() => { setTaskImage(null); setTaskImagePreview(null); if (taskImageRef.current) taskImageRef.current.value = ''; }} style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,0.6)', color: 'white', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', fontSize: '12px' }}>✕</button>
-                  </div>
-                ) : (
-                  <div style={{ border: '2px dashed var(--border-default)', borderRadius: 'var(--radius-lg)', padding: '2rem', textAlign: 'center', cursor: 'pointer', color: 'rgb(var(--text-muted))', fontSize: 'var(--font-xs)' }} onClick={() => taskImageRef.current?.click()}>
-                    📷 Klik untuk upload gambar soal
-                  </div>
-                )}
               </div>
             )}
           </div>

@@ -7,7 +7,7 @@ import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, Alert, useToast } from '@/components/ui';
-import { Check, CreditCard, ShieldCheck, Zap, Crown, Clock, RefreshCw, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Check, CreditCard, ShieldCheck, Zap, Crown, Clock, RefreshCw, CheckCircle, XCircle, AlertCircle, ChevronDown, ChevronUp, Tag } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 
 interface PlanData {
@@ -136,18 +136,67 @@ export default function BillingPage() {
   const [plans, setPlans] = useState<PlanData[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [payments, setPayments] = useState<PaymentHistory[]>([]);
+  const [loadingPayments, setLoadingPayments] = useState(true);
   const [resumingId, setResumingId] = useState<string | null>(null);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [promoCode, setPromoCode] = useState('');
+  const [promoResult, setPromoResult] = useState<{ discountType: string; discountPercent: number; discountAmount: number; discountedPrice: number; originalPrice: number } | null>(null);
+  const [promoApplying, setPromoApplying] = useState(false);
+  const [expandedFeatures, setExpandedFeatures] = useState<Record<string, boolean>>({});
+  const [autoPromos, setAutoPromos] = useState<Record<string, { code: string; description: string | null; discountType: string; discountPercent: number; discountAmount: number; discountedPrice: number; originalPrice: number }>>({});
 
   useEffect(() => {
     apiFetch<PlanData[]>('/payments/plans')
-      .then(data => setPlans(data))
+      .then(data => {
+        setPlans(data);
+        // Fetch auto-promos for each non-free plan
+        data.filter(p => p.name !== 'FREE').forEach(plan => {
+          apiFetch<any[]>(`/payments/auto-promos?plan=${plan.name}`)
+            .then(promos => {
+              if (promos && promos.length > 0) {
+                // Use the best promo (lowest discountedPrice)
+                const best = promos.reduce((a, b) => a.discountedPrice < b.discountedPrice ? a : b);
+                setAutoPromos(prev => ({ ...prev, [plan.name]: best }));
+              }
+            })
+            .catch(() => {});
+        });
+      })
       .catch(() => setPlans([]))
       .finally(() => setLoadingPlans(false));
     // Fetch payment history
     apiFetch<PaymentHistory[]>('/payments/history')
       .then(data => setPayments(data))
-      .catch(() => setPayments([]));
+      .catch(() => setPayments([]))
+      .finally(() => setLoadingPayments(false));
   }, []);
+
+  const handleApplyPromo = async (planName: string) => {
+    if (!promoCode.trim()) return;
+    setPromoApplying(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1'}/payments/apply-promo`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+          body: JSON.stringify({ promoCode: promoCode.trim(), plan: planName }),
+        }
+      );
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || 'Kode promo tidak valid.'); }
+      const data = await res.json();
+      setPromoResult(data);
+      const discountLabel = data.discountType === 'fixed'
+        ? `Rp ${data.discountAmount.toLocaleString('id-ID')}`
+        : `${data.discountPercent}%`;
+      showToast(`Promo ${promoCode.toUpperCase()} berlaku! Diskon ${discountLabel}`, 'success');
+    } catch (err) {
+      setPromoResult(null);
+      showToast(err instanceof Error ? err.message : 'Kode promo tidak valid.', 'error');
+    } finally {
+      setPromoApplying(false);
+    }
+  };
 
   const handleUpgrade = async (planName: string) => {
     if (planName === 'FREE') return;
@@ -164,7 +213,7 @@ export default function BillingPage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session?.access_token}`,
           },
-          body: JSON.stringify({ plan: planName }),
+          body: JSON.stringify({ plan: planName, promoCode: promoCode.trim() || undefined }),
         }
       );
 
@@ -174,6 +223,16 @@ export default function BillingPage() {
       }
 
       const data = await response.json();
+
+      // If promo gives 100% discount — free upgrade, no payment needed
+      if (data.freeUpgrade) {
+        setPaymentSuccess('Promo 100% berhasil! Akun sudah diupgrade.');
+        showToast('Upgrade gratis berhasil!', 'success');
+        await refetchProfile();
+        setTimeout(() => window.location.reload(), 1500);
+        return;
+      }
+
       const snapToken = data.snapToken;
 
       if (!snapToken) throw new Error('Gagal mendapatkan token pembayaran dari server.');
@@ -193,12 +252,14 @@ export default function BillingPage() {
                 }
               );
               showToast('Akun berhasil ditingkatkan!', 'success');
+              // Small delay to ensure backend cache is fully invalidated
+              await new Promise(r => setTimeout(r, 500));
               await refetchProfile();
               apiFetch<PaymentHistory[]>('/payments/history').then(setPayments).catch(() => {});
             } catch {
               showToast('Gagal memverifikasi status pembayaran.', 'warning');
             }
-            setTimeout(() => window.location.reload(), 2000);
+            setTimeout(() => window.location.reload(), 1500);
           },
           onPending: () => {
             showToast('Pembayaran tertunda. Cek riwayat untuk melanjutkan.', 'warning');
@@ -221,7 +282,9 @@ export default function BillingPage() {
   };
 
   const currentPlanName = user?.pricingPlan?.name || user?.plan || 'FREE';
-  const hasPendingPayment = payments.some(p => p.transactionStatus === 'pending');
+  const pendingPlans = payments
+    .filter(p => p.transactionStatus === 'pending' && (Date.now() - new Date(p.createdAt).getTime()) <= 60 * 60 * 1000)
+    .map(p => p.plan);
 
   const handleResume = async (orderId: string) => {
     setResumingId(orderId);
@@ -261,12 +324,13 @@ export default function BillingPage() {
               }
             );
             showToast('Akun berhasil ditingkatkan!', 'success');
+            await new Promise(r => setTimeout(r, 500));
             await refetchProfile();
             apiFetch<PaymentHistory[]>('/payments/history').then(setPayments).catch(() => {});
           } catch {
             showToast('Gagal memverifikasi.', 'warning');
           }
-          setTimeout(() => window.location.reload(), 2000);
+          setTimeout(() => window.location.reload(), 1500);
         },
         onPending: () => {
           showToast('Pembayaran tertunda. Cek riwayat untuk melanjutkan.', 'warning');
@@ -278,8 +342,11 @@ export default function BillingPage() {
         },
       });
     } catch (err) {
-      setPaymentError(err instanceof Error ? err.message : 'Terjadi kesalahan.');
-      showToast(err instanceof Error ? err.message : 'Gagal melanjutkan pembayaran.', 'error');
+      const msg = err instanceof Error ? err.message : 'Terjadi kesalahan.';
+      setPaymentError(msg);
+      showToast(msg, 'error');
+      // Refresh history — payment may have expired server-side
+      apiFetch<PaymentHistory[]>('/payments/history').then(setPayments).catch(() => {});
     } finally {
       setResumingId(null);
     }
@@ -343,6 +410,60 @@ export default function BillingPage() {
             {paymentError && <div style={{ marginBottom: '1.5rem' }}><Alert type="error" message={paymentError} /></div>}
             {paymentSuccess && <div style={{ marginBottom: '1.5rem' }}><Alert type="success" message={paymentSuccess} /></div>}
 
+            {/* Billing cycle toggle */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'var(--input-bg)', borderRadius: 8, border: '1px solid var(--border-default)', overflow: 'hidden' }}>
+                <button
+                  onClick={() => setBillingCycle('monthly')}
+                  style={{
+                    padding: '0.5rem 1rem', fontSize: 'var(--font-sm)', fontWeight: 600, border: 'none', cursor: 'pointer',
+                    background: billingCycle === 'monthly' ? 'rgb(var(--color-primary))' : 'transparent',
+                    color: billingCycle === 'monthly' ? 'rgb(var(--bg-base))' : 'rgb(var(--text-secondary))',
+                  }}
+                >
+                  Bulanan
+                </button>
+                <button
+                  onClick={() => setBillingCycle('yearly')}
+                  style={{
+                    padding: '0.5rem 1rem', fontSize: 'var(--font-sm)', fontWeight: 600, border: 'none', cursor: 'pointer',
+                    background: billingCycle === 'yearly' ? 'rgb(var(--color-primary))' : 'transparent',
+                    color: billingCycle === 'yearly' ? 'rgb(var(--bg-base))' : 'rgb(var(--text-secondary))',
+                  }}
+                >
+                  Tahunan <span style={{ fontSize: 'var(--font-xs)', opacity: 0.8 }}>(-17%)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Promo Code Section */}
+            <Card style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem', border: '1px dashed var(--border-default)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <Tag size={16} style={{ color: 'rgb(var(--color-primary))' }} />
+                <span style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>Punya kode promo?</span>
+              </div>
+              <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginBottom: '0.75rem' }}>
+                Masukkan kode promo lalu klik &ldquo;Upgrade&rdquo; pada paket yang diinginkan. Diskon akan otomatis diterapkan saat pembayaran.
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  type="text" value={promoCode} placeholder="Contoh: MABA2026"
+                  onChange={e => { setPromoCode(e.target.value.toUpperCase()); setPromoResult(null); }}
+                  style={{ padding: '0.5rem 0.75rem', borderRadius: 6, border: '1px solid var(--border-default)', background: 'var(--input-bg)', fontSize: 'var(--font-sm)', flex: 1, maxWidth: 220, fontFamily: 'monospace', letterSpacing: 1 }}
+                />
+                {promoResult ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--font-xs)', color: '#22c55e', fontWeight: 600, padding: '0.25rem 0.5rem', borderRadius: 4, background: 'rgba(34,197,94,0.1)' }}>
+                    <CheckCircle size={12} />
+                    {promoResult.discountType === 'fixed'
+                      ? `-Rp ${promoResult.discountAmount.toLocaleString('id-ID')}`
+                      : `-${promoResult.discountPercent}%`}
+                  </span>
+                ) : promoCode.trim() ? (
+                  <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>Klik Upgrade untuk apply</span>
+                ) : null}
+              </div>
+            </Card>
+
             {/* Plans Grid */}
             {loadingPlans ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
@@ -350,7 +471,13 @@ export default function BillingPage() {
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', alignItems: 'stretch', marginBottom: '2rem' }}>
-                {plans.map((plan, idx) => {
+                {plans
+                  .filter(plan => {
+                    if (plan.price === 0) return true; // Always show FREE
+                    const isYearly = plan.name.includes('YEARLY');
+                    return billingCycle === 'yearly' ? isYearly : !isYearly;
+                  })
+                  .map((plan, idx) => {
                   const isActive = currentPlanName === plan.name;
                   const isFree = plan.price === 0;
                   const isHighlighted = !isFree && idx > 0; // Highlight paid plans
@@ -402,8 +529,24 @@ export default function BillingPage() {
                         </div>
 
                         {/* Price */}
-                        <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: '0.75rem' }}>
-                          <span style={{ fontSize: 'var(--font-xl)', fontWeight: 700 }}>{formatPrice(plan.price)}</span>
+                        <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.25rem' }}>
+                          {autoPromos[plan.name] && !isFree ? (
+                            <>
+                              <span style={{ fontSize: 'var(--font-sm)', textDecoration: 'line-through', color: 'rgb(var(--text-muted))' }}>
+                                {formatPrice(plan.price)}
+                              </span>
+                              <span style={{ fontSize: 'var(--font-xl)', fontWeight: 700, color: '#22c55e' }}>
+                                {formatPrice(autoPromos[plan.name].discountedPrice)}
+                              </span>
+                              <span style={{ fontSize: '0.6rem', fontWeight: 600, padding: '0.1rem 0.35rem', borderRadius: 4, background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
+                                {autoPromos[plan.name].discountType === 'fixed'
+                                  ? `-Rp ${autoPromos[plan.name].discountAmount.toLocaleString('id-ID')}`
+                                  : `-${autoPromos[plan.name].discountPercent}%`}
+                              </span>
+                            </>
+                          ) : (
+                            <span style={{ fontSize: 'var(--font-xl)', fontWeight: 700 }}>{formatPrice(plan.price)}</span>
+                          )}
                           <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginLeft: 4 }}>
                             / {formatDuration(plan.durationDays)}
                           </span>
@@ -416,15 +559,37 @@ export default function BillingPage() {
                           </p>
                         )}
 
-                        {/* Features */}
-                        <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
-                          {features.map((feat, i) => (
-                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))' }}>
-                              <Check size={14} style={{ color: isHighlighted ? 'rgb(var(--color-secondary))' : 'rgb(var(--color-primary))', flexShrink: 0 }} />
-                              <span>{feat}</span>
+                        {/* Features — collapsible */}
+                        {(() => {
+                          const PREVIEW_COUNT = 4;
+                          const isExpanded = expandedFeatures[plan.name] || false;
+                          const visibleFeatures = isExpanded ? features : features.slice(0, PREVIEW_COUNT);
+                          const hasMore = features.length > PREVIEW_COUNT;
+                          return (
+                            <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: '1rem' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+                                {visibleFeatures.map((feat, i) => (
+                                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))' }}>
+                                    <Check size={14} style={{ color: isHighlighted ? 'rgb(var(--color-secondary))' : 'rgb(var(--color-primary))', flexShrink: 0 }} />
+                                    <span>{feat}</span>
+                                  </div>
+                                ))}
+                              </div>
+                              {hasMore && (
+                                <button
+                                  onClick={() => setExpandedFeatures(prev => ({ ...prev, [plan.name]: !isExpanded }))}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: 4, marginTop: '0.5rem',
+                                    fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--color-primary))',
+                                    background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                                  }}
+                                >
+                                  {isExpanded ? <><ChevronUp size={14} /> Sembunyikan</> : <><ChevronDown size={14} /> +{features.length - PREVIEW_COUNT} fitur lainnya</>}
+                                </button>
+                              )}
                             </div>
-                          ))}
-                        </div>
+                          );
+                        })()}
                       </div>
 
                       {/* CTA */}
@@ -437,13 +602,17 @@ export default function BillingPage() {
                           <Button variant="secondary" disabled style={{ width: '100%', justifyContent: 'center' }}>
                             Gratis
                           </Button>
-                        ) : plan.price < (plans.find(p => p.name === currentPlanName)?.price || 0) ? (
+                        ) : plan.price <= (plans.find(p => p.name === currentPlanName)?.price || 0) ? (
                           <Button variant="secondary" disabled style={{ width: '100%', justifyContent: 'center', opacity: 0.5 }}>
                             Paket lebih rendah
                           </Button>
-                        ) : hasPendingPayment ? (
+                        ) : loadingPayments ? (
+                          <Button variant="secondary" disabled isLoading style={{ width: '100%', justifyContent: 'center' }}>
+                            Memuat...
+                          </Button>
+                        ) : pendingPlans.includes(plan.name) ? (
                           <Button variant="secondary" disabled style={{ width: '100%', justifyContent: 'center', opacity: 0.7 }}>
-                            Ada pembayaran tertunda ↓
+                            Menunggu pembayaran ↓
                           </Button>
                         ) : (
                           <Button
@@ -478,16 +647,21 @@ export default function BillingPage() {
                     const isSettlement = payment.transactionStatus === 'settlement';
                     const isExpired = payment.transactionStatus === 'expire';
                     const isCancelled = payment.transactionStatus === 'cancel';
+                    // Snap tokens expire — treat old pending as expired (>1 hour)
+                    const createdAge = Date.now() - new Date(payment.createdAt).getTime();
+                    const isStale = isPending && createdAge > 60 * 60 * 1000;
 
                     const statusConfig = isSettlement
                       ? { label: 'Berhasil', color: '#22c55e', bg: 'rgba(34,197,94,0.1)', icon: <CheckCircle size={14} /> }
-                      : isPending
+                      : isPending && !isStale
                       ? { label: 'Menunggu', color: '#eab308', bg: 'rgba(234,179,8,0.1)', icon: <AlertCircle size={14} /> }
-                      : isExpired
+                      : isExpired || isStale
                       ? { label: 'Kadaluarsa', color: '#6b7280', bg: 'rgba(107,114,128,0.1)', icon: <XCircle size={14} /> }
                       : isCancelled
                       ? { label: 'Dibatalkan', color: '#ef4444', bg: 'rgba(239,68,68,0.1)', icon: <XCircle size={14} /> }
                       : { label: payment.transactionStatus, color: '#6b7280', bg: 'rgba(107,114,128,0.1)', icon: <AlertCircle size={14} /> };
+
+                    const isInactive = isExpired || isCancelled || isStale;
 
                     return (
                       <div
@@ -495,7 +669,9 @@ export default function BillingPage() {
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           padding: '0.75rem 1rem', borderRadius: 8,
-                          border: '1px solid var(--border-default)', background: 'var(--input-bg)',
+                          border: `1px solid ${isInactive ? 'var(--border-default)' : 'var(--border-default)'}`,
+                          background: 'var(--input-bg)',
+                          opacity: isInactive ? 0.55 : 1,
                           flexWrap: 'wrap', gap: '0.5rem',
                         }}
                       >
@@ -516,7 +692,7 @@ export default function BillingPage() {
                           }}>
                             {statusConfig.icon} {statusConfig.label}
                           </span>
-                          {isPending && payment.snapToken && (
+                          {isPending && !isStale && payment.snapToken && (
                             <Button
                               size="sm"
                               onClick={() => handleResume(payment.orderId)}

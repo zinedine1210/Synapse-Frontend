@@ -1,4 +1,4 @@
-import { BookOpen, LayoutDashboard, GraduationCap, Settings, TrendingUp, Users, Layers, MessageSquare, School, Wallet, CheckSquare, HelpCircle, UtensilsCrossed, Receipt, Lightbulb, Gamepad2, Database, FileText } from 'lucide-react';
+import { BookOpen, LayoutDashboard, GraduationCap, Settings, TrendingUp, Users, Layers, MessageSquare, School, Wallet, CheckSquare, HelpCircle, UtensilsCrossed, Receipt, Lightbulb, Gamepad2, Database, FileText, DollarSign, Tag } from 'lucide-react';
 
 /**
  * 🗺️ Centralized Navigation Registry
@@ -165,6 +165,18 @@ export const superadminNavItems: NavItem[] = [
     label: 'Sistem',
     path: '/superadmin/system',
     icon: Database,
+    requiredRole: 'SUPERADMIN',
+  },
+  {
+    label: 'Revenue',
+    path: '/superadmin/revenue',
+    icon: DollarSign,
+    requiredRole: 'SUPERADMIN',
+  },
+  {
+    label: 'Promo',
+    path: '/superadmin/promos',
+    icon: Tag,
     requiredRole: 'SUPERADMIN',
   },
 ];

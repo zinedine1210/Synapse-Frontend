@@ -34,7 +34,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     try {
-      const data = await apiFetch<User>('/auth/me');
+      const headers: Record<string, string> = {};
+      if (force) headers['X-Force-Refresh'] = '1';
+      const data = await apiFetch<User>('/auth/me', { headers });
       cachedProfile = data;
       setUser(data);
     } catch (err) {

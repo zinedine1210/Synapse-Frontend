@@ -71,6 +71,7 @@ export function PertemuanTab({
   const [sessionModalValue, setSessionModalValue] = useState('');
   const [editingSessionForModal, setEditingSessionForModal] = useState<Session | null>(null);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const [settingsSessionName, setSettingsSessionName] = useState('');
 
   // Read mode (full-screen digitization view)
   const [readModeContent, setReadModeContent] = useState<string | null>(null);
@@ -370,19 +371,21 @@ export function PertemuanTab({
           <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 600 }}>{selectedSession.title}</h3>
 
           {/* Sub-tabs */}
-          <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-default)' }}>
+          <div style={{ display: 'flex', gap: '0.25rem', background: 'var(--input-bg)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-default)' }}>
             {([
               { id: 'materi' as const, label: 'Materi' },
-              ...(hasFeature('ai_digitalization') ? [{ id: 'digitalisasi' as const, label: 'Digitalisasi AI' }] : []),
+              ...(hasFeature('ai_digitalization') ? [{ id: 'digitalisasi' as const, label: 'Digitalisasi' }] : []),
               ...(hasQuizFeature ? [{ id: 'kuis' as const, label: 'Kuis' }] : []),
               { id: 'tugas' as const, label: 'Tugas' },
-              ...(canSession ? [{ id: 'pengaturan' as const, label: '⚙️' }] : []),
+              ...(canSession ? [{ id: 'pengaturan' as const, label: 'Settings' }] : []),
             ]).map((tab) => (
-              <button key={tab.id} onClick={() => setSubTab(tab.id)} style={{
-                padding: '0.35rem 0.1rem', background: 'none', border: 'none',
-                borderBottom: subTab === tab.id ? '2px solid rgb(var(--color-primary))' : '2px solid transparent',
+              <button key={tab.id} onClick={() => { setSubTab(tab.id); if (tab.id === 'pengaturan') setSettingsSessionName(selectedSession.title); }} style={{
+                padding: '0.4rem 0.65rem', background: subTab === tab.id ? 'rgb(var(--bg-primary))' : 'transparent',
+                border: subTab === tab.id ? '1px solid var(--border-default)' : '1px solid transparent',
+                borderRadius: 'var(--radius-sm)',
                 color: subTab === tab.id ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))',
-                cursor: 'pointer', fontWeight: subTab === tab.id ? 600 : 400, fontSize: 'var(--font-sm)', fontFamily: 'inherit',
+                cursor: 'pointer', fontWeight: subTab === tab.id ? 600 : 400, fontSize: 'var(--font-xs)', fontFamily: 'inherit',
+                transition: 'all 0.15s', boxShadow: subTab === tab.id ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
               }}>{tab.label}</button>
             ))}
           </div>
@@ -537,10 +540,30 @@ export function PertemuanTab({
                 <Card style={{ textAlign: 'center', padding: '1.5rem' }}>
                   <HelpCircle size={24} style={{ color: 'rgb(var(--color-primary))' }} />
                   <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', margin: '0.3rem 0 0.75rem' }}>{quizzes.length} soal pilihan ganda</p>
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
-                    <Button size="sm" onClick={() => setQuizStarted(true)} leftIcon={<Play size={12} />}>Mulai Kuis</Button>
-                    <Button size="sm" variant="outline" onClick={() => { resetQuiz(); setShowPtQuizSettings(true); }} leftIcon={<Settings size={12} />}>Atur Ulang</Button>
-                  </div>
+                  {showPtQuizSettings ? (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                        <div style={{ maxWidth: 160 }}>
+                          <SelectOption value={ptQuizCount} onChange={setPtQuizCount} options={[
+                            { value: '5', label: '5 soal' },
+                            { value: '10', label: '10 soal' },
+                            { value: '15', label: '15 soal' },
+                            { value: '20', label: '20 soal' },
+                            { value: '25', label: '25 soal' },
+                          ]} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+                        <Button size="sm" onClick={handleGenerateQuiz} disabled={isGeneratingQuiz || !readyMaterials.length} isLoading={isGeneratingQuiz} leftIcon={<Sparkles size={12} />}>Buat {ptQuizCount} Soal Baru</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setShowPtQuizSettings(false)}>Batal</Button>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+                      <Button size="sm" onClick={() => setQuizStarted(true)} leftIcon={<Play size={12} />}>Mulai Kuis</Button>
+                      <Button size="sm" variant="outline" onClick={() => setShowPtQuizSettings(true)} leftIcon={<Settings size={12} />}>Atur Ulang</Button>
+                    </div>
+                  )}
                 </Card>
               ) : quizSubmitted ? (
                 <Card style={{ textAlign: 'center', padding: '1.25rem' }}>
@@ -597,12 +620,12 @@ export function PertemuanTab({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                     <label style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-muted))' }}>Nama Pertemuan</label>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <TextInput value={sessionModalValue || selectedSession.title} onChange={setSessionModalValue} placeholder="Nama pertemuan" />
+                      <TextInput value={settingsSessionName} onChange={setSettingsSessionName} placeholder="Nama pertemuan" />
                       <Button size="sm" onClick={async () => {
-                        const val = (sessionModalValue || selectedSession.title).trim();
+                        const val = settingsSessionName.trim();
                         if (!val || !updateSession) return;
                         const res = await updateSession(selectedSession.id, val);
-                        if (res.success) { showToast('Nama pertemuan diperbarui.', 'success'); setSessionModalValue(''); }
+                        if (res.success) { showToast('Nama pertemuan diperbarui.', 'success'); }
                         else showToast(res.error || 'Gagal.', 'error');
                       }} style={{ borderRadius: 'var(--radius-md)', whiteSpace: 'nowrap' }}>
                         <Pencil size={12} /> Simpan

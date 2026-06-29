@@ -276,10 +276,36 @@ export function QuizTab({
           <HelpCircle size={28} style={{ color: 'rgb(var(--color-primary))', marginBottom: '0.5rem' }} />
           <h4 style={{ fontSize: 'var(--font-md)', fontWeight: 600, marginBottom: '0.25rem' }}>Latihan Kuis AI</h4>
           <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: '1rem' }}>{quizzes.length} soal pilihan ganda • {selectedSession.title}</p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
-            <Button size="sm" onClick={() => setQuizStarted(true)} leftIcon={<Play size={13} />}>Mulai Kuis</Button>
-            <Button size="sm" variant="outline" onClick={() => { resetQuiz(); setShowSettings(true); }} leftIcon={<Settings size={13} />}>Atur Ulang</Button>
-          </div>
+          {showSettings ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem' }}>
+                <div style={{ maxWidth: 200 }}>
+                  <SelectOption
+                    label="Jumlah Soal"
+                    value={questionCount}
+                    onChange={setQuestionCount}
+                    options={[
+                      { value: '5', label: '5 soal' },
+                      { value: '10', label: '10 soal' },
+                      { value: '15', label: '15 soal' },
+                      { value: '20', label: '20 soal' },
+                      { value: '25', label: '25 soal' },
+                      { value: '30', label: '30 soal' },
+                    ]}
+                  />
+                </div>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+                <Button size="sm" onClick={handleGenerateQuiz} disabled={isGeneratingQuiz} isLoading={isGeneratingQuiz} leftIcon={<Sparkles size={13} />}>Buat {questionCount} Soal Baru</Button>
+                <Button size="sm" variant="ghost" onClick={() => setShowSettings(false)}>Batal</Button>
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+              <Button size="sm" onClick={() => setQuizStarted(true)} leftIcon={<Play size={13} />}>Mulai Kuis</Button>
+              <Button size="sm" variant="outline" onClick={() => setShowSettings(true)} leftIcon={<Settings size={13} />}>Atur Ulang</Button>
+            </div>
+          )}
         </Card>
         {attemptsPanel}
       </div>

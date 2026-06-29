@@ -39,3 +39,11 @@ export function HtmlRenderer({ content, className, compact = false }: HtmlRender
     />
   );
 }
+
+/* HtmlRenderer img constraint — added via global style tag */
+if (typeof document !== 'undefined' && !document.getElementById('html-renderer-styles')) {
+  const style = document.createElement('style');
+  style.id = 'html-renderer-styles';
+  style.textContent = `.html-renderer img { max-width: 320px; width: 100%; height: auto; border-radius: 6px; margin: 0.4em 0; }`;
+  document.head.appendChild(style);
+}

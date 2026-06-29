@@ -211,9 +211,10 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
     if (!selectedTask || !editTitle.trim()) return;
     setIsSavingEdit(true);
     try {
+      const descriptionValue = editDesc.replace(/<[^>]+>/g, '').trim() ? editDesc : undefined;
       const updated = await taskService.updateTask(selectedTask.id, {
         title: editTitle.trim(),
-        description: editDesc.trim() || undefined,
+        description: descriptionValue,
         deadline: editDeadline || undefined,
         assignType: editAssignType,
         assignedUserIds: editAssignType === 'INDIVIDUAL' ? editAssignedUserIds : undefined,
@@ -232,15 +233,15 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    const ok = await confirm({ title: 'Hapus Tugas', message: 'Apakah Anda yakin ingin menghapus tugas ini?', confirmText: 'Hapus', variant: 'danger' });
-    if (!ok) return;
+    if (!window.confirm('Apakah Anda yakin ingin menghapus tugas ini? Semua data dan file terlampir akan ikut terhapus.')) return;
     try {
       await taskService.deleteTask(taskId);
       setSelectedTask(null);
+      onTaskSelect?.(null);
       fetchTasks();
       showToast('Tugas dihapus.', 'success');
-    } catch {
-      showToast('Gagal menghapus.', 'error');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Gagal menghapus.', 'error');
     }
   };
 
@@ -451,7 +452,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
               <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-secondary))', marginTop: '0.5rem', margin: '0.5rem 0 0 0' }}>{selectedTask.description}</p>
           )}
           {selectedTask.descriptionImageUrl && (
-            <img src={selectedTask.descriptionImageUrl} alt="Foto Soal" style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: 'var(--radius-md)', marginTop: '0.5rem', border: '1px solid var(--border-default)' }} />
+            <img src={selectedTask.descriptionImageUrl} alt="Foto Soal" style={{ maxWidth: '320px', width: '100%', maxHeight: '300px', objectFit: 'contain', borderRadius: 'var(--radius-md)', marginTop: '0.5rem', border: '1px solid var(--border-default)' }} />
           )}
           
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)', fontSize: '0.7rem' }}>
@@ -620,13 +621,19 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
         {/* EDIT TASK MODAL (inside selectedTask block) */}
         <Modal isOpen={showEditTask} onClose={() => setShowEditTask(false)} title="Edit Tugas" size="md">
           <form onSubmit={handleEditTask} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-              <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Judul Tugas</label>
-              <TextInput value={editTitle} onChange={v => setEditTitle(v)} required />
-            </div>
+            <TextInput label="Judul Tugas" value={editTitle} onChange={v => setEditTitle(v)} required />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
               <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Deskripsi Soal / Petunjuk</label>
-              <TextArea value={editDesc} onChange={setEditDesc} placeholder="Tulis instruksi pengerjaan tugas..." rows={3} />
+              <RichTextEditor
+                content={editDesc}
+                onChange={setEditDesc}
+                placeholder="Tulis instruksi pengerjaan tugas..."
+                minHeight={150}
+                onImageUpload={async (file) => {
+                  const res = await forumService.uploadFile(classId, file);
+                  return res.fileUrl;
+                }}
+              />
             </div>
             <div className="task-modal-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
@@ -726,11 +733,13 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
                        task.assignType === 'GROUP' ? 'Kelompok' : 'Semua'}
                     </span>
                   </div>
-                  {task.description && (
-                    task.description.startsWith('<') ?
-                      <div style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-secondary))', marginTop: '0.35rem' }} className="line-clamp-2"><HtmlRenderer content={task.description} compact /></div> :
-                      <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-secondary))', marginTop: '0.35rem' }} className="line-clamp-2">{task.description}</p>
-                  )}
+                  {task.description && (() => {
+                    const plainText = task.description.replace(/<[^>]+>/g, '').trim();
+                    if (!plainText) return null;
+                    return <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-secondary))', marginTop: '0.35rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {plainText.length > 50 ? plainText.slice(0, 50) + '...' : plainText}
+                    </p>;
+                  })()}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.65rem', marginTop: '1rem' }}>
                   <div style={{ display: 'flex', gap: '0.35rem', fontSize: '0.65rem' }}>
@@ -788,9 +797,9 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
                     const file = e.target.files?.[0];
                     if (file) { setTaskImage(file); const reader = new FileReader(); reader.onloadend = () => setTaskImagePreview(reader.result as string); reader.readAsDataURL(file); }
                   }} />
-                  <Button type="button" variant="outline" size="sm" style={{ borderRadius: 'var(--radius-md)' }} onClick={() => taskImageRef.current?.click()}>
+                  {/* <Button type="button" variant="outline" size="sm" style={{ borderRadius: 'var(--radius-md)' }} onClick={() => taskImageRef.current?.click()}>
                     <Camera className="w-4 h-4 mr-1" /> {taskImage ? 'Ganti Gambar' : 'Tambah Gambar'}
-                  </Button>
+                  </Button> */}
                   {taskImage && <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>{taskImage.name}</span>}
                 </div>
                 {taskImagePreview && (
@@ -889,7 +898,16 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             <label style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>Deskripsi Soal / Petunjuk</label>
-            <TextArea value={editDesc} onChange={setEditDesc} placeholder="Tulis instruksi pengerjaan tugas..." rows={3} />
+            <RichTextEditor
+              content={editDesc}
+              onChange={setEditDesc}
+              placeholder="Tulis instruksi pengerjaan tugas..."
+              minHeight={150}
+              onImageUpload={async (file) => {
+                const res = await forumService.uploadFile(classId, file);
+                return res.fileUrl;
+              }}
+            />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>

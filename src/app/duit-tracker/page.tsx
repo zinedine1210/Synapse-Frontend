@@ -23,15 +23,15 @@ import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Setti
 
 type PeriodPreset = 'today' | 'yesterday' | '2days' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'custom';
 
-const PERIOD_PRESETS: { key: PeriodPreset; label: string; emoji: string }[] = [
-  { key: 'today', label: 'Hari Ini', emoji: '📅' },
-  { key: 'yesterday', label: 'Kemarin', emoji: '⏪' },
-  { key: '2days', label: '2 Hari Lalu', emoji: '📆' },
-  { key: 'this_week', label: 'Minggu Ini', emoji: '🗓️' },
-  { key: 'last_week', label: 'Minggu Lalu', emoji: '📋' },
-  { key: 'this_month', label: 'Bulan Ini', emoji: '🗂️' },
-  { key: 'last_month', label: 'Bulan Lalu', emoji: '🗃️' },
-  { key: 'custom', label: 'Pilih Tanggal', emoji: '🔧' },
+const PERIOD_PRESETS: { key: PeriodPreset; label: string }[] = [
+  { key: 'today', label: 'Hari Ini' },
+  { key: 'yesterday', label: 'Kemarin' },
+  { key: '2days', label: '2 Hari Lalu' },
+  { key: 'this_week', label: 'Minggu Ini' },
+  { key: 'last_week', label: 'Minggu Lalu' },
+  { key: 'this_month', label: 'Bulan Ini' },
+  { key: 'last_month', label: 'Bulan Lalu' },
+  { key: 'custom', label: 'Pilih Tanggal' },
 ];
 
 function getPeriodRange(preset: PeriodPreset): { startDate: string; endDate: string } {
@@ -321,6 +321,9 @@ export default function DuitTrackerPage() {
   const [showBillModal, setShowBillModal] = useState(false);
   const [billForm, setBillForm] = useState({ name: '', amount: '', dueDay: '1', category: 'tagihan', notes: '' });
   const [billFilter, setBillFilter] = useState<'all' | 'active' | 'inactive'>('active');
+  const [billHistoryId, setBillHistoryId] = useState<string | null>(null);
+  const [billHistory, setBillHistory] = useState<{ id: string; amount: number; date: string }[]>([]);
+  const [billHistoryLoading, setBillHistoryLoading] = useState(false);
 
   const fetchBills = useCallback(async () => {
     if (!billsLoaded) setBillsLoading(true);
@@ -511,7 +514,8 @@ export default function DuitTrackerPage() {
 
   // Spending Insights computation
   const spendingInsights = useMemo(() => {
-    const expenses = transactions.filter(t => t.type === 'expense');
+    // Exclude tagihan from insights to avoid bill payments always dominating
+    const expenses = transactions.filter(t => t.type === 'expense' && t.category !== 'tagihan');
     if (expenses.length === 0) return null;
 
     const totalExpense = expenses.reduce((s, t) => s + t.amount, 0);
@@ -582,10 +586,19 @@ export default function DuitTrackerPage() {
   };
 
   const handleMarkWishlistPurchased = async (id: string) => {
+    const item = wishlist.find(w => w.id === id);
+    if (!item) return;
+    const confirmed = await confirm({
+      title: 'Tandai sudah dibeli?',
+      message: `"${item.name}" (${fmt(item.estimatedPrice)}) akan ditandai sebagai dibeli dan otomatis dicatat sebagai pengeluaran.`,
+    });
+    if (!confirmed) return;
     setWishlist(prev => prev.map(w => w.id === id ? { ...w, isPurchased: true, purchasedAt: new Date().toISOString() } as WishlistItem : w));
     try {
       await duitTrackerService.markWishlistPurchased(id);
-      showToast('Item sudah dibeli! ✅', 'success');
+      showToast('Item dibeli! Transaksi pengeluaran tercatat otomatis', 'success');
+      refreshTx();
+      refetchSummary();
     } catch (e: any) {
       fetchWishlist();
       showToast(e.message, 'error');
@@ -742,14 +755,24 @@ export default function DuitTrackerPage() {
   };
 
   const handleBulkCreate = async (items: ScannedItem[]) => {
+    let success = 0;
+    let failed = 0;
     for (const item of items) {
-      await duitTrackerService.createTransaction({
-        amount: item.amount,
-        type: item.type as any,
-        category: item.category,
-        label: item.label,
-      });
+      try {
+        await duitTrackerService.createTransaction({
+          amount: item.amount,
+          type: item.type as any,
+          category: item.category,
+          label: item.label,
+          inputMethod: 'receipt_scan',
+        });
+        success++;
+      } catch {
+        failed++;
+      }
     }
+    if (failed > 0) showToast(`${success} transaksi berhasil, ${failed} gagal`, 'error');
+    else showToast(`${success} transaksi dari struk berhasil disimpan`, 'success');
     fetchData();
   };
 
@@ -901,13 +924,13 @@ export default function DuitTrackerPage() {
 
               <div className="duit-tracker-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <div>
-                  <h1 style={{ fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}>💰 Duit Tracker</h1>
-                  <p style={{ fontSize: 13, color: 'var(--dt-text-secondary)', marginTop: 2 }}>Pantau cuan & bocornya duitmu, biar makin melek finansial 💪</p>
+                  <h1 style={{ fontSize: 24, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 8 }}><Wallet size={22} /> Duit Tracker</h1>
+                  <p style={{ fontSize: 13, color: 'var(--dt-text-secondary)', marginTop: 2 }}>Pantau cuan & bocornya duitmu</p>
                 </div>
                 <div className="duit-tracker-header-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                   {hasFeature('si_bawel') && (
                     <button onClick={() => setShowBawelSettings(true)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border-default)', cursor: 'pointer', padding: '8px 10px', borderRadius: 10, transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'inherit' }} className="hover-lift" title="Pengaturan Si Bawel">
-                      <Settings size={14} /> 🗣️
+                      <Settings size={14} />
                     </button>
                   )}
                   <Button onClick={() => setShowAiInput(true)} variant="secondary" size="sm"><Sparkles size={14} /> AI Input</Button>
@@ -926,14 +949,14 @@ export default function DuitTrackerPage() {
               {/* Tabs — pill style */}
               <div className="duit-tabs" style={{ display: 'flex', gap: 4, marginBottom: 24, padding: 4, borderRadius: 14, background: 'var(--input-bg)', width: 'fit-content' }}>
                 {[
-                  { key: 'transactions', label: '📝 Transaksi' },
-                  { key: 'summary', label: '📊 Ringkasan', feature: 'duit_tracker_summary' },
-                  { key: 'budget', label: '🎯 Budget', feature: 'duit_tracker_budget' },
-                  { key: 'trees', label: '🌳 Tabungan', feature: 'duit_tracker_saving_tree' },
-                  { key: 'bills', label: '💳 Tagihan', feature: 'duit_tracker_bills' },
-                  { key: 'debts', label: '🤝 Hutang', feature: 'duit_tracker_debts' },
-                  { key: 'wishlist', label: '🛒 Wishlist', feature: 'duit_tracker_wishlist' },
-                  { key: 'challenges', label: '🔥 Challenge', feature: 'duit_tracker_challenges' },
+                  { key: 'transactions', label: 'Transaksi' },
+                  { key: 'summary', label: 'Ringkasan', feature: 'duit_tracker_summary' },
+                  { key: 'budget', label: 'Budget', feature: 'duit_tracker_budget' },
+                  { key: 'trees', label: 'Tabungan', feature: 'duit_tracker_saving_tree' },
+                  { key: 'bills', label: 'Tagihan', feature: 'duit_tracker_bills' },
+                  { key: 'debts', label: 'Hutang', feature: 'duit_tracker_debts' },
+                  { key: 'wishlist', label: 'Wishlist', feature: 'duit_tracker_wishlist' },
+                  { key: 'challenges', label: 'Challenge', feature: 'duit_tracker_challenges' },
                 ].filter(t => !t.feature || hasFeature(t.feature)).map(t => (
                   <button key={t.key} onClick={() => setTab(t.key as any)} style={{
                     padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
@@ -955,7 +978,7 @@ export default function DuitTrackerPage() {
                       <SelectOption
                         value={periodPreset}
                         onChange={(v) => { setPeriodPreset(v as PeriodPreset); if (v !== 'custom') setAppliedRange(null); }}
-                        options={PERIOD_PRESETS.map(p => ({ value: p.key, label: `${p.emoji} ${p.label}` }))}
+                        options={PERIOD_PRESETS.map(p => ({ value: p.key, label: p.label }))}
                         placeholder="Pilih Periode"
                       />
                     </div>
@@ -1591,9 +1614,8 @@ export default function DuitTrackerPage() {
                     <div style={{ textAlign: 'center', padding: 48, opacity: 0.5 }}>Memuat...</div>
                   ) : filteredBills.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: 48 }}>
-                      <span style={{ fontSize: 56, display: 'block', marginBottom: 12 }}>💳</span>
                       <p style={{ opacity: 0.6, fontSize: 15, fontWeight: 500 }}>Belum ada tagihan rutin</p>
-                      <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Catat tagihan bulanan biar gak kelewat bayar! ⏰</p>
+                      <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Catat tagihan bulanan biar gak kelewat bayar!</p>
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -1646,6 +1668,40 @@ export default function DuitTrackerPage() {
                                 </button>
                               </div>
                             </div>
+                            {/* Payment History Toggle */}
+                            <button
+                              onClick={async () => {
+                                if (billHistoryId === bill.id) { setBillHistoryId(null); return; }
+                                setBillHistoryId(bill.id);
+                                setBillHistoryLoading(true);
+                                try {
+                                  const data = await duitTrackerService.getBillHistory(bill.id);
+                                  setBillHistory(data.payments);
+                                } catch { setBillHistory([]); }
+                                finally { setBillHistoryLoading(false); }
+                              }}
+                              style={{ width: '100%', background: 'none', border: 'none', borderTop: '1px solid var(--border-default)', marginTop: 10, paddingTop: 8, cursor: 'pointer', fontSize: 11, color: 'rgb(var(--color-primary))', fontWeight: 600, textAlign: 'center' }}
+                            >
+                              {billHistoryId === bill.id ? 'Tutup Riwayat' : 'Lihat Riwayat Pembayaran'}
+                            </button>
+                            {billHistoryId === bill.id && (
+                              <div style={{ marginTop: 8 }}>
+                                {billHistoryLoading ? (
+                                  <div style={{ textAlign: 'center', padding: 12, fontSize: 12, opacity: 0.5 }}>Memuat...</div>
+                                ) : billHistory.length === 0 ? (
+                                  <div style={{ textAlign: 'center', padding: 12, fontSize: 12, opacity: 0.4 }}>Belum ada riwayat pembayaran</div>
+                                ) : (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    {billHistory.map(p => (
+                                      <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', borderRadius: 8, background: 'var(--input-bg)', fontSize: 12 }}>
+                                        <span>{new Date(p.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                                        <span style={{ fontWeight: 600 }}>{fmt(p.amount)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </Card>
                         );
                       })}

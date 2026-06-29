@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { Transaction, duitTrackerService, BudgetChallenge, CustomCategory, FinancialForecast, SpendingComparison, SmartReminders } from '@/services/duitTrackerService';
-import { Modal, Button, useToast, useConfirm, TextInput } from '@/components/ui';
+import { Modal, Button, useToast, useConfirm, TextInput, CurrencyInput, parseCurrency } from '@/components/ui';
 import {
   Download, Upload, Flame,
   Plus, Trash2, X, AlertTriangle,
@@ -292,13 +292,19 @@ export function ChallengeSection({ challenges, onRefresh }: { challenges: Budget
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.title) return;
+    const targetAmount = parseCurrency(form.targetAmount);
+    const targetDays = parseInt(form.targetDays);
+    if (form.targetDays && (isNaN(targetDays) || targetDays < 1)) {
+      showToast('Durasi harus berupa angka minimal 1 hari', 'error');
+      return;
+    }
     setSubmitting(true);
     try {
       await duitTrackerService.createChallenge({
         title: form.title,
         type: form.type,
-        targetAmount: form.targetAmount ? parseFloat(form.targetAmount.replace(/\D/g, '')) : undefined,
-        targetDays: parseInt(form.targetDays) || 7,
+        targetAmount: targetAmount || undefined,
+        targetDays: targetDays || 7,
         category: form.category || undefined,
       });
       showToast('Challenge dimulai! 🔥', 'success');
@@ -411,8 +417,8 @@ export function ChallengeSection({ challenges, onRefresh }: { challenges: Budget
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <TextInput label="Nama Challenge" value={form.title} onChange={v => setForm({ ...form, title: v })} placeholder="Hemat makan minggu ini" required />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <TextInput label="Target (Rp/hari)" value={form.targetAmount} onChange={v => setForm({ ...form, targetAmount: v })} placeholder="50000" />
-            <TextInput label="Durasi (hari)" value={form.targetDays} onChange={v => setForm({ ...form, targetDays: v })} />
+            <CurrencyInput label="Target (Rp/hari)" value={form.targetAmount} onChange={v => setForm({ ...form, targetAmount: v })} placeholder="50.000" />
+            <TextInput label="Durasi (hari)" value={form.targetDays} onChange={v => { const num = v.replace(/\D/g, ''); setForm({ ...form, targetDays: num }); }} placeholder="7" />
           </div>
           <Button type="submit" disabled={submitting} style={{ width: '100%' }}>{submitting ? <Loader2 size={14} className="spin" /> : <Flame size={14} />} Mulai Challenge!</Button>
         </form>

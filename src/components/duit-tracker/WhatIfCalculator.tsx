@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { Card } from '@/components/ui';
 import {
   Calculator, TrendingUp, Coffee, ShoppingBag, UtensilsCrossed, Car, Bus, Gamepad2,
-  Smartphone, Plane, GraduationCap, Shirt, Zap, Star, Gift, Target, ChevronDown, ChevronUp,
+  Smartphone, Plane, GraduationCap, Star, Gift, Target,
 } from 'lucide-react';
 import { Transaction, WishlistItem } from '@/services/duitTrackerService';
 
@@ -12,18 +12,6 @@ interface WhatIfCalculatorProps {
   transactions: Transaction[];
   wishlist?: WishlistItem[];
 }
-
-// ─── Equivalence items: what your money could buy ───
-const EQUIVALENCES = [
-  { label: 'Kopi Starbucks', amount: 55000, icon: Coffee },
-  { label: 'Makan di resto', amount: 75000, icon: UtensilsCrossed },
-  { label: 'Bensin full-tank', amount: 80000, icon: Car },
-  { label: 'Streaming 1 bulan', amount: 55000, icon: Gamepad2 },
-  { label: 'Baju baru', amount: 200000, icon: Shirt },
-  { label: 'Grab/Gojek 5x', amount: 100000, icon: Bus },
-  { label: 'Pulsa/Kuota', amount: 50000, icon: Zap },
-  { label: 'Jajan online', amount: 150000, icon: ShoppingBag },
-];
 
 const FALLBACK_GOALS = [
   { label: 'iPhone 16', amount: 18000000, icon: Smartphone },
@@ -60,11 +48,10 @@ interface SpendingInsight {
 }
 
 export function WhatIfCalculator({ transactions, wishlist = [] }: WhatIfCalculatorProps) {
-  const [showAllEquiv, setShowAllEquiv] = useState(false);
   const [selectedCatIdx, setSelectedCatIdx] = useState<number | null>(null);
 
   const insights = useMemo(() => {
-    const expenses = transactions.filter(t => t.type === 'expense');
+    const expenses = transactions.filter(t => t.type === 'expense' && t.category !== 'tagihan');
     if (expenses.length === 0) return null;
 
     // Determine date range
@@ -145,7 +132,7 @@ export function WhatIfCalculator({ transactions, wishlist = [] }: WhatIfCalculat
 
       {/* Top categories breakdown */}
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, opacity: 0.7 }}>🔥 Top Pengeluaranmu</div>
+        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, opacity: 0.7 }}>Top Pengeluaranmu</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {insights.categories.map((cat) => {
             const Icon = CATEGORY_ICONS[cat.category] || ShoppingBag;
@@ -193,7 +180,7 @@ export function WhatIfCalculator({ transactions, wishlist = [] }: WhatIfCalculat
           <>
             {/* Category selector for What-If */}
             <div style={{ borderRadius: 14, padding: 16, background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.06), rgba(var(--color-success), 0.04))', border: '1px solid rgba(var(--color-primary), 0.15)', marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>🤔 What If — Kalau kamu hemat dari:</div>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>What If — Kalau kamu hemat dari:</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
                 <button
                   onClick={() => setSelectedCatIdx(null)}
@@ -222,34 +209,8 @@ export function WhatIfCalculator({ transactions, wishlist = [] }: WhatIfCalculat
                 ))}
               </div>
 
-              <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: 'var(--input-bg)' }}>
-                💡 Kalau kamu {selectedCat ? <span>stop pengeluaran <b style={{ textTransform: 'capitalize' }}>{selectedCat.category}</b></span> : 'nabung semua'}, kamu bisa hemat <b style={{ color: 'rgb(var(--color-success))' }}>{fmt(Math.round(savingAmount))}/hari</b> = <b style={{ color: 'rgb(var(--color-success))' }}>{fmt(Math.round(savingAmount * 7))}/minggu</b> = <b style={{ color: 'rgb(var(--color-success))' }}>{fmt(Math.round(savingAmount * 30))}/bulan</b>
-              </div>
-
-              {/* Equivalence chips */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {(showAllEquiv ? EQUIVALENCES : EQUIVALENCES.slice(0, 4)).map(eq => {
-                  const weeklySaving = savingAmount * 7;
-                  const count = Math.floor(weeklySaving / eq.amount);
-                  if (count < 1) return null;
-                  const Icon = eq.icon;
-                  return (
-                    <div key={eq.label} style={{ padding: '7px 11px', borderRadius: 10, background: 'rgb(var(--bg-surface))', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                      <Icon size={13} style={{ opacity: 0.6 }} />
-                      <span><b>{count}x</b> {eq.label}/minggu</span>
-                    </div>
-                  );
-                }).filter(Boolean)}
-                {!showAllEquiv && (
-                  <button onClick={() => setShowAllEquiv(true)} style={{ padding: '7px 11px', borderRadius: 10, background: 'var(--input-bg)', border: '1px solid var(--border-default)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, opacity: 0.7 }}>
-                    <ChevronDown size={12} /> Lainnya
-                  </button>
-                )}
-                {showAllEquiv && (
-                  <button onClick={() => setShowAllEquiv(false)} style={{ padding: '7px 11px', borderRadius: 10, background: 'var(--input-bg)', border: '1px solid var(--border-default)', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, opacity: 0.7 }}>
-                    <ChevronUp size={12} /> Tutup
-                  </button>
-                )}
+              <div style={{ fontSize: 12, opacity: 0.6, padding: '8px 12px', borderRadius: 8, background: 'var(--input-bg)' }}>
+                Kalau kamu {selectedCat ? <span>kurangi pengeluaran <b style={{ textTransform: 'capitalize' }}>{selectedCat.category}</b></span> : 'nabung semua'}, kamu bisa hemat <b style={{ color: 'rgb(var(--color-success))' }}>{fmt(Math.round(savingAmount))}/hari</b> = <b style={{ color: 'rgb(var(--color-success))' }}>{fmt(Math.round(savingAmount * 7))}/minggu</b> = <b style={{ color: 'rgb(var(--color-success))' }}>{fmt(Math.round(savingAmount * 30))}/bulan</b>
               </div>
             </div>
 
@@ -258,7 +219,7 @@ export function WhatIfCalculator({ transactions, wishlist = [] }: WhatIfCalculat
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                 <TrendingUp size={14} style={{ color: 'rgb(var(--color-success))' }} />
                 <span style={{ fontSize: 12, fontWeight: 700 }}>
-                  {hasWishlist ? '🎯 Kapan wishlist-mu tercapai?' : '💭 Kalau kamu nabung sebesar pengeluaranmu...'}
+                  {hasWishlist ? 'Kapan wishlist-mu tercapai?' : 'Kalau kamu nabung sebesar pengeluaranmu...'}
                 </span>
               </div>
               {hasWishlist && (
@@ -296,7 +257,7 @@ export function WhatIfCalculator({ transactions, wishlist = [] }: WhatIfCalculat
                           {daysNeeded <= 7 ? `${daysNeeded} hari` : daysNeeded <= 60 ? `${weeksNeeded} minggu` : `${monthsNeeded} bulan`}
                         </div>
                         <div style={{ fontSize: 10, opacity: 0.4 }}>
-                          {daysNeeded <= 7 ? '🔥 Dikit lagi!' : daysNeeded <= 30 ? '💪 Semangat!' : daysNeeded <= 90 ? '📅 Bisa kok!' : '🎯 Nabung terus!'}
+                          {daysNeeded <= 7 ? 'Dikit lagi!' : daysNeeded <= 30 ? 'Semangat!' : daysNeeded <= 90 ? 'Bisa kok!' : 'Nabung terus!'}
                         </div>
                       </div>
                     </div>

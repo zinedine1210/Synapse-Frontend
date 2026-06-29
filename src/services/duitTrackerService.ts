@@ -258,6 +258,9 @@ export const duitTrackerService = {
   markBillPaid: (id: string) =>
     apiFetch<any>(`/duit-tracker/bills/${id}/pay`, { method: 'POST' }),
 
+  getBillHistory: (id: string) =>
+    apiFetch<{ bill: { id: string; name: string }; payments: { id: string; amount: number; date: string; createdAt: string }[] }>(`/duit-tracker/bills/${id}/history`),
+
   // Financial Overview
   getFinancialOverview: () => apiFetch<FinancialOverview>('/duit-tracker/financial-overview'),
 

@@ -258,6 +258,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
 
   // Date jump
   const [dateJumpOpen, setDateJumpOpen] = useState(false);
+  const [specialPostsOpen, setSpecialPostsOpen] = useState<string | false>(false);
   const dateRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -335,15 +336,48 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
     return () => { socket.emit('leaveClass', { classId }); socket.disconnect(); };
   }, [classId, scrollToBottom, activeDiscussionId]);
 
-  // Fetch data
+  // Fetch data (reverse infinite scroll — load latest first, fetch older on scroll up)
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const POSTS_PER_PAGE = 20;
+
   const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await forumService.getClassPosts(classId, activeDiscussionId || undefined, { limit: 100 });
+      setHasMore(true);
+      const res = await forumService.getClassPosts(classId, activeDiscussionId || undefined, { limit: POSTS_PER_PAGE, page: 1 });
       const list = res.data || [];
       setPosts(list.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
+      if (list.length < POSTS_PER_PAGE) setHasMore(false);
     } catch { } finally { setLoading(false); }
   }, [classId, activeDiscussionId]);
+
+  const fetchOlderPosts = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const currentOldest = posts[0];
+      const page = Math.floor(posts.length / POSTS_PER_PAGE) + 1;
+      const res = await forumService.getClassPosts(classId, activeDiscussionId || undefined, { limit: POSTS_PER_PAGE, page });
+      const list = (res.data || []).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      if (list.length < POSTS_PER_PAGE) setHasMore(false);
+      if (list.length > 0) {
+        setPosts(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const newPosts = list.filter(p => !existingIds.has(p.id));
+          const merged = [...newPosts, ...prev].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          return merged;
+        });
+        // Maintain scroll position after prepend
+        setTimeout(() => {
+          if (currentOldest) {
+            const el = postRefs.current[currentOldest.id];
+            if (el) el.scrollIntoView({ block: 'start' });
+          }
+        }, 50);
+      }
+    } catch { } finally { setLoadingMore(false); }
+  }, [classId, activeDiscussionId, posts, loadingMore, hasMore]);
 
   const fetchDiscussions = useCallback(async () => {
     try { const data = await forumService.getClassDiscussions(classId); setDiscussions(data || []); } catch { }
@@ -406,17 +440,21 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
     updateUrl(discussionTab, activeDiscussionId);
   }, [discussionTab, activeDiscussionId]);
 
-  // Track scroll position to show/hide scroll-to-bottom button
+  // Track scroll position to show/hide scroll-to-bottom button & trigger infinite scroll
   useEffect(() => {
     const container = chatContainerRef.current;
     if (!container) return;
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container;
       setShowScrollBottom(scrollHeight - scrollTop - clientHeight > 120);
+      // Fetch older posts when scrolled near top
+      if (scrollTop < 80 && hasMore && !loadingMore) {
+        fetchOlderPosts();
+      }
     };
     container.addEventListener('scroll', handleScroll, { passive: true });
     return () => container.removeEventListener('scroll', handleScroll);
-  }, [loading, discussionTab]);
+  }, [loading, discussionTab, hasMore, loadingMore, fetchOlderPosts]);
 
   // Active custom tab data (derived from discussionTab — if it's not 'chat' or 'lampiran', it's a canvas tab ID)
   const activeCustomTab = (discussionTab !== 'chat' && discussionTab !== 'lampiran')
@@ -781,6 +819,20 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
     return atts;
   }, [posts]);
 
+  // Special posts grouped by category for floating indicator
+  const specialPostsSummary = useMemo(() => {
+    const cats: { category: string; posts: ForumPost[] }[] = [];
+    const byCategory: Record<string, ForumPost[]> = {};
+    posts.forEach(p => {
+      if (p.category !== 'DISCUSSION') {
+        if (!byCategory[p.category]) byCategory[p.category] = [];
+        byCategory[p.category].push(p);
+      }
+    });
+    Object.entries(byCategory).forEach(([cat, items]) => cats.push({ category: cat, posts: items }));
+    return cats;
+  }, [posts]);
+
   // Build a stable color map: assign each unique authorId an index-based color
   // so members with similar names still get distinct colors
   const memberColorMap = useMemo(() => {
@@ -843,7 +895,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
             }}>
               <Hash size={14} /> Umum
               {hasFeature('unread_tracking') && unreadCounts['__umum__'] > 0 && (
-                <span style={{ marginLeft: 'auto', background: 'rgb(var(--color-primary))', color: '#fff', borderRadius: '999px', padding: '0 0.35rem', fontSize: '0.55rem', fontWeight: 700, minWidth: 16, textAlign: 'center', lineHeight: '16px' }}>
+                <span style={{ marginLeft: 'auto', background: 'rgb(var(--color-primary))', color: '#fff', borderRadius: '999px', padding: '0 0.35rem', fontSize: '0.7rem', fontWeight: 700, minWidth: 16, textAlign: 'center', lineHeight: '16px' }}>
                   {unreadCounts['__umum__']}
                 </span>
               )}
@@ -864,21 +916,21 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                     <Hash size={13} style={{ flexShrink: 0 }} />
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{disc.title}</span>
                     {hasFeature('unread_tracking') && unread > 0 && (
-                      <span style={{ background: 'rgb(var(--color-primary))', color: '#fff', borderRadius: '999px', padding: '0 0.35rem', fontSize: '0.55rem', fontWeight: 700, minWidth: 16, textAlign: 'center', lineHeight: '16px', flexShrink: 0 }}>
+                      <span style={{ background: 'rgb(var(--color-primary))', color: '#fff', borderRadius: '999px', padding: '0 0.35rem', fontSize: '0.7rem', fontWeight: 700, minWidth: 16, textAlign: 'center', lineHeight: '16px', flexShrink: 0 }}>
                         {unread}
                       </span>
                     )}
                   </div>
                   {disc.task && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', marginTop: '0.15rem', paddingLeft: '1.1rem' }}>
-                      <span style={{ fontSize: '0.55rem', color: 'rgb(var(--text-muted))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         📋 {disc.task.title}{disc.task.groupName ? ` • ${disc.task.groupName}` : ''}
                       </span>
                     </div>
                   )}
                   {disc.session && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', marginTop: '0.15rem', paddingLeft: '1.1rem' }}>
-                      <span style={{ fontSize: '0.55rem', color: 'rgb(var(--text-muted))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         📅 Pertemuan {disc.session.sequence}: {disc.session.title}
                       </span>
                     </div>
@@ -942,17 +994,17 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
               </span>
             </div>
             {activeDiscussion?.description && (
-              <p style={{ fontSize: '0.6rem', color: 'rgb(var(--text-muted))', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeDiscussion.description}</p>
+              <p style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeDiscussion.description}</p>
             )}
           </div>
           {activeDiscussion?.task && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.15rem 0.5rem', borderRadius: '999px', background: 'rgba(var(--color-warning) / 0.08)', fontSize: '0.6rem', color: 'rgb(var(--color-warning))', fontWeight: 600, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.15rem 0.5rem', borderRadius: '999px', background: 'rgba(var(--color-warning) / 0.08)', fontSize: '0.75rem', color: 'rgb(var(--color-warning))', fontWeight: 600, flexShrink: 0 }}>
               📋 {activeDiscussion.task.title}
               {activeDiscussion.task.groupName && <><span style={{ opacity: 0.5 }}>•</span> <UsersIcon size={9} /> {activeDiscussion.task.groupName}</>}
             </div>
           )}
           {activeDiscussion?.session && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.15rem 0.5rem', borderRadius: '999px', background: 'rgba(var(--color-primary) / 0.08)', fontSize: '0.6rem', color: 'rgb(var(--color-primary))', fontWeight: 600, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.15rem 0.5rem', borderRadius: '999px', background: 'rgba(var(--color-primary) / 0.08)', fontSize: '0.75rem', color: 'rgb(var(--color-primary))', fontWeight: 600, flexShrink: 0 }}>
               📅 Pertemuan {activeDiscussion.session.sequence}
             </div>
           )}
@@ -962,11 +1014,47 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
         </div>
 
         {showChatSearch && (
-          <div style={{ padding: '0.35rem 0.75rem', borderBottom: '1px solid var(--border-default)', background: 'rgba(var(--color-primary) / 0.02)', display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
-            <Search size={13} style={{ color: 'rgb(var(--text-muted))', flexShrink: 0 }} />
-            <TextInput value={chatSearch} onChange={v => setChatSearch(v)} placeholder="Cari pesan..." autoFocus />
-            {chatSearch && <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>{filteredPosts.length} hasil</span>}
-            <button onClick={() => { setShowChatSearch(false); setChatSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.15rem' }}><X size={14} /></button>
+          <div style={{ padding: '0.35rem 0.75rem', borderBottom: '1px solid var(--border-default)', background: 'rgba(var(--color-primary) / 0.02)', flexShrink: 0, position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Search size={13} style={{ color: 'rgb(var(--text-muted))', flexShrink: 0 }} />
+              <TextInput value={chatSearch} onChange={v => setChatSearch(v)} placeholder="Cari pesan..." autoFocus />
+              {chatSearch && <span style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))', whiteSpace: 'nowrap' }}>{filteredPosts.length} hasil</span>}
+              <button onClick={() => { setShowChatSearch(false); setChatSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.15rem' }}><X size={14} /></button>
+            </div>
+            {/* Search results dropdown */}
+            {chatSearch.trim() && filteredPosts.length > 0 && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 25, background: 'var(--modal-bg)', border: '1px solid var(--border-default)', borderTop: 'none', boxShadow: 'var(--shadow-lg)', maxHeight: 260, overflowY: 'auto' }}>
+                {filteredPosts.slice(0, 20).map((p) => {
+                  const pCat = CATEGORY_CONFIG[p.category];
+                  const content = p.content.replace(/^\[reply:[^\]]*\]\n?/, '');
+                  return (
+                    <button key={p.id} onClick={() => {
+                      const el = postRefs.current[p.id];
+                      if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        el.style.transition = 'box-shadow 0.3s';
+                        el.style.boxShadow = '0 0 0 2px rgb(var(--color-primary))';
+                        el.style.borderRadius = '14px';
+                        setTimeout(() => { el.style.boxShadow = 'none'; }, 2000);
+                      }
+                      setChatSearch('');
+                      setShowChatSearch(false);
+                    }} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', width: '100%', padding: '0.55rem 0.75rem', background: 'none', border: 'none', borderBottom: '1px solid var(--border-default)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'background 0.1s' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(var(--color-primary) / 0.04)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                      {pCat && (() => { const PCIcon = pCat.icon; return <PCIcon size={12} style={{ color: pCat.color, flexShrink: 0, marginTop: '0.1rem' }} />; })()}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgb(var(--text-secondary))' }}>{p.authorName}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))' }}>{timeAgo(p.createdAt)}</span>
+                        </div>
+                        <p style={{ fontSize: '0.75rem', color: 'rgb(var(--text-primary))', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{content.slice(0, 80)}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -1043,7 +1131,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
               <span style={{ fontSize: 'var(--font-xs)', fontWeight: 600, color: 'rgb(var(--text-secondary))', flex: 1 }}>{activeCustomTab.name}</span>
               <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flexShrink: 0 }}>
                 {canvasDirty && (
-                  <span style={{ fontSize: '0.6rem', color: 'rgb(var(--text-muted))', fontStyle: 'italic' }}>Belum disimpan</span>
+                  <span style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))', fontStyle: 'italic' }}>Belum disimpan</span>
                 )}
                 <Button size="sm" onClick={handleSaveTabContent} disabled={savingTabContent || !canvasDirty} leftIcon={savingTabContent ? <Loader2 className="animate-spin" size={12} /> : <Save size={12} />} style={{ padding: '0.2rem 0.5rem', fontSize: 'var(--font-xs)' }}>
                   {savingTabContent ? 'Menyimpan...' : 'Simpan'}
@@ -1066,13 +1154,13 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                   </h4>
                   <div>
                     <input ref={tabFileInputRef} type="file" onChange={handleUploadTabFile} style={{ display: 'none' }} />
-                    <Button size="sm" variant="ghost" onClick={() => tabFileInputRef.current?.click()} disabled={uploadingTabFile} leftIcon={uploadingTabFile ? <Loader2 className="animate-spin" size={11} /> : <Upload size={11} />} style={{ padding: '0.15rem 0.4rem', fontSize: '0.65rem' }}>Upload</Button>
+                    <Button size="sm" variant="ghost" onClick={() => tabFileInputRef.current?.click()} disabled={uploadingTabFile} leftIcon={uploadingTabFile ? <Loader2 className="animate-spin" size={11} /> : <Upload size={11} />} style={{ padding: '0.15rem 0.4rem', fontSize: '0.75rem' }}>Upload</Button>
                   </div>
                 </div>
                 {activeCustomTab.files.length === 0 ? (
                   <div style={{ padding: '1rem', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--border-default)', textAlign: 'center', cursor: 'pointer', color: 'rgb(var(--text-muted))' }} onClick={() => tabFileInputRef.current?.click()}>
                     <Paperclip size={18} style={{ margin: '0 auto 0.3rem', opacity: 0.3 }} />
-                    <p style={{ fontSize: '0.65rem' }}>Klik untuk upload file</p>
+                    <p style={{ fontSize: '0.75rem' }}>Klik untuk upload file</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
@@ -1080,7 +1168,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                       <div key={file.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.5rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-default)', background: 'var(--input-bg)' }}>
                         {file.fileType === 'IMAGE' ? <ImageIcon size={14} style={{ color: 'rgb(var(--color-success))', flexShrink: 0 }} /> : <FileText size={14} style={{ color: 'rgb(var(--color-primary))', flexShrink: 0 }} />}
                         <a href={file.fileUrl} target="_blank" rel="noopener noreferrer" style={{ flex: 1, fontSize: 'var(--font-xs)', fontWeight: 500, color: 'rgb(var(--color-primary))', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.fileName}</a>
-                        <span style={{ fontSize: '0.6rem', color: 'rgb(var(--text-muted))', flexShrink: 0 }}>{formatFileSize(file.fileSizeBytes)}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))', flexShrink: 0 }}>{formatFileSize(file.fileSizeBytes)}</span>
                         <a href={file.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'rgb(var(--text-muted))', padding: '0.1rem', display: 'flex', flexShrink: 0 }}><Download size={12} /></a>
                         <button onClick={() => handleDeleteTabFile(file.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--color-danger))', padding: '0.1rem', display: 'flex', flexShrink: 0 }}><Trash2 size={12} /></button>
                       </div>
@@ -1104,18 +1192,94 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
         ) : (
           <>
             {pinnedPosts.length > 0 && (
-              <div style={{ padding: '0.3rem 0.5rem', background: 'rgba(var(--color-warning) / 0.04)', borderBottom: '1px solid rgba(var(--color-warning) / 0.1)', display: 'flex', alignItems: 'center', gap: '0.3rem', flexShrink: 0, overflowX: 'auto' }}>
-                <Pin size={10} style={{ color: 'rgb(var(--color-warning))', flexShrink: 0 }} />
-                {pinnedPosts.map((pp) => (
-                  <span key={pp.id} style={{ background: 'rgba(var(--color-warning) / 0.08)', borderRadius: '3px', padding: '0.1rem 0.35rem', fontSize: '0.6rem', color: 'rgb(var(--color-warning))', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                    {pp.title.slice(0, 35)}{pp.title.length > 35 ? '...' : ''}
-                  </span>
-                ))}
+              <div style={{ padding: '0.4rem 0.65rem', background: 'rgba(var(--color-warning) / 0.04)', borderBottom: '1px solid rgba(var(--color-warning) / 0.1)', display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0, overflowX: 'auto', scrollbarWidth: 'none' }}>
+                <Pin size={12} style={{ color: 'rgb(var(--color-warning))', flexShrink: 0 }} />
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgb(var(--color-warning))', flexShrink: 0 }}>Disematkan</span>
+                <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', scrollbarWidth: 'none' }}>
+                  {pinnedPosts.map((pp) => {
+                    const pinCat = CATEGORY_CONFIG[pp.category];
+                    const PinIcon = pinCat?.icon;
+                    return (
+                      <button key={pp.id} onClick={() => {
+                        const el = postRefs.current[pp.id];
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          el.style.transition = 'box-shadow 0.3s, background 0.3s';
+                          el.style.boxShadow = '0 0 0 2px rgb(var(--color-warning))';
+                          el.style.borderRadius = '14px';
+                          setTimeout(() => { el.style.boxShadow = 'none'; }, 2000);
+                        }
+                      }} style={{ background: 'rgba(var(--color-warning) / 0.08)', borderRadius: '8px', padding: '0.3rem 0.6rem', fontSize: '0.7rem', color: 'rgb(var(--color-warning))', fontWeight: 600, whiteSpace: 'nowrap', border: '1px solid rgba(var(--color-warning) / 0.15)', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '0.25rem', transition: 'all 0.15s' }}>
+                        {PinIcon && <PinIcon size={10} />}
+                        {pp.title.slice(0, 40)}{pp.title.length > 40 ? '...' : ''}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Special posts floating indicator */}
+            {specialPostsSummary.length > 0 && (
+              <div style={{ padding: '0.3rem 0.65rem', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0, background: 'rgba(var(--color-primary) / 0.02)', position: 'relative' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'rgb(var(--text-muted))', flexShrink: 0 }}>Pesan Penting:</span>
+                {specialPostsSummary.map(({ category, posts: catPosts }) => {
+                  const catConfig = CATEGORY_CONFIG[category];
+                  if (!catConfig) return null;
+                  const Icon = catConfig.icon;
+                  return (
+                    <div key={category} style={{ position: 'relative' }}>
+                      <button onClick={() => setSpecialPostsOpen(specialPostsOpen === category ? false : category)} style={{
+                        display: 'flex', alignItems: 'center', gap: '0.2rem', padding: '0.2rem 0.5rem', borderRadius: '6px',
+                        background: catConfig.bg, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.7rem', fontWeight: 600, color: catConfig.color, transition: 'all 0.15s',
+                      }}>
+                        <Icon size={10} /> {catPosts.length}
+                      </button>
+                      {specialPostsOpen === category && (
+                        <>
+                          <div onClick={() => setSpecialPostsOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 24 }} />
+                          <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '0.3rem', zIndex: 25, background: 'var(--modal-bg)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', minWidth: 200, maxHeight: 200, overflowY: 'auto', padding: '0.2rem 0' }}>
+                            {catPosts.slice(-10).reverse().map(p => (
+                              <button key={p.id} onClick={() => {
+                                const el = postRefs.current[p.id];
+                                if (el) {
+                                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  el.style.transition = 'box-shadow 0.3s';
+                                  el.style.boxShadow = `0 0 0 2px ${catConfig.color}`;
+                                  el.style.borderRadius = '14px';
+                                  setTimeout(() => { el.style.boxShadow = 'none'; }, 2000);
+                                }
+                                setSpecialPostsOpen(false);
+                              }} style={{ display: 'block', width: '100%', padding: '0.4rem 0.65rem', background: 'none', border: 'none', borderBottom: '1px solid var(--border-default)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', transition: 'background 0.1s' }}
+                                onMouseEnter={e => (e.currentTarget.style.background = catConfig.bg)}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                                <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgb(var(--text-primary))', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title || p.content.slice(0, 50)}</p>
+                                <span style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))' }}>{p.authorName} • {timeAgo(p.createdAt)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
             {/* Chat messages */}
             <div ref={chatContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.1rem', position: 'relative' }}>
+              {/* Loading older posts indicator */}
+              {loadingMore && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', flexShrink: 0 }}>
+                  <Loader2 className="animate-spin" size={16} style={{ color: 'rgb(var(--color-primary))' }} />
+                  <span style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))', marginLeft: '0.4rem' }}>Memuat pesan lama...</span>
+                </div>
+              )}
+              {!hasMore && posts.length > POSTS_PER_PAGE && (
+                <div style={{ textAlign: 'center', padding: '0.4rem', flexShrink: 0 }}>
+                  <span style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))', fontStyle: 'italic' }}>Semua pesan telah dimuat</span>
+                </div>
+              )}
               {/* Date Jump Dropdown */}
               {groupedPosts.length > 1 && (
                 <div style={{ position: 'sticky', top: 0, zIndex: 15, display: 'flex', justifyContent: 'center', paddingBottom: '0.25rem' }}>
@@ -1123,7 +1287,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                     <button onClick={() => setDateJumpOpen(p => !p)} className="btn-bounce" style={{
                       display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.25rem 0.65rem',
                       background: 'var(--modal-bg)', border: '1px solid var(--border-default)', borderRadius: '999px',
-                      cursor: 'pointer', fontSize: '0.6rem', fontWeight: 600, color: 'rgb(var(--text-muted))',
+                      cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: 'rgb(var(--text-muted))',
                       boxShadow: 'var(--shadow-sm)', fontFamily: 'inherit', transition: 'all 0.15s',
                     }}>
                       <Calendar size={10} /> Loncat ke tanggal <ChevronDown size={10} style={{ transform: dateJumpOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
@@ -1150,7 +1314,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                               onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
                               <Calendar size={11} style={{ color: 'rgb(var(--color-primary))', flexShrink: 0 }} />
                               {formatDate(g.posts[0].createdAt)}
-                              <span style={{ fontSize: '0.55rem', color: 'rgb(var(--text-muted))', marginLeft: 'auto' }}>{g.posts.length}</span>
+                              <span style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))', marginLeft: 'auto' }}>{g.posts.length}</span>
                             </button>
                           ))}
                         </div>
@@ -1169,7 +1333,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                 <React.Fragment key={group.date}>
                   <div ref={(el) => { dateRefs.current[group.date] = el; }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.65rem 0 0.35rem', flexShrink: 0 }}>
                     <div style={{ flex: 1, height: 1, background: 'var(--border-default)' }} />
-                    <span style={{ fontSize: '0.6rem', color: 'rgb(var(--text-muted))', padding: '0.15rem 0.6rem', background: 'var(--input-bg)', borderRadius: '999px', whiteSpace: 'nowrap', fontWeight: 600, letterSpacing: '0.01em' }}>{formatDate(group.posts[0].createdAt)}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))', padding: '0.15rem 0.6rem', background: 'var(--input-bg)', borderRadius: '999px', whiteSpace: 'nowrap', fontWeight: 600, letterSpacing: '0.01em' }}>{formatDate(group.posts[0].createdAt)}</span>
                     <div style={{ flex: 1, height: 1, background: 'var(--border-default)' }} />
                   </div>
 
@@ -1281,15 +1445,25 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                               <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(var(--color-warning) / 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Bell size={12} style={{ color: cat.color }} />
                               </div>
-                              <span style={{ fontSize: 'var(--font-xs)', fontWeight: 700, color: cat.color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pengingat</span>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: cat.color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Pengingat</span>
+                              {post.isPinned && <Pin size={9} style={{ color: 'rgb(var(--color-warning))', marginLeft: '0.15rem' }} />}
                             </div>
-                            <p style={{ fontSize: 'var(--font-base)', fontWeight: 600, margin: 0, lineHeight: 1.6, color: 'rgb(var(--text-primary))' }}>{parseContent(post.content, sessions, onNavigate, classMembers, setSelectedMember, tasks)}</p>
+                            {post.title && post.title !== post.content.slice(0, 80).trim() && (
+                              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '0.25rem', color: 'rgb(var(--text-primary))' }}>{post.title}</h4>
+                            )}
+                            <p style={{ fontSize: '0.85rem', fontWeight: 500, margin: 0, lineHeight: 1.6, color: 'rgb(var(--text-primary))' }}>{parseContent(post.content, sessions, onNavigate, classMembers, setSelectedMember, tasks)}</p>
                             {post.reminder && (
-                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.4rem', padding: '0.3rem 0.6rem', borderRadius: '8px', background: 'rgba(var(--color-warning) / 0.08)', fontSize: 'var(--font-xs)', fontWeight: 600, color: cat.color }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.5rem', padding: '0.35rem 0.7rem', borderRadius: '8px', background: 'rgba(var(--color-warning) / 0.08)', fontSize: '0.75rem', fontWeight: 600, color: cat.color }}>
                                 ⏰ {new Date(post.reminder.remindAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                               </div>
                             )}
-                            <div style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', marginTop: '0.35rem' }}>{post.authorName} <span style={{ opacity: 0.4 }}>•</span> {timeAgo(post.createdAt)}</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.45rem', fontSize: '0.75rem', color: 'rgb(var(--text-muted))' }}>
+                              <span>{post.authorName}</span>
+                              <span style={{ opacity: 0.4 }}>•</span>
+                              <span>{timeAgo(post.createdAt)}</span>
+                              <button onClick={() => { setReplyToPost({ id: post.id, authorName: post.authorName, content: post.content.slice(0, 100) }); inputRef.current?.focus(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.15rem', fontFamily: 'inherit', marginLeft: 'auto' }}><Reply size={10} /> Balas</button>
+                              {(isOwn || canDelete) && <button onClick={(e) => { e.stopPropagation(); setContextMenu({ postId: post.id, x: e.clientX, y: e.clientY }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: 0 }}><MoreVertical size={12} /></button>}
+                            </div>
                           </div>
                         </div>
                       );
@@ -1383,7 +1557,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                           {activeDiscussion?.task?.assignType === 'GROUP' && activeDiscussion?.task?.groupName && !isOwn && isFirstInGroup && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', marginBottom: '0.15rem' }}>
                               <UsersIcon size={9} style={{ color: 'rgb(var(--color-secondary))' }} />
-                              <span style={{ fontSize: '0.55rem', fontWeight: 600, color: 'rgb(var(--color-secondary))' }}>{activeDiscussion.task.groupName}</span>
+                              <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'rgb(var(--color-secondary))' }}>{activeDiscussion.task.groupName}</span>
                             </div>
                           )}
                           {!isOwn && isFirstInGroup && (
@@ -1391,12 +1565,31 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                               {post.authorName}
                             </span>
                           )}
-                          {replyRefId && (
-                            <div style={{ borderLeft: `3px solid ${isOwn ? 'rgba(var(--color-primary) / 0.5)' : avatarC1}`, background: 'rgba(var(--color-primary) / 0.03)', borderRadius: '0 8px 8px 0', padding: '0.25rem 0.5rem', marginBottom: '0.3rem' }}>
-                              <span style={{ fontSize: '0.6rem', fontWeight: 700, color: isOwn ? 'rgb(var(--color-primary))' : avatarC1 }}>{replyRefAuthor || 'Unknown'}</span>
-                              <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{replyPreview || '...'}</p>
-                            </div>
-                          )}
+                          {replyRefId && (() => {
+                            const refPost = replyRefPost;
+                            const refCat = refPost ? CATEGORY_CONFIG[refPost.category] : null;
+                            const isSpecialReply = refPost && refPost.category !== 'DISCUSSION';
+                            const replyColor = isSpecialReply && refCat ? refCat.color : (isOwn ? 'rgba(var(--color-primary) / 0.5)' : avatarC1);
+                            const replyBg = isSpecialReply && refCat ? refCat.bg : 'rgba(var(--color-primary) / 0.03)';
+                            return (
+                              <div onClick={() => {
+                                const el = postRefs.current[replyRefId];
+                                if (el) {
+                                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  el.style.transition = 'box-shadow 0.3s';
+                                  el.style.boxShadow = `0 0 0 2px ${isSpecialReply && refCat ? refCat.color : 'rgb(var(--color-primary))'}`;
+                                  el.style.borderRadius = '14px';
+                                  setTimeout(() => { el.style.boxShadow = 'none'; }, 2000);
+                                }
+                              }} style={{ borderLeft: `3px solid ${replyColor}`, background: replyBg, borderRadius: '0 8px 8px 0', padding: '0.3rem 0.55rem', marginBottom: '0.3rem', cursor: 'pointer', transition: 'opacity 0.15s' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                  {isSpecialReply && refCat && (() => { const RefIcon = refCat.icon; return <RefIcon size={9} style={{ color: refCat.color }} />; })()}
+                                  <span style={{ fontSize: '0.7rem', fontWeight: 700, color: isSpecialReply && refCat ? refCat.color : (isOwn ? 'rgb(var(--color-primary))' : avatarC1) }}>{replyRefAuthor || 'Unknown'}{isSpecialReply ? ` • ${refCat?.label}` : ''}</span>
+                                </div>
+                                <p style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{replyPreview || '...'}</p>
+                              </div>
+                            );
+                          })()}
                           <p style={{ fontSize: 'var(--font-base)', lineHeight: 1.6, whiteSpace: 'pre-wrap', margin: 0, color: 'rgb(var(--text-primary))' }}>{parseContent(actualContent, sessions, onNavigate, classMembers, setSelectedMember, tasks)}</p>
                           {post.attachments && post.attachments.length > 0 && (
                             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.4rem' }}>
@@ -1420,7 +1613,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                                       <FileText size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
                                       <div style={{ minWidth: 0 }}>
                                         <span style={{ fontSize: 'var(--font-xs)', fontWeight: 500, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.fileName}</span>
-                                        {att.fileSizeBytes && <span style={{ fontSize: '0.55rem', color: 'rgb(var(--text-muted))' }}>{(att.fileSizeBytes / 1024).toFixed(0)} KB</span>}
+                                        {att.fileSizeBytes && <span style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))' }}>{(att.fileSizeBytes / 1024).toFixed(0)} KB</span>}
                                       </div>
                                       <Download size={12} style={{ color: 'rgb(var(--text-muted))', flexShrink: 0 }} />
                                     </a>
@@ -1433,7 +1626,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                             </div>
                           )}
                           <div className="chat-bubble-footer" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem', justifyContent: 'flex-end' }}>
-                            <span style={{ fontSize: '0.55rem', color: 'rgb(var(--text-muted))' }}>{timeAgo(post.createdAt)}</span>
+                            <span style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))' }}>{timeAgo(post.createdAt)}</span>
                             <button onClick={() => { setReplyToPost({ id: post.id, authorName: post.authorName, content: actualContent.slice(0, 100) }); inputRef.current?.focus(); }} className="chat-action-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', fontSize: 'var(--font-xs)', display: 'flex', alignItems: 'center', fontFamily: 'inherit', opacity: 0, transition: 'opacity 0.15s' }}><Reply size={10} /></button>
                             {(isOwn || canDelete) && <button onClick={(e) => { e.stopPropagation(); setContextMenu({ postId: post.id, x: e.clientX, y: e.clientY }); }} className="chat-action-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: 0, opacity: 0, transition: 'opacity 0.15s' }}><MoreVertical size={11} /></button>}
                           </div>
@@ -1476,7 +1669,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ fontSize: 'var(--font-xs)', fontWeight: 500, color: 'rgb(var(--text-primary))', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pendingFile.name}</span>
-                    <span style={{ fontSize: '0.55rem', color: 'rgb(var(--text-muted))' }}>{(pendingFile.size / 1024).toFixed(0)} KB • Tekan kirim untuk mengirim</span>
+                    <span style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))' }}>{(pendingFile.size / 1024).toFixed(0)} KB • Tekan kirim untuk mengirim</span>
                   </div>
                   <button onClick={clearPendingFile} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.2rem' }}><X size={16} /></button>
                 </div>
@@ -1485,7 +1678,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.75rem', background: 'rgba(var(--color-primary) / 0.04)', borderLeft: '3px solid rgb(var(--color-primary))' }}>
                   <Reply size={12} style={{ color: 'rgb(var(--color-primary))', flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ fontSize: '0.6rem', fontWeight: 600, color: 'rgb(var(--color-primary))' }}>{replyToPost.authorName}</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgb(var(--color-primary))' }}>{replyToPost.authorName}</span>
                     <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{replyToPost.content.replace(/\[reply:[^\]]*\]\n?/, '')}</p>
                   </div>
                   <button onClick={() => setReplyToPost(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.2rem' }}><X size={14} /></button>
@@ -1575,7 +1768,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                       </div>
                       <div style={{ padding: '0.5rem 0.6rem' }}>
                         <p style={{ fontSize: 'var(--font-xs)', fontWeight: 500, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'rgb(var(--text-primary))' }}>{att.fileName}</p>
-                        <p style={{ fontSize: '0.6rem', color: 'rgb(var(--text-muted))', margin: '0.15rem 0 0' }}>{att.postAuthor} • {new Date(att.postDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
+                        <p style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))', margin: '0.15rem 0 0' }}>{att.postAuthor} • {new Date(att.postDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</p>
                         <button onClick={() => {
                           setDiscussionTab('chat');
                           setTimeout(() => {
@@ -1590,7 +1783,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                           }, 100);
                         }} style={{
                           display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.35rem',
-                          padding: '0.2rem 0.45rem', borderRadius: '6px', fontSize: '0.6rem', fontWeight: 600,
+                          padding: '0.2rem 0.45rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600,
                           background: 'rgba(var(--color-primary) / 0.06)', color: 'rgb(var(--color-primary))',
                           border: 'none', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s',
                         }}
@@ -1809,7 +2002,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
             <div style={{ textAlign: 'center' }}>
               <h3 style={{ fontSize: 'var(--font-md)', fontWeight: 700, margin: 0 }}>{selectedMember.user.fullName}</h3>
               <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: '0.1rem 0' }}>{selectedMember.user.email}</p>
-              <span style={{ display: 'inline-block', fontSize: '0.65rem', padding: '0.1rem 0.5rem', borderRadius: '999px', background: selectedMember.role === 'OWNER' ? 'rgba(var(--color-warning) / 0.1)' : 'rgba(var(--color-primary) / 0.1)', color: selectedMember.role === 'OWNER' ? 'rgb(var(--color-warning))' : 'rgb(var(--color-primary))', fontWeight: 600, marginTop: '0.25rem' }}>
+              <span style={{ display: 'inline-block', fontSize: '0.75rem', padding: '0.1rem 0.5rem', borderRadius: '999px', background: selectedMember.role === 'OWNER' ? 'rgba(var(--color-warning) / 0.1)' : 'rgba(var(--color-primary) / 0.1)', color: selectedMember.role === 'OWNER' ? 'rgb(var(--color-warning))' : 'rgb(var(--color-primary))', fontWeight: 600, marginTop: '0.25rem' }}>
                 {selectedMember.role === 'OWNER' ? '👑 Pemilik' : '👤 Anggota'}
               </span>
             </div>

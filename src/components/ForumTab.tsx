@@ -15,7 +15,7 @@ import {
   Bell, Paperclip, Plus, Search,
   Hash, Users as UsersIcon, ImageIcon, FileText, Download, Pencil,
   ChevronLeft, Save, ChevronDown, Calendar, StickyNote, MoreHorizontal,
-  Upload, ArrowDown,
+  Upload, ArrowDown, ChevronsUpDown,
 } from 'lucide-react';
 
 interface ForumTabProps {
@@ -164,17 +164,22 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
 
   // Mobile responsive: detect viewport and use WhatsApp-style navigation
   const [isMobile, setIsMobile] = useState(false);
+  const [isNarrow, setIsNarrow] = useState(false);
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
+    const mqNarrow = window.matchMedia('(max-width: 480px)');
     setIsMobile(mq.matches);
+    setIsNarrow(mqNarrow.matches);
     // On mobile, start with sidebar open (discussion list view)
     if (mq.matches) setSidebarOpen(true);
     const handler = (e: MediaQueryListEvent) => {
       setIsMobile(e.matches);
       if (!e.matches) setSidebarOpen(true); // reset on desktop
     };
+    const narrowHandler = (e: MediaQueryListEvent) => setIsNarrow(e.matches);
     mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+    mqNarrow.addEventListener('change', narrowHandler);
+    return () => { mq.removeEventListener('change', handler); mqNarrow.removeEventListener('change', narrowHandler); };
   }, []);
 
   // Hide bottom nav when in chat mode on mobile (prevents input overlap)
@@ -259,6 +264,8 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
   // Date jump
   const [dateJumpOpen, setDateJumpOpen] = useState(false);
   const [specialPostsOpen, setSpecialPostsOpen] = useState<string | false>(false);
+  const [pinBarCollapsed, setPinBarCollapsed] = useState(false);
+  const [specialBarCollapsed, setSpecialBarCollapsed] = useState(false);
   const dateRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -290,7 +297,10 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
 
   const activeDiscussion = activeDiscussionId ? discussions.find(d => d.id === activeDiscussionId) : null;
 
-  // Socket.IO
+  // Socket.IO — use ref for activeDiscussionId to avoid reconnecting socket on every switch
+  const activeDiscussionIdRef = useRef<string | null>(activeDiscussionId);
+  useEffect(() => { activeDiscussionIdRef.current = activeDiscussionId; }, [activeDiscussionId]);
+
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
     const wsBase = apiUrl.replace(/\/api\/v\d+\/?$/, '');
@@ -300,7 +310,8 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
     socket.on('connect_error', () => {});
     socket.on('newPost', (post: ForumPost & { discussionId?: string | null }) => {
       const postDiscId = post.discussionId || null;
-      if (postDiscId !== activeDiscussionId) {
+      const currentDiscId = activeDiscussionIdRef.current;
+      if (postDiscId !== currentDiscId) {
         // Increment unread count for non-active discussion
         if (post.authorId !== userId) {
           const key = postDiscId || '__umum__';
@@ -334,7 +345,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
       setPosts((prev) => prev.map((p) => p.id === postId ? { ...p, isPinned } : p));
     });
     return () => { socket.emit('leaveClass', { classId }); socket.disconnect(); };
-  }, [classId, scrollToBottom, activeDiscussionId]);
+  }, [classId, scrollToBottom, userId]);
 
   // Fetch data (reverse infinite scroll — load latest first, fetch older on scroll up)
   const [hasMore, setHasMore] = useState(true);
@@ -354,9 +365,13 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
 
   const fetchOlderPosts = useCallback(async () => {
     if (loadingMore || !hasMore) return;
+    const container = chatContainerRef.current;
+    if (!container) return;
     setLoadingMore(true);
+    // Capture scroll state before prepending
+    const prevScrollHeight = container.scrollHeight;
+    const prevScrollTop = container.scrollTop;
     try {
-      const currentOldest = posts[0];
       const page = Math.floor(posts.length / POSTS_PER_PAGE) + 1;
       const res = await forumService.getClassPosts(classId, activeDiscussionId || undefined, { limit: POSTS_PER_PAGE, page });
       const list = (res.data || []).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
@@ -368,13 +383,12 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
           const merged = [...newPosts, ...prev].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
           return merged;
         });
-        // Maintain scroll position after prepend
-        setTimeout(() => {
-          if (currentOldest) {
-            const el = postRefs.current[currentOldest.id];
-            if (el) el.scrollIntoView({ block: 'start' });
-          }
-        }, 50);
+        // Restore scroll position after DOM updates (new items prepended increase scrollHeight)
+        requestAnimationFrame(() => {
+          const newScrollHeight = container.scrollHeight;
+          const addedHeight = newScrollHeight - prevScrollHeight;
+          container.scrollTop = prevScrollTop + addedHeight;
+        });
       }
     } catch { } finally { setLoadingMore(false); }
   }, [classId, activeDiscussionId, posts, loadingMore, hasMore]);
@@ -394,7 +408,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
     if (hasFeature('class_custom_tabs')) classService.getCustomTabs(classId, activeDiscussionId ?? null).then(setCustomTabs).catch(() => {});
   }, [classId, activeDiscussionId]);
   useEffect(() => { if (!loading && posts.length > 0) scrollToBottom(false); }, [loading]);
-  useEffect(() => { setDiscussionTab('chat'); }, [activeDiscussionId]);
+  useEffect(() => { setDiscussionTab('chat'); setReplyToPost(null); setPendingFile(null); setPendingFilePreview(null); setMessageText(''); }, [activeDiscussionId]);
 
   // Mark discussion as read when switching
   useEffect(() => {
@@ -792,20 +806,21 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
-  // Filtered & grouped — memoized to avoid recomputing on unrelated state changes
-  const filteredPosts = useMemo(() => chatSearch.trim()
+  // Search results (for dropdown navigation only — chat remains unfiltered like WhatsApp)
+  const searchResults = useMemo(() => chatSearch.trim()
     ? posts.filter(p => p.content.toLowerCase().includes(chatSearch.toLowerCase()) || p.authorName.toLowerCase().includes(chatSearch.toLowerCase()))
-    : posts, [posts, chatSearch]);
+    : [], [posts, chatSearch]);
+  // Always show all posts in chat (no filtering)
   const groupedPosts = useMemo(() => {
     const groups: { date: string; posts: ForumPost[] }[] = [];
-    filteredPosts.forEach((post) => {
+    posts.forEach((post) => {
       const dateKey = new Date(post.createdAt).toDateString();
       const last = groups[groups.length - 1];
       if (last && last.date === dateKey) last.posts.push(post);
       else groups.push({ date: dateKey, posts: [post] });
     });
     return groups;
-  }, [filteredPosts]);
+  }, [posts]);
   const pinnedPosts = useMemo(() => posts.filter((p) => p.isPinned), [posts]);
   const filteredDiscussions = useMemo(() => discussions.filter(d => !discSearch.trim() || d.title.toLowerCase().includes(discSearch.toLowerCase())), [discussions, discSearch]);
 
@@ -1008,6 +1023,9 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
               📅 Pertemuan {activeDiscussion.session.sequence}
             </div>
           )}
+          <button onClick={() => { setPinBarCollapsed(p => !p); setSpecialBarCollapsed(p => !p); }} title={pinBarCollapsed ? 'Tampilkan panel info' : 'Sembunyikan panel info'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: (!pinBarCollapsed) ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))', padding: '0.2rem', display: 'flex', transition: 'color 0.15s' }}>
+            <ChevronsUpDown size={14} />
+          </button>
           <button onClick={() => { setShowChatSearch(p => !p); if (showChatSearch) setChatSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: showChatSearch ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))', padding: '0.2rem', display: 'flex' }}>
             <Search size={14} />
           </button>
@@ -1018,13 +1036,13 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <Search size={13} style={{ color: 'rgb(var(--text-muted))', flexShrink: 0 }} />
               <TextInput value={chatSearch} onChange={v => setChatSearch(v)} placeholder="Cari pesan..." autoFocus />
-              {chatSearch && <span style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))', whiteSpace: 'nowrap' }}>{filteredPosts.length} hasil</span>}
+              {chatSearch && <span style={{ fontSize: '0.75rem', color: 'rgb(var(--text-muted))', whiteSpace: 'nowrap' }}>{searchResults.length} hasil</span>}
               <button onClick={() => { setShowChatSearch(false); setChatSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.15rem' }}><X size={14} /></button>
             </div>
             {/* Search results dropdown */}
-            {chatSearch.trim() && filteredPosts.length > 0 && (
+            {chatSearch.trim() && searchResults.length > 0 && (
               <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 25, background: 'var(--modal-bg)', border: '1px solid var(--border-default)', borderTop: 'none', boxShadow: 'var(--shadow-lg)', maxHeight: 260, overflowY: 'auto' }}>
-                {filteredPosts.slice(0, 20).map((p) => {
+                {searchResults.slice(0, 20).map((p) => {
                   const pCat = CATEGORY_CONFIG[p.category];
                   const content = p.content.replace(/^\[reply:[^\]]*\]\n?/, '');
                   return (
@@ -1191,7 +1209,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 className="animate-spin" size={24} style={{ color: 'rgb(var(--color-primary))' }} /></div>
         ) : (
           <>
-            {pinnedPosts.length > 0 && (
+            {pinnedPosts.length > 0 && !pinBarCollapsed && (
               <div style={{ padding: '0.4rem 0.65rem', background: 'rgba(var(--color-warning) / 0.04)', borderBottom: '1px solid rgba(var(--color-warning) / 0.1)', display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0, overflowX: 'auto', scrollbarWidth: 'none' }}>
                 <Pin size={12} style={{ color: 'rgb(var(--color-warning))', flexShrink: 0 }} />
                 <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgb(var(--color-warning))', flexShrink: 0 }}>Disematkan</span>
@@ -1220,7 +1238,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
             )}
 
             {/* Special posts floating indicator */}
-            {specialPostsSummary.length > 0 && (
+            {specialPostsSummary.length > 0 && !specialBarCollapsed && (
               <div style={{ padding: '0.3rem 0.65rem', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0, background: 'rgba(var(--color-primary) / 0.02)', position: 'relative' }}>
                 <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'rgb(var(--text-muted))', flexShrink: 0 }}>Pesan Penting:</span>
                 {specialPostsSummary.map(({ category, posts: catPosts }) => {
@@ -1267,7 +1285,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
             )}
 
             {/* Chat messages */}
-            <div ref={chatContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.1rem', position: 'relative' }}>
+            <div ref={chatContainerRef} style={{ flex: 1, overflowY: 'auto', padding: isNarrow ? '0.25rem 0' : isMobile ? '0.3rem 0.25rem' : '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '', position: 'relative' }}>
               {/* Loading older posts indicator */}
               {loadingMore && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem', flexShrink: 0 }}>
@@ -1684,11 +1702,11 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                   <button onClick={() => setReplyToPost(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.2rem' }}><X size={14} /></button>
                 </div>
               )}
-              <div style={{ padding: '0.6rem 0.75rem', display: 'flex', gap: '0.4rem', alignItems: 'flex-end', position: 'relative' }}>
-                <div style={{ display: 'flex', gap: '0.15rem', flexShrink: 0, paddingBottom: '0.25rem', position: 'relative' }}>
+              <div style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.6rem 0.75rem', display: 'flex', gap: '0.35rem', alignItems: 'flex-end', position: 'relative' }}>
+                <div style={{ display: 'flex', gap: '0.15rem', flexShrink: 0, paddingBottom: isMobile ? '0.15rem' : '0.25rem', position: 'relative' }}>
                   {/* Type dropdown trigger */}
-                  <button onClick={() => setShowTypeMenu(p => !p)} title="Tipe pesan" style={{ background: showTypeMenu ? 'rgba(var(--color-primary) / 0.1)' : 'none', border: 'none', cursor: 'pointer', color: showTypeMenu ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))', padding: '0.3rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
-                    <Plus size={16} />
+                  <button onClick={() => setShowTypeMenu(p => !p)} title="Tipe pesan" style={{ background: showTypeMenu ? 'rgba(var(--color-primary) / 0.1)' : 'none', border: 'none', cursor: 'pointer', color: showTypeMenu ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))', padding: isMobile ? '0.2rem' : '0.3rem', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
+                    <Plus size={isMobile ? 18 : 16} />
                   </button>
                   {/* File upload trigger */}
                   {hasFeature('forum_file_upload') && <button onClick={() => fileInputRef.current?.click()} title="Lampiran (gambar/PDF)" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: '0.3rem', display: 'flex' }}>
@@ -1730,10 +1748,10 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                 <form onSubmit={handleSendMessage} style={{ display: 'flex', flex: 1, gap: '0.35rem', alignItems: 'flex-end' }}>
                   <TextArea inputRef={inputRef} value={messageText} onChange={handleInputChange} onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (messageText.trim() || pendingFile) handleSendMessage(e as any); } }}
-                    placeholder={pendingFile ? 'Tambah pesan (opsional)...' : 'Tulis pesan... (ketik @ untuk tag)'} rows={1}
-                    autoResize minHeight={38} maxHeight={120} resize="none" />
+                    placeholder={pendingFile ? 'Tambah pesan (opsional)...' : 'Tulis pesan...'} rows={1}
+                    autoResize minHeight={isMobile ? 34 : 38} maxHeight={isMobile ? 80 : 120} resize="none" />
                   <button type="submit" disabled={(!messageText.trim() && !pendingFile) || isSending} style={{
-                    width: 36, height: 36, borderRadius: '50%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                    width: isMobile ? 32 : 36, height: isMobile ? 32 : 36, borderRadius: '50%', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                     background: (messageText.trim() || pendingFile) ? 'rgb(var(--color-primary))' : 'rgba(var(--color-primary) / 0.2)',
                     color: '#fff', cursor: (messageText.trim() || pendingFile) ? 'pointer' : 'not-allowed', transition: 'background 0.15s',
                   }}>

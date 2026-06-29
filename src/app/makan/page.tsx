@@ -32,10 +32,10 @@ import { RecipeCard } from '@/components/food/RecipeCard';
 import { PreferenceForm } from '@/components/food/PreferenceForm';
 
 const FILTER_OPTIONS = [
-  { label: '💸 Hemat', value: 'hemat' },
-  { label: '🥗 Sehat', value: 'sehat' },
-  { label: '🍛 Mengenyangkan', value: 'mengenyangkan' },
-  { label: '😌 Tidak Pedas', value: 'tidak pedas' },
+  { label: 'Hemat', value: 'hemat' },
+  { label: 'Sehat', value: 'sehat' },
+  { label: 'Mengenyangkan', value: 'mengenyangkan' },
+  { label: 'Tidak Pedas', value: 'tidak pedas' },
 ];
 
 function useSessionStorage<T>(key: string, initialValue: T) {
@@ -1118,7 +1118,7 @@ export default function MakanApaPage() {
                       <CalendarDays size={40} style={{ color: 'rgb(var(--color-primary))', marginBottom: 12 }} />
                       <h3 style={{ fontWeight: 700, marginBottom: 8 }}>Meal Plan Mingguan</h3>
                       <p style={{ fontSize: 'var(--font-sm)', color: 'rgb(var(--text-muted))', marginBottom: 16, maxWidth: 400, margin: '0 auto 16px' }}>
-                        AI akan susun menu makan siang & makan malam selama 7 hari, disesuaikan budget & seleramu.
+                        AI akan susun menu sarapan, makan siang & makan malam selama 7 hari, disesuaikan budget, kebiasaan makan & tujuan kesehatanmu.
                       </p>
                       <Button onClick={handleGenerateMealPlan} style={{ borderRadius: 'var(--radius-md)', padding: '12px 24px', fontWeight: 700 }}>
                         <Sparkles size={16} /> Generate Meal Plan
@@ -1138,11 +1138,12 @@ export default function MakanApaPage() {
                       {/* Summary */}
                       <Card style={{ marginBottom: 16, padding: '14px 18px', background: 'linear-gradient(135deg, rgba(var(--color-primary) / 0.05), rgba(var(--color-secondary) / 0.03))' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                          <span style={{ fontSize: 'var(--font-sm)', fontWeight: 700 }}>📊 Estimasi Total</span>
+                          <span style={{ fontSize: 'var(--font-sm)', fontWeight: 700 }}>Estimasi Total</span>
                           <span style={{ fontSize: 'var(--font-md)', fontWeight: 800, color: 'rgb(var(--color-primary))' }}>{fmt(mealPlanResult.totalEstimatedCost || 0)}</span>
                         </div>
                         <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: '4px 0 0' }}>
                           Budget harian: ~{fmt(mealPlanResult.dailyBudget || 0)}
+                          {mealPlanResult.dailyCalorieTarget ? ` · Target: ${mealPlanResult.dailyCalorieTarget} kkal/hari` : ''}
                         </p>
                       </Card>
 
@@ -1151,22 +1152,26 @@ export default function MakanApaPage() {
                         {mealPlanResult.days.map((day) => (
                           <Card key={day.day} style={{ padding: 0, overflow: 'hidden' }}>
                             <div style={{ padding: '12px 16px', background: 'rgba(var(--color-primary) / 0.04)', borderBottom: '1px solid var(--border-default)' }}>
-                              <h4 style={{ fontWeight: 800, fontSize: 'var(--font-sm)', margin: 0 }}>📅 Hari {day.day}</h4>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <h4 style={{ fontWeight: 800, fontSize: 'var(--font-sm)', margin: 0 }}>Hari {day.day}</h4>
+                                {day.totalCalories && <span style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))' }}>{day.totalCalories} kkal</span>}
+                              </div>
                             </div>
                             <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                               {day.meals.map((meal, mi) => (
                                 <div key={mi} className="makan-meal-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, padding: '8px 0', borderBottom: mi < day.meals.length - 1 ? '1px solid var(--border-default)' : 'none' }}>
                                   <div style={{ flex: 1 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                                      <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: 999, background: meal.type === 'lunch' ? 'rgba(var(--color-warning) / 0.1)' : 'rgba(var(--color-primary) / 0.1)', color: meal.type === 'lunch' ? 'rgb(var(--color-warning))' : 'rgb(var(--color-primary))', fontWeight: 700 }}>
-                                        {meal.type === 'lunch' ? '☀️ Siang' : '🌙 Malam'}
+                                      <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: 999, background: meal.type === 'breakfast' ? 'rgba(var(--color-info) / 0.1)' : meal.type === 'lunch' ? 'rgba(var(--color-warning) / 0.1)' : 'rgba(var(--color-primary) / 0.1)', color: meal.type === 'breakfast' ? 'rgb(var(--color-info))' : meal.type === 'lunch' ? 'rgb(var(--color-warning))' : 'rgb(var(--color-primary))', fontWeight: 700 }}>
+                                        {meal.type === 'breakfast' ? 'Pagi' : meal.type === 'lunch' ? 'Siang' : 'Malam'}
                                       </span>
                                     </div>
                                     <h5 style={{ fontWeight: 700, fontSize: 'var(--font-sm)', margin: 0 }}>{meal.name}</h5>
                                     {meal.note && <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--text-muted))', margin: '2px 0 0' }}>{meal.note}</p>}
+                                    {meal.healthNote && <p style={{ fontSize: 'var(--font-xs)', color: 'rgb(var(--color-success))', margin: '2px 0 0', fontStyle: 'italic' }}>{meal.healthNote}</p>}
                                     <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-                                      {meal.calories && <span style={{ fontSize: '10px', color: 'rgb(var(--text-muted))' }}>🔥 {meal.calories} kcal</span>}
-                                      {meal.protein && <span style={{ fontSize: '10px', color: 'rgb(var(--text-muted))' }}>💪 {meal.protein}g protein</span>}
+                                      {meal.calories && <span style={{ fontSize: '10px', color: 'rgb(var(--text-muted))' }}>{meal.calories} kkal</span>}
+                                      {meal.protein && <span style={{ fontSize: '10px', color: 'rgb(var(--text-muted))' }}>{meal.protein}g protein</span>}
                                     </div>
                                   </div>
                                   <span className="makan-meal-price" style={{ fontWeight: 800, fontSize: 'var(--font-sm)', color: 'rgb(var(--color-primary))', whiteSpace: 'nowrap' }}>{fmt(meal.estimatedCost)}</span>

@@ -7,6 +7,14 @@ export interface FoodPreference {
   spicyLevel: number;
   dietType: string;
   avgMealBudget: number | null;
+  calorieLimit: number | null;
+  proteinTarget: number | null;
+  healthGoals: string[];
+  allergies: string[];
+  breakfastHabit: string | null;
+  lunchHabit: string | null;
+  dinnerHabit: string | null;
+  snackHabit: string | null;
 }
 
 export interface FridgeRecipe {
@@ -41,8 +49,9 @@ export interface MenuResult {
 
 export interface MealPlanDay {
   day: number;
+  totalCalories?: number;
   meals: {
-    type: 'lunch' | 'dinner';
+    type: 'breakfast' | 'lunch' | 'dinner';
     name: string;
     estimatedCost: number;
     calories?: number;
@@ -51,12 +60,14 @@ export interface MealPlanDay {
     fat?: number;
     tags: string[];
     note?: string;
+    healthNote?: string;
   }[];
 }
 
 export interface MealPlanResult {
   dailyBudget: number;
   totalEstimatedCost: number;
+  dailyCalorieTarget?: number;
   days: MealPlanDay[];
 }
 

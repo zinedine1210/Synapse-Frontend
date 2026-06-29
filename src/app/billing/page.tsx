@@ -411,30 +411,43 @@ export default function BillingPage() {
             {paymentSuccess && <div style={{ marginBottom: '1.5rem' }}><Alert type="success" message={paymentSuccess} /></div>}
 
             {/* Billing cycle toggle */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'var(--input-bg)', borderRadius: 8, border: '1px solid var(--border-default)', overflow: 'hidden' }}>
-                <button
-                  onClick={() => setBillingCycle('monthly')}
-                  style={{
-                    padding: '0.5rem 1rem', fontSize: 'var(--font-sm)', fontWeight: 600, border: 'none', cursor: 'pointer',
-                    background: billingCycle === 'monthly' ? 'rgb(var(--color-primary))' : 'transparent',
-                    color: billingCycle === 'monthly' ? 'rgb(var(--bg-base))' : 'rgb(var(--text-secondary))',
-                  }}
-                >
-                  Bulanan
-                </button>
-                <button
-                  onClick={() => setBillingCycle('yearly')}
-                  style={{
-                    padding: '0.5rem 1rem', fontSize: 'var(--font-sm)', fontWeight: 600, border: 'none', cursor: 'pointer',
-                    background: billingCycle === 'yearly' ? 'rgb(var(--color-primary))' : 'transparent',
-                    color: billingCycle === 'yearly' ? 'rgb(var(--bg-base))' : 'rgb(var(--text-secondary))',
-                  }}
-                >
-                  Tahunan <span style={{ fontSize: 'var(--font-xs)', opacity: 0.8 }}>(-17%)</span>
-                </button>
-              </div>
-            </div>
+            {(() => {
+              // Calculate yearly savings from actual plan data
+              const monthlyPlans = plans.filter(p => p.price > 0 && p.durationDays < 365);
+              const yearlyPlans = plans.filter(p => p.price > 0 && p.durationDays >= 365);
+              let savingsPercent = 0;
+              if (monthlyPlans.length > 0 && yearlyPlans.length > 0) {
+                const avgMonthlyAnnualized = monthlyPlans.reduce((s, p) => s + (p.price * 12), 0) / monthlyPlans.length;
+                const avgYearly = yearlyPlans.reduce((s, p) => s + p.price, 0) / yearlyPlans.length;
+                savingsPercent = Math.round((1 - avgYearly / avgMonthlyAnnualized) * 100);
+              }
+              return (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 0, background: 'var(--input-bg)', borderRadius: 8, border: '1px solid var(--border-default)', overflow: 'hidden' }}>
+                    <button
+                      onClick={() => setBillingCycle('monthly')}
+                      style={{
+                        padding: '0.5rem 1rem', fontSize: 'var(--font-sm)', fontWeight: 600, border: 'none', cursor: 'pointer',
+                        background: billingCycle === 'monthly' ? 'rgb(var(--color-primary))' : 'transparent',
+                        color: billingCycle === 'monthly' ? 'rgb(var(--bg-base))' : 'rgb(var(--text-secondary))',
+                      }}
+                    >
+                      Bulanan
+                    </button>
+                    <button
+                      onClick={() => setBillingCycle('yearly')}
+                      style={{
+                        padding: '0.5rem 1rem', fontSize: 'var(--font-sm)', fontWeight: 600, border: 'none', cursor: 'pointer',
+                        background: billingCycle === 'yearly' ? 'rgb(var(--color-primary))' : 'transparent',
+                        color: billingCycle === 'yearly' ? 'rgb(var(--bg-base))' : 'rgb(var(--text-secondary))',
+                      }}
+                    >
+                      Tahunan {savingsPercent > 0 && <span style={{ fontSize: 'var(--font-xs)', opacity: 0.8 }}>&nbsp;(-{savingsPercent}%)</span>}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Promo Code Section */}
             <Card style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem', border: '1px dashed var(--border-default)' }}>
@@ -474,13 +487,15 @@ export default function BillingPage() {
                 {plans
                   .filter(plan => {
                     if (plan.price === 0) return true; // Always show FREE
-                    const isYearly = plan.name.includes('YEARLY');
+                    const isYearly = plan.durationDays >= 365;
                     return billingCycle === 'yearly' ? isYearly : !isYearly;
                   })
-                  .map((plan, idx) => {
+                  .map((plan, idx, filteredPlans) => {
                   const isActive = currentPlanName === plan.name;
                   const isFree = plan.price === 0;
-                  const isHighlighted = !isFree && idx > 0; // Highlight paid plans
+                  const isHighlighted = !isFree && plan.price > 0;
+                  // Recommend the highest-priced plan in the current view
+                  const isRecommended = isHighlighted && plan.price === Math.max(...filteredPlans.filter(p => p.price > 0).map(p => p.price));
                   const features = buildFeatureList(plan);
 
                   return (
@@ -497,8 +512,8 @@ export default function BillingPage() {
                         opacity: isActive ? 1 : isFree && currentPlanName !== 'FREE' ? 0.65 : 1,
                       }}
                     >
-                      {/* Recommended badge for first paid plan */}
-                      {isHighlighted && idx === 1 && (
+                      {/* Recommended badge for highest plan */}
+                      {isRecommended && (
                         <div style={{
                           position: 'absolute', top: -10, right: 20,
                           background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))',

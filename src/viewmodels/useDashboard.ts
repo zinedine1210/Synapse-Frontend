@@ -92,9 +92,12 @@ export function useContextualSuggestion() {
   } else if (hour >= 15 && hour < 18) {
     suggestion = 'Ada deadline besok? Cek todo-mu';
     suggestAction = { label: 'Cek Todo', href: '/todos' };
-  } else if (hour >= 18) {
+  } else if (hour >= 18 && hour < 23) {
     suggestion = 'Waktunya wrap-up — cek spending hari ini';
     suggestAction = { label: 'Lihat Ringkasan', href: '/duit-tracker' };
+  } else {
+    suggestion = 'Masih melek? Istirahat ya, besok masih panjang 💤';
+    suggestAction = { label: 'Lihat Todo Besok', href: '/todos' };
   }
 
   return { suggestion, suggestAction };

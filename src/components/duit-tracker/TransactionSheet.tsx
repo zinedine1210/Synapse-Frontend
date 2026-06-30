@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { BottomSheet, Button, CurrencyInput, TextInput, DateTimePicker, useToast } from '@/components/ui';
-import { duitTrackerService, Transaction } from '@/services/duitTrackerService';
-import { Loader2, Sparkles, Send } from 'lucide-react';
+import React from 'react';
+import { BottomSheet, Button, CurrencyInput, TextInput, DateTimePicker } from '@/components/ui';
+import { Transaction } from '@/services/duitTrackerService';
+import { Loader2 } from 'lucide-react';
 
 export interface TxForm {
   amount: string;
@@ -36,8 +36,7 @@ interface TransactionSheetProps {
 /**
  * TransactionSheet — attractive, low-friction add/edit transaction experience.
  * Uses BottomSheet (slides up on mobile <640px, centered modal on desktop).
- * Features: inline AI natural-language quick fill, receipt scan, large amount
- * input, income/expense toggle, emoji category chips, optional note + date.
+ * Features: large amount input, income/expense toggle, emoji category chips, optional note + date.
  */
 export function TransactionSheet({
   isOpen,
@@ -50,39 +49,9 @@ export function TransactionSheet({
   expenseCategories,
   incomeCategories,
 }: TransactionSheetProps) {
-  const { showToast } = useToast();
-  const [quickText, setQuickText] = useState('');
-  const [quickLoading, setQuickLoading] = useState(false);
-
   const categories = form.type === 'income' ? incomeCategories : expenseCategories;
   const isIncome = form.type === 'income';
   const accent = isIncome ? 'var(--dt-income)' : 'var(--dt-expense)';
-
-  const handleQuickParse = async () => {
-    if (!quickText.trim() || quickLoading) return;
-    setQuickLoading(true);
-    try {
-      const p = await duitTrackerService.parseNaturalInput(quickText.trim());
-      if (p.amount) {
-        setForm({
-          amount: String(p.amount),
-          type: p.type || 'expense',
-          category: p.category || 'lainnya',
-          label: p.label || quickText.trim(),
-          note: p.note || '',
-          date: '',
-        });
-        setQuickText('');
-        showToast('Terisi otomatis dari AI! ✨', 'success');
-      } else {
-        showToast('Gagal memparse input.', 'error');
-      }
-    } catch (e: any) {
-      showToast(e.message || 'Gagal memparse input.', 'error');
-    } finally {
-      setQuickLoading(false);
-    }
-  };
 
 
   return (
@@ -91,35 +60,6 @@ export function TransactionSheet({
       onClose={onClose}
       title={editingTx ? '✏️ Edit Transaksi' : '💰 Tambah Transaksi'}
     >
-
-      {/* Inline AI quick fill (front & center) */}
-      {!editingTx && (
-        <div className="tx-sheet__ai">
-          <Sparkles size={16} style={{ opacity: 0.6, flexShrink: 0 }} />
-          <input
-            className="tx-sheet__ai-input"
-            placeholder="Ketik cepat: kopi 25rb, grab 12k..."
-            value={quickText}
-            onChange={(e) => setQuickText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleQuickParse();
-              }
-            }}
-            aria-label="Input cepat bahasa natural"
-          />
-          <button
-            type="button"
-            onClick={handleQuickParse}
-            disabled={!quickText.trim() || quickLoading}
-            className="tx-sheet__ai-btn"
-            aria-label="Isi otomatis dengan AI"
-          >
-            {quickLoading ? <Loader2 size={14} className="spin" /> : <Send size={14} />}
-          </button>
-        </div>
-      )}
 
       <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Type toggle */}
@@ -240,48 +180,6 @@ export function TransactionSheet({
       </form>
 
       <style jsx>{`
-        .tx-sheet__ai {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 10px 12px;
-          border-radius: 14px;
-          margin-bottom: 18px;
-          background: linear-gradient(135deg, rgba(var(--color-primary), 0.1), rgba(var(--color-primary), 0.03));
-          border: 1px solid rgba(var(--color-primary), 0.2);
-        }
-        .tx-sheet__ai-input {
-          flex: 1;
-          border: none;
-          background: transparent;
-          outline: none;
-          font-size: 14px;
-          font-weight: 500;
-          color: inherit;
-          font-family: inherit;
-          min-width: 0;
-        }
-        .tx-sheet__ai-btn {
-          width: 32px;
-          height: 32px;
-          border-radius: 10px;
-          border: none;
-          flex-shrink: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          color: #fff;
-          background: rgb(var(--color-primary));
-          transition: opacity 0.2s, transform 0.15s;
-        }
-        .tx-sheet__ai-btn:disabled {
-          opacity: 0.4;
-          cursor: default;
-        }
-        .tx-sheet__ai-btn:not(:disabled):active {
-          transform: scale(0.92);
-        }
         .tx-sheet__toggle {
           display: flex;
           gap: 6px;
@@ -355,13 +253,11 @@ export function TransactionSheet({
         }
         @media (prefers-reduced-motion: reduce) {
           .tx-sheet__chip,
-          .tx-sheet__ai-btn,
           .tx-sheet__toggle-btn,
           .tx-sheet__amount {
             transition: none;
           }
-          .tx-sheet__chip:active,
-          .tx-sheet__ai-btn:not(:disabled):active {
+          .tx-sheet__chip:active {
             transform: none;
           }
         }

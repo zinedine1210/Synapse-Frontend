@@ -15,25 +15,25 @@ import {
   skripsweetService,
   ThesisProject, ThesisChapter, ThesisJournal, ThesisBimbingan,
   ThesisChatMessage, ThesisProgress, JournalSearchResult, ThesisBibliography,
-  ThesisComment, ExploreResult,
+  ThesisComment, ExploreResult, ChapterRevision,
 } from '@/services/skripsweetService';
 import {
-  Plus, Loader2, BookOpen, Search, Sparkles, Trash2, X, ChevronRight, ChevronDown,
+  Plus, Loader2, BookOpen, Search, Sparkles, Trash2, X, ChevronRight, ChevronDown, ChevronUp,
   FileText, MessageSquare, ClipboardList, BookMarked, Globe,
   BarChart3, Edit2, Check, Send, RefreshCw, ExternalLink, Eye,
-  Heart, Bookmark, Copy, TrendingUp, Download, ArrowUpRight,
+  Heart, Bookmark, Copy, TrendingUp, Download, ArrowUpRight, Pencil, Upload, AlertCircle,
 } from 'lucide-react';
 
 const RichTextEditor = dynamic(() => import('@/components/ui/RichTextEditor').then(m => ({ default: m.RichTextEditor })), { ssr: false });
 
 type Tab = 'dashboard' | 'chapters' | 'journals' | 'bimbingan' | 'bibliography' | 'chat' | 'explore';
 
-const STATUS_LABELS: Record<string, { label: string; color: string; emoji: string }> = {
-  draft: { label: 'Draft', color: '#6b7280', emoji: '📝' },
-  in_progress: { label: 'Sedang Dikerjakan', color: '#3b82f6', emoji: '🔄' },
-  review: { label: 'Review', color: '#f59e0b', emoji: '👀' },
-  revision: { label: 'Revisi', color: '#ef4444', emoji: '🔧' },
-  completed: { label: 'Selesai', color: '#22c55e', emoji: '✅' },
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  draft: { label: 'Draft', color: '#6b7280' },
+  in_progress: { label: 'Sedang Dikerjakan', color: '#3b82f6' },
+  review: { label: 'Review', color: '#f59e0b' },
+  revision: { label: 'Revisi', color: '#ef4444' },
+  completed: { label: 'Selesai', color: '#22c55e' },
 };
 
 const CHAPTER_STATUS: Record<string, { label: string; color: string }> = {
@@ -84,6 +84,12 @@ export default function SkripsweetPage() {
   const [journalSearching, setJournalSearching] = useState(false);
   const [journalSearchMode, setJournalSearchMode] = useState<'list' | 'search'>('list');
 
+  // Journal edit
+  const [editingJournal, setEditingJournal] = useState<ThesisJournal | null>(null);
+
+  // Bibliography style
+  const [bibStyle, setBibStyle] = useState('apa7');
+
   // Chat
   const [chatMessages, setChatMessages] = useState<ThesisChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -106,6 +112,18 @@ export default function SkripsweetPage() {
   const [chatLoading, setChatLoading] = useState(false);
   const [feedbackLoading, setFeedbackLoading] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+
+  // Edit bimbingan
+  const [editingBimbingan, setEditingBimbingan] = useState<ThesisBimbingan | null>(null);
+
+  // Format upload
+  const [formatMode, setFormatMode] = useState<'text' | 'file'>('text');
+  const formatFileRef = useRef<HTMLInputElement>(null);
+
+  // Revisions
+  const [revisionModal, setRevisionModal] = useState<{ chapterId: string; chapterTitle: string } | null>(null);
+  const [revisionNote, setRevisionNote] = useState('');
+  const [expandedRevisions, setExpandedRevisions] = useState<string | null>(null);
 
   // ─── Data Loading ───────────────────────────────────────────
   const fetchTheses = useCallback(async () => {
@@ -170,7 +188,9 @@ export default function SkripsweetPage() {
       setActiveThesis(thesis);
       setShowCreateModal(false);
       setThesisForm({ title: '', university: '', faculty: '', department: '', supervisor: '', supervisorTwo: '', startDate: '', targetDate: '', abstract: '' });
-      showToast('Proyek skripsi berhasil dibuat! 🎓', 'success');
+      showToast('Proyek skripsi berhasil dibuat! Sekarang atur format skripsimu.', 'success');
+      // Auto-open format modal to guide the user
+      setTimeout(() => setShowFormatModal(true), 300);
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
@@ -195,6 +215,18 @@ export default function SkripsweetPage() {
       setShowFormatModal(false); setFormatExplanation('');
       refreshAll();
     } catch (e: any) { showToast(e.message || 'Gagal mengatur format', 'error'); }
+    finally { setSubmitting(false); }
+  };
+
+  const handleUploadFormatFile = async (file: File) => {
+    if (!activeThesis) return;
+    setSubmitting(true);
+    try {
+      await skripsweetService.uploadFormatFile(activeThesis.id, file);
+      showToast('File berhasil dianalisis! Struktur bab sudah dibuat otomatis.', 'success');
+      setShowFormatModal(false);
+      refreshAll();
+    } catch (e: any) { showToast(e.message || 'Gagal menganalisis file', 'error'); }
     finally { setSubmitting(false); }
   };
 
@@ -278,7 +310,7 @@ export default function SkripsweetPage() {
         abstract: journalForm.abstract || undefined, relevance: journalForm.relevance || undefined,
         citationKey: journalForm.citationKey || undefined,
       } as any);
-      showToast('Jurnal ditambahkan! 📚', 'success');
+      showToast('Jurnal ditambahkan!', 'success');
       setShowJournalModal(false);
       setJournalForm({ title: '', authors: '', journalName: '', year: '', doi: '', url: '', abstract: '', relevance: '', citationKey: '' });
       refreshAll();
@@ -292,6 +324,51 @@ export default function SkripsweetPage() {
     catch (e: any) { showToast(e.message, 'error'); }
   };
 
+  const handleUpdateJournal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeThesis || !editingJournal) return;
+    setSubmitting(true);
+    try {
+      await skripsweetService.updateJournal(activeThesis.id, editingJournal.id, {
+        title: journalForm.title, authors: journalForm.authors || undefined,
+        journalName: journalForm.journalName || undefined, year: journalForm.year ? parseInt(journalForm.year) : undefined,
+        doi: journalForm.doi || undefined, url: journalForm.url || undefined,
+        abstract: journalForm.abstract || undefined, relevance: journalForm.relevance || undefined,
+        citationKey: journalForm.citationKey || undefined,
+      } as any);
+      showToast('Jurnal diperbarui!', 'success');
+      setEditingJournal(null);
+      setShowJournalModal(false);
+      setJournalForm({ title: '', authors: '', journalName: '', year: '', doi: '', url: '', abstract: '', relevance: '', citationKey: '' });
+      refreshAll();
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setSubmitting(false); }
+  };
+
+  const startEditJournal = (j: ThesisJournal) => {
+    setEditingJournal(j);
+    setJournalForm({
+      title: j.title, authors: j.authors || '', journalName: j.journalName || '',
+      year: j.year ? String(j.year) : '', doi: j.doi || '', url: j.url || '',
+      abstract: j.abstract || '', relevance: j.relevance || '', citationKey: j.citationKey || '',
+    });
+    setShowJournalModal(true);
+  };
+
+  const handleReorderChapter = async (chapterId: string, direction: 'up' | 'down') => {
+    if (!activeThesis) return;
+    const sorted = [...chapters].sort((a, b) => a.sortOrder - b.sortOrder);
+    const idx = sorted.findIndex(c => c.id === chapterId);
+    if ((direction === 'up' && idx === 0) || (direction === 'down' && idx === sorted.length - 1)) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    [sorted[idx], sorted[swapIdx]] = [sorted[swapIdx], sorted[idx]];
+    const newOrder = sorted.map(c => c.id);
+    try {
+      await skripsweetService.reorderChapters(activeThesis.id, newOrder);
+      refreshAll();
+    } catch (e: any) { showToast(e.message, 'error'); }
+  };
+
   const handleCreateBimbingan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeThesis || !bimbinganForm.topic.trim() || !bimbinganForm.date) return;
@@ -302,7 +379,7 @@ export default function SkripsweetPage() {
         topic: bimbinganForm.topic, feedback: bimbinganForm.feedback || undefined,
         actionItems: bimbinganForm.actionItems ? JSON.stringify(bimbinganForm.actionItems.split('\n').filter(Boolean)) : undefined,
       });
-      showToast('Log bimbingan ditambahkan! 📋', 'success');
+      showToast('Log bimbingan ditambahkan!', 'success');
       setShowBimbinganModal(false);
       setBimbinganForm({ date: '', supervisor: '', topic: '', feedback: '', actionItems: '' });
       refreshAll();
@@ -318,6 +395,86 @@ export default function SkripsweetPage() {
   const handleMarkBimbinganDone = async (id: string) => {
     if (!activeThesis) return;
     try { await skripsweetService.updateBimbingan(activeThesis.id, id, { status: 'done' }); refreshAll(); } catch (e: any) { showToast(e.message, 'error'); }
+  };
+
+  const startEditBimbingan = (b: ThesisBimbingan) => {
+    setEditingBimbingan(b);
+    let actions: string[] = [];
+    try { actions = b.actionItems ? JSON.parse(b.actionItems) : []; } catch { }
+    setBimbinganForm({
+      date: b.date ? b.date.split('T')[0] : '',
+      supervisor: b.supervisor || '',
+      topic: b.topic,
+      feedback: b.feedback || '',
+      actionItems: actions.join('\n'),
+    });
+    setShowBimbinganModal(true);
+  };
+
+  const handleSaveBimbingan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeThesis || !bimbinganForm.topic.trim()) return;
+    setSubmitting(true);
+    const payload = {
+      date: bimbinganForm.date, supervisor: bimbinganForm.supervisor || undefined,
+      topic: bimbinganForm.topic, feedback: bimbinganForm.feedback || undefined,
+      actionItems: bimbinganForm.actionItems ? JSON.stringify(bimbinganForm.actionItems.split('\n').filter(Boolean)) : undefined,
+    };
+    try {
+      if (editingBimbingan) {
+        await skripsweetService.updateBimbingan(activeThesis.id, editingBimbingan.id, payload);
+        showToast('Bimbingan diperbarui!', 'success');
+      } else {
+        await skripsweetService.createBimbingan(activeThesis.id, payload);
+        showToast('Log bimbingan ditambahkan!', 'success');
+      }
+      setShowBimbinganModal(false); setEditingBimbingan(null);
+      setBimbinganForm({ date: '', supervisor: '', topic: '', feedback: '', actionItems: '' });
+      refreshAll();
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setSubmitting(false); }
+  };
+
+  const handleUploadBimbinganFile = async (bimbinganId: string, file: File) => {
+    if (!activeThesis) return;
+    try {
+      await skripsweetService.uploadBimbinganAttachment(activeThesis.id, bimbinganId, file);
+      showToast('Lampiran berhasil diupload!', 'success');
+      refreshAll();
+    } catch (e: any) { showToast(e.message, 'error'); }
+  };
+
+  // ─── Revision Handlers ─────────────────────────────────────
+  const handleAddRevision = async () => {
+    if (!activeThesis || !revisionModal || !revisionNote.trim()) return;
+    setSubmitting(true);
+    try {
+      await skripsweetService.addRevision(activeThesis.id, revisionModal.chapterId, revisionNote.trim());
+      showToast('Catatan revisi ditambahkan.', 'success');
+      setRevisionModal(null); setRevisionNote('');
+      refreshAll();
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setSubmitting(false); }
+  };
+
+  const handleToggleRevision = async (chapterId: string, rev: ChapterRevision) => {
+    if (!activeThesis) return;
+    try {
+      if (rev.status === 'pending') {
+        await skripsweetService.resolveRevision(activeThesis.id, chapterId, rev.id);
+      } else {
+        await skripsweetService.unresolveRevision(activeThesis.id, chapterId, rev.id);
+      }
+      refreshAll();
+    } catch (e: any) { showToast(e.message, 'error'); }
+  };
+
+  const handleDeleteRevision = async (chapterId: string, revisionId: string) => {
+    if (!activeThesis) return;
+    try {
+      await skripsweetService.deleteRevision(activeThesis.id, chapterId, revisionId);
+      refreshAll();
+    } catch (e: any) { showToast(e.message, 'error'); }
   };
 
   const handleSendChat = async () => {
@@ -342,8 +499,8 @@ export default function SkripsweetPage() {
     if (!activeThesis) return;
     setSubmitting(true);
     try {
-      const res = await skripsweetService.generateBibliography(activeThesis.id);
-      showToast(`Daftar pustaka di-generate (${res.bibliography.length} entri)!`, 'success');
+      const res = await skripsweetService.generateBibliography(activeThesis.id, bibStyle);
+      showToast(`Daftar pustaka di-generate (${res.bibliography.length} entri, format ${bibStyle.toUpperCase()})!`, 'success');
       refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
@@ -354,7 +511,7 @@ export default function SkripsweetPage() {
     setSubmitting(true);
     try {
       await skripsweetService.publish(activeThesis.id, publishTags);
-      showToast('Skripsi dipublikasikan ke komunitas! 🌐', 'success');
+      showToast('Skripsi dipublikasikan ke komunitas!', 'success');
       setShowPublishModal(false); setPublishTags([]);
       refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
@@ -372,17 +529,40 @@ export default function SkripsweetPage() {
     setExporting(true);
     try {
       const res = await skripsweetService.exportThesis(activeThesis.id);
-      // Download as HTML file
-      const blob = new Blob([res.html], { type: 'text/html' });
+      // Open HTML in new window and trigger browser print (Save as PDF)
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(res.html);
+        printWindow.document.close();
+        printWindow.onload = () => { setTimeout(() => printWindow.print(), 500); };
+        setTimeout(() => printWindow.print(), 1000);
+      } else {
+        const blob = new Blob([res.html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = res.filename;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+      }
+      showToast(`Dokumen "${res.title}" siap diunduh! (${res.totalWords.toLocaleString()} kata, ${res.chapterCount} bab)`, 'success');
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setExporting(false); }
+  };
+
+  const handleExportDocx = async () => {
+    if (!activeThesis) return;
+    setExporting(true);
+    try {
+      const res = await skripsweetService.exportThesis(activeThesis.id);
+      const docHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5}@page{margin:2.54cm 2.54cm 2.54cm 3.17cm}h1{font-size:14pt;text-align:center;font-weight:bold;text-transform:uppercase}h2{font-size:13pt;font-weight:bold}h3{font-size:12pt;font-weight:bold}table{border-collapse:collapse;width:100%}td,th{border:1px solid #000;padding:6px 10px;font-size:11pt}</style></head><body>${res.html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<\/?html[^>]*>|<\/?head[^>]*>|<\/?body[^>]*>|<meta[^>]*>/gi, '')}</body></html>`;
+      const blob = new Blob(['\ufeff' + docHtml], { type: 'application/msword' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = res.filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showToast(`Dokumen "${res.title}" berhasil diunduh! (${res.totalWords.toLocaleString()} kata, ${res.chapterCount} bab)`, 'success');
+      a.download = `${activeThesis.title.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 50)}.doc`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+      showToast('Dokumen .doc berhasil diunduh!', 'success');
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setExporting(false); }
   };
@@ -428,7 +608,7 @@ export default function SkripsweetPage() {
   };
 
   // ─── Computed ───────────────────────────────────────────────
-  const chapters = activeThesis?.chapters || [];
+  const chapters = (activeThesis?.chapters || []).sort((a, b) => a.sortOrder - b.sortOrder);
   const journals = activeThesis?.journals || [];
   const bimbingans = activeThesis?.bimbingans || [];
   const bibliographies = activeThesis?.bibliographies || [];
@@ -456,15 +636,19 @@ export default function SkripsweetPage() {
                 <div>
                   <h1 style={{ fontSize: 26, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Skripsweet</span>
-                    <span style={{ fontSize: 22 }}>🎓</span>
                   </h1>
                   <p style={{ fontSize: 13, color: 'var(--dt-text-secondary)', marginTop: 2 }}>Asisten skripsi AI — dari draft sampai sidang</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {activeThesis && (
-                    <Button onClick={handleExportThesis} variant="secondary" size="sm" disabled={exporting}>
-                      {exporting ? <Loader2 size={13} className="spin" /> : <Download size={13} />} Download
-                    </Button>
+                    <>
+                      <Button onClick={handleExportThesis} variant="secondary" size="sm" disabled={exporting}>
+                        {exporting ? <Loader2 size={13} className="spin" /> : <Download size={13} />} PDF
+                      </Button>
+                      <Button onClick={handleExportDocx} variant="secondary" size="sm" disabled={exporting}>
+                        <Download size={13} /> .doc
+                      </Button>
+                    </>
                   )}
                   {activeThesis && !activeThesis.isPublished && (
                     <Button onClick={() => { setPublishTags(activeThesis.tags || []); setShowPublishModal(true); }} variant="secondary" size="sm">
@@ -499,14 +683,33 @@ export default function SkripsweetPage() {
                   {[1, 2, 3].map(n => <div key={n} className="skeleton" style={{ height: 80, borderRadius: 14 }} />)}
                 </div>
               ) : !activeThesis && tab !== 'explore' ? (
-                <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-                  <div style={{ fontSize: 72, marginBottom: 16, filter: 'drop-shadow(0 4px 12px rgba(99, 102, 241, 0.3))' }}>🎓</div>
+                <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+                  <BookOpen size={56} style={{ marginBottom: 16, opacity: 0.4, color: '#6366f1' }} />
                   <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8, background: 'linear-gradient(135deg, #6366f1, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Mulai Perjalanan Skripsimu!</h2>
-                  <p style={{ fontSize: 14, opacity: 0.6, maxWidth: 440, margin: '0 auto 24px', lineHeight: 1.7 }}>
-                    Atur bab, cari jurnal ilmiah, catat bimbingan, chat dengan AI yang paham konteks skripsimu, dan generate daftar pustaka otomatis.
+                  <p style={{ fontSize: 14, opacity: 0.6, maxWidth: 460, margin: '0 auto 28px', lineHeight: 1.7 }}>
+                    Asisten lengkap dari draft sampai sidang. Kelola bab, cari jurnal, catat bimbingan, dan export siap serah ke dosen.
                   </p>
+
+                  {/* Step-by-step preview */}
+                  <div style={{ maxWidth: 420, margin: '0 auto 28px', textAlign: 'left' }}>
+                    {[
+                      { step: '1', title: 'Buat proyek & atur format', desc: 'Jelaskan format kampusmu, AI buatkan struktur bab otomatis' },
+                      { step: '2', title: 'Tulis tiap bab dengan AI', desc: 'Editor pintar dengan auto-save & AI writing assistant' },
+                      { step: '3', title: 'Cari jurnal & generate pustaka', desc: 'Cari di Semantic Scholar, AI format daftar pustaka' },
+                      { step: '4', title: 'Export PDF siap sidang', desc: 'Download dokumen lengkap siap diserahkan ke dosen' },
+                    ].map((s, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', borderRadius: 12, marginBottom: 6, background: 'var(--card-bg)', border: '1px solid var(--border-default)' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(99, 102, 241, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#6366f1', flexShrink: 0 }}>{s.step}</div>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 700 }}>{s.title}</div>
+                          <div style={{ fontSize: 11, opacity: 0.5 }}>{s.desc}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
                   <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                    <Button onClick={() => setShowCreateModal(true)} style={{ padding: '12px 24px', borderRadius: 12, background: 'linear-gradient(135deg, #6366f1, #a855f7)', border: 'none', color: '#fff' }}><Plus size={16} /> Buat Proyek Skripsi</Button>
+                    <Button onClick={() => setShowCreateModal(true)} style={{ padding: '12px 28px', borderRadius: 12, background: 'linear-gradient(135deg, #6366f1, #a855f7)', border: 'none', color: '#fff', fontSize: 14, fontWeight: 700 }}><Plus size={16} /> Buat Proyek Skripsi</Button>
                     <Button onClick={() => setTab('explore')} variant="secondary" style={{ padding: '12px 24px', borderRadius: 12 }}><Globe size={16} /> Jelajahi Komunitas</Button>
                   </div>
                 </div>
@@ -521,12 +724,12 @@ export default function SkripsweetPage() {
                           <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 6, lineHeight: 1.3 }}>{activeThesis.title}</h2>
                           <div style={{ display: 'flex', gap: 16, fontSize: 12, opacity: 0.6, flexWrap: 'wrap' }}>
                             {activeThesis.university && <span>🏫 {activeThesis.university}</span>}
-                            {activeThesis.department && <span>📚 {activeThesis.department}</span>}
-                            {activeThesis.supervisor && <span>👨‍🏫 {activeThesis.supervisor}</span>}
+                            {activeThesis.department && <span>{activeThesis.department}</span>}
+                            {activeThesis.supervisor && <span>{activeThesis.supervisor}</span>}
                           </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: `${statusInfo.color}18`, color: statusInfo.color }}>{statusInfo.emoji} {statusInfo.label}</span>
+                          <span style={{ padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: `${statusInfo.color}18`, color: statusInfo.color }}>{statusInfo.label}</span>
                           <button onClick={() => setShowFormatModal(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, padding: 4, borderRadius: 8 }} title="Format"><Edit2 size={14} /></button>
                           <button onClick={handleDeleteThesis} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 4, borderRadius: 8 }}><Trash2 size={14} /></button>
                         </div>
@@ -549,7 +752,7 @@ export default function SkripsweetPage() {
                       )}
                       {!activeThesis.formatTemplate && (
                         <div onClick={() => setShowFormatModal(true)} style={{ marginTop: 14, padding: '12px 16px', borderRadius: 12, cursor: 'pointer', background: 'rgba(245, 158, 11, 0.06)', border: '1.5px dashed rgba(245, 158, 11, 0.4)', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                          <span style={{ fontSize: 20 }}>📐</span>
+                          <Edit2 size={16} style={{ opacity: 0.6 }} />
                           <div style={{ flex: 1 }}><div style={{ fontWeight: 700 }}>Atur Format Skripsi</div><div style={{ fontSize: 11, opacity: 0.6 }}>Jelaskan format kampusmu, AI otomatis buat struktur bab!</div></div>
                           <ChevronRight size={16} style={{ opacity: 0.4 }} />
                         </div>
@@ -560,10 +763,10 @@ export default function SkripsweetPage() {
                   {/* Tabs */}
                   <div style={{ display: 'flex', gap: 4, marginBottom: 24, padding: 4, borderRadius: 14, background: 'var(--input-bg)', overflowX: 'auto' }}>
                     {([
-                      { key: 'dashboard', label: '📊 Dashboard' }, { key: 'chapters', label: '📝 Bab' },
-                      { key: 'journals', label: '📚 Jurnal' }, { key: 'bimbingan', label: '📋 Bimbingan' },
-                      { key: 'bibliography', label: '📖 Pustaka' }, { key: 'chat', label: '💬 Chat AI' },
-                      { key: 'explore', label: '🌐 Komunitas' },
+                      { key: 'dashboard', label: 'Dashboard' }, { key: 'chapters', label: 'Bab' },
+                      { key: 'journals', label: 'Jurnal' }, { key: 'bimbingan', label: 'Bimbingan' },
+                      { key: 'bibliography', label: 'Pustaka' }, { key: 'chat', label: 'Chat AI' },
+                      { key: 'explore', label: 'Komunitas' },
                     ] as { key: Tab; label: string }[]).map(t => (
                       <button key={t.key} onClick={() => setTab(t.key)} style={{
                         padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
@@ -577,8 +780,56 @@ export default function SkripsweetPage() {
                   </div>
 
                   {/* ═══════ DASHBOARD ═══════ */}
-                  {tab === 'dashboard' && progress && (
+                  {tab === 'dashboard' && activeThesis && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                      {/* Guided Steps — shows when thesis setup is incomplete */}
+                      {(() => {
+                        const steps = [
+                          { done: !!activeThesis.formatTemplate, label: 'Atur format skripsi', desc: 'Jelaskan format kampusmu, AI otomatis buat struktur bab', action: () => setShowFormatModal(true) },
+                          { done: chapters.length > 0, label: 'Tambah bab / chapter', desc: 'Buat bab-bab skripsimu atau gunakan template dari format AI', action: () => setTab('chapters') },
+                          { done: chapters.some(c => c.wordCount > 50), label: 'Mulai menulis', desc: 'Klik bab untuk membuka editor & mulai menulis dengan bantuan AI', action: () => { if (chapters[0]) router.push(`/skripsweet/chapter?thesisId=${activeThesis.id}&chapterId=${chapters[0].id}`); } },
+                          { done: journals.length > 0, label: 'Cari jurnal referensi', desc: 'Cari jurnal ilmiah dari Semantic Scholar atau tambah manual', action: () => setTab('journals') },
+                          { done: bimbingans.length > 0, label: 'Catat bimbingan', desc: 'Log riwayat bimbingan dengan dosen pembimbing', action: () => setTab('bimbingan') },
+                          { done: bibliographies.length > 0, label: 'Generate daftar pustaka', desc: 'AI otomatis format daftar pustaka dari jurnal yang sudah dikumpulkan', action: () => setTab('bibliography') },
+                        ];
+                        const completedCount = steps.filter(s => s.done).length;
+                        if (completedCount >= steps.length) return null;
+                        return (
+                          <Card style={{ padding: '20px 22px', border: '1.5px solid rgba(99, 102, 241, 0.15)', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.03), rgba(168, 85, 247, 0.02))' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                              <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                Langkah Selanjutnya
+                              </h3>
+                              <span style={{ fontSize: 11, opacity: 0.5, fontWeight: 600 }}>{completedCount}/{steps.length} selesai</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {steps.map((step, i) => (
+                                <div
+                                  key={i}
+                                  onClick={step.done ? undefined : step.action}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 12,
+                                    border: `1px solid ${step.done ? 'rgba(34,197,94,0.2)' : 'var(--border-default)'}`,
+                                    background: step.done ? 'rgba(34,197,94,0.04)' : 'var(--card-bg)',
+                                    cursor: step.done ? 'default' : 'pointer',
+                                    opacity: step.done ? 0.6 : 1, transition: 'all 0.2s',
+                                  }}
+                                >
+                                  <span style={{ width: 20, height: 20, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: step.done ? '#22c55e' : 'var(--input-bg)', color: step.done ? '#fff' : 'inherit', fontSize: 11, fontWeight: 700 }}>{step.done ? <Check size={12} /> : (i + 1)}</span>
+                                  <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, textDecoration: step.done ? 'line-through' : 'none' }}>{step.label}</div>
+                                    {!step.done && <div style={{ fontSize: 11, opacity: 0.5, marginTop: 1 }}>{step.desc}</div>}
+                                  </div>
+                                  {!step.done && <ChevronRight size={16} style={{ opacity: 0.3, flexShrink: 0 }} />}
+                                </div>
+                              ))}
+                            </div>
+                          </Card>
+                        );
+                      })()}
+
+                      {progress && (<>
                       <Card style={{ padding: '20px 22px' }}>
                         <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}><BarChart3 size={18} /> Progress per Bab</h3>
                         {progress.chapterProgress.length === 0 ? (
@@ -609,6 +860,7 @@ export default function SkripsweetPage() {
                           ))}
                         </Card>
                       )}
+                      </>)}
                     </div>
                   )}
 
@@ -619,8 +871,16 @@ export default function SkripsweetPage() {
                         <Button onClick={() => setShowChapterModal(true)} size="sm"><Plus size={14} /> Tambah Bab</Button>
                       </div>
                       {chapters.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: 48 }}>
-                          <FileText size={48} style={{ opacity: 0.15, marginBottom: 12 }} /><p style={{ opacity: 0.6, fontSize: 15 }}>Belum ada bab</p>
+                        <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+                          <FileText size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
+                          <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Belum ada bab</h3>
+                          <p style={{ opacity: 0.5, fontSize: 13, maxWidth: 360, margin: '0 auto 20px', lineHeight: 1.6 }}>
+                            Kamu bisa buat bab manual atau jelaskan format skripsi kampusmu agar AI otomatis membuat struktur bab.
+                          </p>
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                            <Button onClick={() => setShowChapterModal(true)} size="sm"><Plus size={14} /> Tambah Manual</Button>
+                            <Button onClick={() => setShowFormatModal(true)} variant="secondary" size="sm">Atur Format</Button>
+                          </div>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -641,12 +901,12 @@ export default function SkripsweetPage() {
                                       {/* Stats row */}
                                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
                                         <div style={{ padding: '8px 10px', borderRadius: 10, background: 'var(--input-bg)', fontSize: 11 }}>
-                                          <div style={{ opacity: 0.5 }}>📝 Kata</div>
+                                          <div style={{ opacity: 0.5 }}>Kata</div>
                                           <div style={{ fontWeight: 700, fontSize: 14 }}>{ch.wordCount.toLocaleString()}{ch.targetWords ? <span style={{ opacity: 0.4, fontWeight: 400 }}>/{ch.targetWords}</span> : ''}</div>
                                           {ch.targetWords && <div style={{ height: 3, borderRadius: 2, background: 'rgba(0,0,0,0.06)', marginTop: 4, overflow: 'hidden' }}><div style={{ height: '100%', width: `${wordPct}%`, background: wordPct >= 100 ? '#22c55e' : st.color, borderRadius: 2 }} /></div>}
                                         </div>
                                         <div style={{ padding: '8px 10px', borderRadius: 10, background: 'var(--input-bg)', fontSize: 11 }}>
-                                          <div style={{ opacity: 0.5 }}>📄 Halaman</div>
+                                          <div style={{ opacity: 0.5 }}>Halaman</div>
                                           <div style={{ fontWeight: 700, fontSize: 14 }}>{ch.pageEstimate}{ch.targetPages ? <span style={{ opacity: 0.4, fontWeight: 400 }}>/{ch.targetPages}</span> : ''}</div>
                                           {ch.targetPages && <div style={{ height: 3, borderRadius: 2, background: 'rgba(0,0,0,0.06)', marginTop: 4, overflow: 'hidden' }}><div style={{ height: '100%', width: `${pagePct}%`, background: pagePct >= 100 ? '#22c55e' : '#8b5cf6', borderRadius: 2 }} /></div>}
                                         </div>
@@ -661,21 +921,60 @@ export default function SkripsweetPage() {
                                       <SelectOption value={ch.status} onChange={(v) => handleUpdateChapterStatus(ch.id, v)} options={Object.entries(CHAPTER_STATUS).map(([k, v]) => ({ value: k, label: v.label }))} placeholder="Status" />
                                     </div>
                                   </div>
-                                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                                     <Button size="sm" variant="secondary" onClick={() => router.push(`/skripsweet/chapter?thesisId=${activeThesis!.id}&chapterId=${ch.id}`)} style={{ fontSize: 11, borderRadius: 10 }}>
-                                      <Edit2 size={12} /> Buka Editor <ArrowUpRight size={10} />
+                                      <Edit2 size={12} /> Buka Editor
                                     </Button>
-                                    <Button size="sm" variant="secondary" onClick={() => handleGetFeedback(ch.id)} disabled={feedbackLoading === ch.id} style={{ fontSize: 11, borderRadius: 10, background: 'rgba(168, 85, 247, 0.06)', color: '#a855f7', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
-                                      {feedbackLoading === ch.id ? <Loader2 size={12} className="spin" /> : <Sparkles size={12} />} AI Review
+                                    <Button size="sm" variant="secondary" onClick={() => setRevisionModal({ chapterId: ch.id, chapterTitle: ch.title })} style={{ fontSize: 11, borderRadius: 10 }}>
+                                      <AlertCircle size={12} /> Revisi
                                     </Button>
-                                    <button onClick={() => handleDeleteChapter(ch.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 6, marginLeft: 'auto' }}><Trash2 size={13} /></button>
+                                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 2, alignItems: 'center' }}>
+                                      {chapters.length > 1 && (
+                                        <>
+                                          <button onClick={() => handleReorderChapter(ch.id, 'up')} title="Geser ke atas" style={{ background: 'none', border: '1px solid var(--border-default)', borderRadius: '6px 0 0 6px', cursor: 'pointer', opacity: 0.4, padding: '4px 6px', display: 'flex' }}><ChevronUp size={12} /></button>
+                                          <button onClick={() => handleReorderChapter(ch.id, 'down')} title="Geser ke bawah" style={{ background: 'none', border: '1px solid var(--border-default)', borderLeft: 'none', borderRadius: '0 6px 6px 0', cursor: 'pointer', opacity: 0.4, padding: '4px 6px', display: 'flex' }}><ChevronDown size={12} /></button>
+                                        </>
+                                      )}
+                                      <button onClick={() => handleDeleteChapter(ch.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 6 }}><Trash2 size={13} /></button>
+                                    </div>
                                   </div>
+                                  {/* Revisions */}
+                                  {ch.revisions && ch.revisions.length > 0 && (
+                                    <div style={{ marginTop: 12 }}>
+                                      <button
+                                        onClick={() => setExpandedRevisions(expandedRevisions === ch.id ? null : ch.id)}
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#ef4444', padding: 0 }}
+                                      >
+                                        <AlertCircle size={13} />
+                                        {ch.revisions.filter(r => r.status === 'pending').length} revisi belum selesai
+                                        <span style={{ opacity: 0.4, fontWeight: 400 }}>dari {ch.revisions.length} total</span>
+                                        {expandedRevisions === ch.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                      </button>
+                                      {expandedRevisions === ch.id && (
+                                        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                          {ch.revisions.map(rev => (
+                                            <div key={rev.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', borderRadius: 10, background: rev.status === 'pending' ? 'rgba(239, 68, 68, 0.04)' : 'rgba(34, 197, 94, 0.04)', border: `1px solid ${rev.status === 'pending' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 197, 94, 0.15)'}` }}>
+                                              <button
+                                                onClick={() => handleToggleRevision(ch.id, rev)}
+                                                style={{ marginTop: 2, width: 18, height: 18, borderRadius: 4, border: `2px solid ${rev.status === 'pending' ? '#ef4444' : '#22c55e'}`, background: rev.status === 'resolved' ? '#22c55e' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, padding: 0 }}
+                                              >
+                                                {rev.status === 'resolved' && <Check size={11} color="#fff" />}
+                                              </button>
+                                              <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div style={{ fontSize: 13, lineHeight: 1.5, textDecoration: rev.status === 'resolved' ? 'line-through' : 'none', opacity: rev.status === 'resolved' ? 0.5 : 1 }}>{rev.note}</div>
+                                                <div style={{ fontSize: 10, opacity: 0.4, marginTop: 2 }}>
+                                                  Revisi ke-{rev.round} · {new Date(rev.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                                                  {rev.resolvedAt && ` · Selesai ${new Date(rev.resolvedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}`}
+                                                </div>
+                                              </div>
+                                              <button onClick={() => handleDeleteRevision(ch.id, rev.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.2, padding: 4, flexShrink: 0 }}><Trash2 size={11} /></button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
-                                {ch.aiSuggestion && (
-                                  <div style={{ padding: '16px 20px', background: 'rgba(168, 85, 247, 0.03)', borderTop: '1px solid rgba(168, 85, 247, 0.1)' }}>
-                                    <MarkdownRenderer content={ch.aiSuggestion} compact />
-                                  </div>
-                                )}
                               </Card>
                             );
                           })}
@@ -689,8 +988,8 @@ export default function SkripsweetPage() {
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <button onClick={() => setJournalSearchMode('list')} style={{ padding: '6px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: journalSearchMode === 'list' ? 700 : 400, background: journalSearchMode === 'list' ? 'var(--card-bg)' : 'transparent', boxShadow: journalSearchMode === 'list' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none' }}>📚 Koleksi ({journals.length})</button>
-                          <button onClick={() => setJournalSearchMode('search')} style={{ padding: '6px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: journalSearchMode === 'search' ? 700 : 400, background: journalSearchMode === 'search' ? 'var(--card-bg)' : 'transparent', boxShadow: journalSearchMode === 'search' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none' }}>🔍 Cari Jurnal</button>
+                          <button onClick={() => setJournalSearchMode('list')} style={{ padding: '6px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: journalSearchMode === 'list' ? 700 : 400, background: journalSearchMode === 'list' ? 'var(--card-bg)' : 'transparent', boxShadow: journalSearchMode === 'list' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none' }}>Koleksi ({journals.length})</button>
+                          <button onClick={() => setJournalSearchMode('search')} style={{ padding: '6px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: journalSearchMode === 'search' ? 700 : 400, background: journalSearchMode === 'search' ? 'var(--card-bg)' : 'transparent', boxShadow: journalSearchMode === 'search' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none' }}>Cari Jurnal</button>
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <Button onClick={handleGetMatrix} variant="secondary" size="sm" disabled={matrixLoading || journals.length === 0}>
@@ -718,7 +1017,7 @@ export default function SkripsweetPage() {
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4, lineHeight: 1.4 }}>{r.title}</div>
                                       <div style={{ fontSize: 11, opacity: 0.6 }}>{r.authors && `${r.authors} • `}{r.year && `${r.year} • `}{r.journalName}</div>
-                                      {r.citationCount !== undefined && r.citationCount > 0 && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: 'rgba(var(--color-primary), 0.08)', marginTop: 6, display: 'inline-block' }}>📊 {r.citationCount} citations</span>}
+                                      {r.citationCount !== undefined && r.citationCount > 0 && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: 'rgba(var(--color-primary), 0.08)', marginTop: 6, display: 'inline-block' }}>{r.citationCount} citations</span>}
                                       {r.abstract && <p style={{ fontSize: 11, opacity: 0.5, marginTop: 4, lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.abstract}</p>}
                                     </div>
                                     <Button size="sm" variant="secondary" onClick={() => handleAddFromSearch(r)} style={{ fontSize: 11, flexShrink: 0, alignSelf: 'center' }}><Plus size={12} /> Tambah</Button>
@@ -732,9 +1031,16 @@ export default function SkripsweetPage() {
 
                       {journalSearchMode === 'list' && (
                         journals.length === 0 ? (
-                          <div style={{ textAlign: 'center', padding: 48 }}>
-                            <BookOpen size={48} style={{ opacity: 0.15, marginBottom: 12 }} /><p style={{ opacity: 0.6, fontSize: 15 }}>Belum ada referensi jurnal</p>
-                            <p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Cari lewat tab &ldquo;Cari Jurnal&rdquo; atau tambah manual!</p>
+                          <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+                            <BookOpen size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
+                            <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Belum ada referensi jurnal</h3>
+                            <p style={{ opacity: 0.5, fontSize: 13, maxWidth: 360, margin: '0 auto 20px', lineHeight: 1.6 }}>
+                              Cari jurnal ilmiah dari Semantic Scholar atau tambah manual. Gunakan kata kunci bahasa Inggris untuk hasil terbaik.
+                            </p>
+                            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                              <Button onClick={() => setJournalSearchMode('search')} size="sm"><Search size={14} /> Mulai Cari Jurnal</Button>
+                              <Button onClick={() => setShowJournalModal(true)} variant="secondary" size="sm"><Plus size={14} /> Tambah Manual</Button>
+                            </div>
                           </div>
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -742,22 +1048,23 @@ export default function SkripsweetPage() {
                               <Card key={j.id} style={{ padding: '16px 20px', borderRadius: 16 }}>
                                 <div style={{ display: 'flex', gap: 14 }}>
                                   <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: j.isFromSearch ? 'rgba(99, 102, 241, 0.08)' : 'rgba(245, 158, 11, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>
-                                    {j.isFromSearch ? '🔬' : '📄'}
+                                    {j.isFromSearch ? <Search size={14} /> : <FileText size={14} />}
                                   </div>
                                   <div style={{ flex: 1, minWidth: 0 }}>
                                     <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, lineHeight: 1.4 }}>[{idx + 1}] {j.title}</h4>
                                     <div style={{ display: 'flex', gap: 12, fontSize: 11, opacity: 0.6, flexWrap: 'wrap' }}>
-                                      {j.authors && <span>👤 {j.authors}</span>}
-                                      {j.year && <span>📅 {j.year}</span>}
+                                      {j.authors && <span>{j.authors}</span>}
+                                      {j.year && <span>{j.year}</span>}
                                       {j.journalName && <span style={{ fontStyle: 'italic' }}>{j.journalName}</span>}
                                     </div>
-                                    {j.relevance && <div style={{ marginTop: 6, fontSize: 12, padding: '6px 10px', borderRadius: 8, background: 'rgba(var(--color-primary), 0.04)', borderLeft: '3px solid rgb(var(--color-primary))' }}>💡 {j.relevance}</div>}
+                                    {j.relevance && <div style={{ marginTop: 6, fontSize: 12, padding: '6px 10px', borderRadius: 8, background: 'rgba(var(--color-primary), 0.04)', borderLeft: '3px solid rgb(var(--color-primary))' }}>{j.relevance}</div>}
                                     <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center' }}>
                                       {j.citationKey && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'var(--input-bg)', fontFamily: 'monospace' }}>{j.citationKey}</span>}
                                       {j.doi && <a href={`https://doi.org/${j.doi}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: 'rgb(var(--color-primary))', display: 'flex', alignItems: 'center', gap: 2 }}><ExternalLink size={10} /> DOI</a>}
                                     </div>
                                   </div>
                                   <button onClick={() => handleRemoveJournal(j.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.2, padding: 4, flexShrink: 0, alignSelf: 'flex-start' }}><Trash2 size={14} /></button>
+                                  <button onClick={() => startEditJournal(j)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 4, flexShrink: 0, alignSelf: 'flex-start' }} title="Edit jurnal"><Pencil size={13} /></button>
                                 </div>
                               </Card>
                             ))}
@@ -774,7 +1081,14 @@ export default function SkripsweetPage() {
                         <Button onClick={() => setShowBimbinganModal(true)} size="sm"><Plus size={14} /> Catat Bimbingan</Button>
                       </div>
                       {bimbingans.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: 48 }}><ClipboardList size={48} style={{ opacity: 0.15, marginBottom: 12 }} /><p style={{ opacity: 0.6, fontSize: 15 }}>Belum ada log bimbingan</p></div>
+                        <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+                          <ClipboardList size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
+                          <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Belum ada log bimbingan</h3>
+                          <p style={{ opacity: 0.5, fontSize: 13, maxWidth: 360, margin: '0 auto 20px', lineHeight: 1.6 }}>
+                            Catat setiap pertemuan bimbingan dengan dosen pembimbing. Simpan feedback, action items, dan status progres.
+                          </p>
+                          <Button onClick={() => setShowBimbinganModal(true)} size="sm"><Plus size={14} /> Catat Bimbingan Pertama</Button>
+                        </div>
                       ) : (
                         <div style={{ position: 'relative', paddingLeft: 24 }}>
                           <div style={{ position: 'absolute', left: 7, top: 8, bottom: 8, width: 2, background: 'var(--border-default)' }} />
@@ -793,8 +1107,8 @@ export default function SkripsweetPage() {
                                           {b.status === 'done' && <span style={{ fontSize: 10, background: '#22c55e22', color: '#22c55e', padding: '2px 8px', borderRadius: 20, fontWeight: 700 }}>SELESAI</span>}
                                         </div>
                                         <div style={{ display: 'flex', gap: 12, fontSize: 12, opacity: 0.5 }}>
-                                          <span>📅 {new Date(b.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                                          {b.supervisor && <span>👨‍🏫 Pembimbing {b.supervisor}</span>}
+                                          <span>{new Date(b.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                                          {b.supervisor && <span>Pembimbing {b.supervisor}</span>}
                                         </div>
                                         {b.feedback && <div style={{ marginTop: 10, fontSize: 13, padding: '10px 14px', borderRadius: 12, background: 'var(--input-bg)', lineHeight: 1.6 }}><HtmlRenderer content={b.feedback} compact /></div>}
                                         {actions.length > 0 && (
@@ -805,9 +1119,23 @@ export default function SkripsweetPage() {
                                             </ul>
                                           </div>
                                         )}
+                                        {/* Attachment section */}
+                                        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                          {b.attachment ? (
+                                            <a href={b.attachment} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#6366f1', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                              <FileText size={12} /> Lampiran
+                                            </a>
+                                          ) : (
+                                            <label style={{ fontSize: 11, opacity: 0.4, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                              <Upload size={12} /> Upload lampiran
+                                              <input type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadBimbinganFile(b.id, f); }} />
+                                            </label>
+                                          )}
+                                        </div>
                                       </div>
                                       <div style={{ display: 'flex', gap: 4 }}>
                                         {b.status !== 'done' && <Button size="sm" onClick={() => handleMarkBimbinganDone(b.id)} style={{ fontSize: 11, borderRadius: 10 }}><Check size={12} /></Button>}
+                                        <button onClick={() => startEditBimbingan(b)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, padding: 6 }} title="Edit"><Pencil size={13} /></button>
                                         <button onClick={() => handleDeleteBimbingan(b.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.3, padding: 6 }}><Trash2 size={13} /></button>
                                       </div>
                                     </div>
@@ -824,17 +1152,44 @@ export default function SkripsweetPage() {
                   {/* ═══════ BIBLIOGRAPHY ═══════ */}
                   {tab === 'bibliography' && (
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 16 }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+                        <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 12, opacity: 0.5, fontWeight: 500 }}>Format:</span>
+                          <SelectOption value={bibStyle} onChange={setBibStyle} options={[
+                            { value: 'apa7', label: 'APA 7th' },
+                            { value: 'ieee', label: 'IEEE' },
+                            { value: 'chicago', label: 'Chicago' },
+                            { value: 'vancouver', label: 'Vancouver' },
+                            { value: 'harvard', label: 'Harvard' },
+                          ]} />
+                        </div>
                         {bibliographies.length > 0 && <Button onClick={copyBibliography} variant="secondary" size="sm"><Copy size={13} /> Copy All</Button>}
-                        <Button onClick={handleGenerateBibliography} variant="secondary" size="sm" disabled={submitting}>
+                        <Button onClick={handleGenerateBibliography} variant="secondary" size="sm" disabled={submitting || journals.length === 0}>
                           {submitting ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Generate
                         </Button>
                       </div>
                       {bibliographies.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: 48 }}><BookMarked size={48} style={{ opacity: 0.15, marginBottom: 12 }} /><p style={{ opacity: 0.6, fontSize: 15 }}>Belum ada daftar pustaka</p><p style={{ opacity: 0.35, fontSize: 13, marginTop: 4 }}>Tambahkan jurnal lalu klik Generate</p></div>
+                        <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+                          <BookMarked size={40} style={{ marginBottom: 12, opacity: 0.3 }} />
+                          <h3 style={{ fontSize: 17, fontWeight: 700, marginBottom: 6 }}>Belum ada daftar pustaka</h3>
+                          <p style={{ opacity: 0.5, fontSize: 13, maxWidth: 380, margin: '0 auto 8px', lineHeight: 1.6 }}>
+                            {journals.length > 0
+                              ? `Kamu sudah punya ${journals.length} jurnal referensi. Klik Generate untuk membuat daftar pustaka otomatis dengan format APA/IEEE.`
+                              : 'Tambahkan jurnal referensi terlebih dahulu di tab "Jurnal", lalu kembali ke sini untuk generate daftar pustaka otomatis.'}
+                          </p>
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>
+                            {journals.length > 0 ? (
+                              <Button onClick={handleGenerateBibliography} disabled={submitting}>
+                                {submitting ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Generate Daftar Pustaka
+                              </Button>
+                            ) : (
+                              <Button onClick={() => setTab('journals')} size="sm"><BookOpen size={14} /> Tambah Jurnal Dulu</Button>
+                            )}
+                          </div>
+                        </div>
                       ) : (
                         <Card style={{ padding: '24px 28px', borderRadius: 18 }}>
-                          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>📖 Daftar Pustaka ({activeThesis?.formatTemplate?.citationStyle?.toUpperCase() || 'APA7'})</h3>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>Daftar Pustaka ({activeThesis?.formatTemplate?.citationStyle?.toUpperCase() || 'APA7'})</h3>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {bibliographies.map((bib, i) => (
                               <div key={bib.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderRadius: 10, background: i % 2 === 0 ? 'var(--input-bg)' : 'transparent' }}>
@@ -854,14 +1209,14 @@ export default function SkripsweetPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 300px)', minHeight: 400 }}>
                       {chapters.length > 0 && (
                         <div style={{ marginBottom: 12 }}>
-                          <SelectOption value={chatContext} onChange={setChatContext} placeholder="💡 Konteks bab (opsional)"
-                            options={[{ value: '', label: '🌐 Umum (semua konteks)' }, ...chapters.map(c => ({ value: c.id, label: `📝 ${c.title}` }))]} />
+                          <SelectOption value={chatContext} onChange={setChatContext} placeholder="Konteks bab (opsional)"
+                            options={[{ value: '', label: 'Umum (semua konteks)' }, ...chapters.map(c => ({ value: c.id, label: c.title }))]} />
                         </div>
                       )}
                       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16, padding: '16px 4px', background: 'rgba(var(--bg-primary), 0.3)', borderRadius: 16, marginBottom: 12 }}>
                         {chatMessages.length === 0 && !chatLoading && (
                           <div style={{ textAlign: 'center', padding: '48px 20px' }}>
-                            <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>🤖</div>
+                            <MessageSquare size={36} style={{ marginBottom: 12, opacity: 0.2 }} />
                             <p style={{ fontSize: 15, fontWeight: 600, opacity: 0.5 }}>Chat dengan AI Skripsweet</p>
                             <p style={{ fontSize: 12, opacity: 0.35, maxWidth: 300, margin: '4px auto 16px' }}>AI yang paham konteks skripsimu — tanya soal penulisan, cari referensi, atau minta review.</p>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
@@ -911,7 +1266,7 @@ export default function SkripsweetPage() {
                     <div>
                       <div style={{ marginBottom: 20 }}>
                         <div style={{ display: 'flex', gap: 8 }} onKeyDown={(e) => { if (e.key === 'Enter') fetchExplore(); }}>
-                          <div style={{ flex: 1 }}><TextInput value={exploreQuery} onChange={setExploreQuery} placeholder="🔍 Cari skripsi, topik, universitas..." /></div>
+                          <div style={{ flex: 1 }}><TextInput value={exploreQuery} onChange={setExploreQuery} placeholder="Cari skripsi, topik, universitas..." /></div>
                         </div>
                         {trendingTags.length > 0 && (
                           <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
@@ -964,9 +1319,10 @@ export default function SkripsweetPage() {
             </PullToRefresh>
 
             {/* ═══════ MODALS ═══════ */}
-            <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="🎓 Buat Proyek Skripsi Baru">
+            <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title="Buat Proyek Skripsi Baru">
               <form onSubmit={handleCreateThesis} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <TextInput label="Judul Skripsi" value={thesisForm.title} onChange={v => setThesisForm(f => ({ ...f, title: v }))} placeholder="Analisis Pengaruh..." required />
+                <p style={{ fontSize: 12, opacity: 0.5, margin: '0 0 4px', lineHeight: 1.5 }}>Isi minimal judul saja, data lain bisa dilengkapi nanti. Setelah dibuat, kamu bisa atur format kampus agar AI buat struktur bab otomatis.</p>
+                <TextInput label="Judul Skripsi *" value={thesisForm.title} onChange={v => setThesisForm(f => ({ ...f, title: v }))} placeholder="Analisis Pengaruh..." required />
                 <TextInput label="Universitas" value={thesisForm.university} onChange={v => setThesisForm(f => ({ ...f, university: v }))} placeholder="Universitas Indonesia" />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <TextInput label="Fakultas" value={thesisForm.faculty} onChange={v => setThesisForm(f => ({ ...f, faculty: v }))} placeholder="Fakultas Teknik" />
@@ -981,47 +1337,76 @@ export default function SkripsweetPage() {
                   <div><label style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, display: 'block' }}>Target Selesai</label><DateTimePicker mode="date" value={thesisForm.targetDate} onChange={v => setThesisForm(f => ({ ...f, targetDate: v }))} placeholder="Deadline" /></div>
                 </div>
                 <TextArea label="Abstrak (opsional)" value={thesisForm.abstract} onChange={v => setThesisForm(f => ({ ...f, abstract: v }))} placeholder="Tulis abstrak skripsimu..." rows={4} />
-                <Button type="submit" disabled={submitting} style={{ borderRadius: 12, padding: '12px 0', marginTop: 4 }}>{submitting ? <Loader2 className="spin" size={16} /> : '🎓 Buat Proyek'}</Button>
+                <Button type="submit" disabled={submitting} style={{ borderRadius: 12, padding: '12px 0', marginTop: 4 }}>{submitting ? <Loader2 className="spin" size={16} /> : 'Buat Proyek'}</Button>
               </form>
             </Modal>
 
             {/* Format Modal - uses TextArea instead of RichTextEditor for plain text to AI */}
-            <Modal isOpen={showFormatModal} onClose={() => setShowFormatModal(false)} title="📐 Atur Format Skripsi Kampusmu">
+            <Modal isOpen={showFormatModal} onClose={() => { setShowFormatModal(false); setFormatMode('text'); }} title="Atur Format Skripsi Kampusmu">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <p style={{ fontSize: 13, opacity: 0.6, margin: 0, lineHeight: 1.6 }}>Jelaskan format skripsi kampusmu dalam bahasa bebas. AI akan parsing menjadi aturan terstruktur dan membuat bab-bab otomatis.</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {[
-                    'Margin: kiri 4cm, atas bawah kanan 3cm. Font TNR 12pt, spasi 1.5.',
-                    'Format APA 7th edition, judul bab huruf kapital rata tengah.',
-                    'Struktur: Pendahuluan, Tinjauan Pustaka, Metodologi, Hasil & Pembahasan, Kesimpulan.',
-                  ].map((ex, i) => (
-                    <button key={i} type="button" onClick={() => setFormatExplanation(prev => prev ? prev + '\n' + ex : ex)} style={{ padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, background: 'var(--input-bg)', opacity: 0.7 }}>+ {ex.substring(0, 50)}...</button>
-                  ))}
+                <p style={{ fontSize: 13, opacity: 0.6, margin: 0, lineHeight: 1.6 }}>Jelaskan format skripsi atau upload contoh file skripsi kampusmu. AI akan menganalisis strukturnya.</p>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+                  <button onClick={() => setFormatMode('text')} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: formatMode === 'text' ? '#6366f1' : 'var(--input-bg)', color: formatMode === 'text' ? '#fff' : 'inherit', transition: 'all .15s' }}>Jelaskan Format</button>
+                  <button onClick={() => setFormatMode('file')} style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, background: formatMode === 'file' ? '#6366f1' : 'var(--input-bg)', color: formatMode === 'file' ? '#fff' : 'inherit', transition: 'all .15s' }}>Upload Contoh Skripsi</button>
                 </div>
-                <TextArea value={formatExplanation} onChange={setFormatExplanation} placeholder="Contoh: Di kampus saya, margin kiri 4cm, atas/bawah/kanan 3cm. Font Times New Roman 12pt, spasi 1.5. Struktur: BAB I Pendahuluan, BAB II Tinjauan Pustaka, BAB III Metode Penelitian, BAB IV Hasil, BAB V Kesimpulan." rows={6} />
-                <Button onClick={handleExplainFormat} disabled={submitting || !formatExplanation.trim()} style={{ borderRadius: 12, padding: '12px 0' }}>
-                  {submitting ? <Loader2 className="spin" size={16} /> : <><Sparkles size={16} /> Parse Format dengan AI</>}
-                </Button>
+                {formatMode === 'text' ? (
+                  <>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {[
+                        'Margin: kiri 4cm, atas bawah kanan 3cm. Font TNR 12pt, spasi 1.5.',
+                        'Format APA 7th edition, judul bab huruf kapital rata tengah.',
+                        'Struktur: Pendahuluan, Tinjauan Pustaka, Metodologi, Hasil & Pembahasan, Kesimpulan.',
+                      ].map((ex, i) => (
+                        <button key={i} type="button" onClick={() => setFormatExplanation(prev => prev ? prev + '\n' + ex : ex)} style={{ padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, background: 'var(--input-bg)', opacity: 0.7 }}>+ {ex.substring(0, 50)}...</button>
+                      ))}
+                    </div>
+                    <TextArea value={formatExplanation} onChange={setFormatExplanation} placeholder="Contoh: Di kampus saya, margin kiri 4cm, atas/bawah/kanan 3cm. Font Times New Roman 12pt, spasi 1.5. Struktur: BAB I Pendahuluan, BAB II Tinjauan Pustaka, BAB III Metode Penelitian, BAB IV Hasil, BAB V Kesimpulan." rows={6} />
+                    <Button onClick={handleExplainFormat} disabled={submitting || !formatExplanation.trim()} style={{ borderRadius: 12, padding: '12px 0' }}>
+                      {submitting ? <Loader2 className="spin" size={16} /> : <><Sparkles size={16} /> Parse Format dengan AI</>}
+                    </Button>
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, padding: '20px 0' }}>
+                    <div style={{ padding: '30px 40px', borderRadius: 16, border: '2px dashed var(--border-color)', textAlign: 'center', cursor: 'pointer', width: '100%' }} onClick={() => formatFileRef.current?.click()}>
+                      <Upload size={28} style={{ opacity: 0.4, marginBottom: 8 }} />
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Klik untuk pilih file</div>
+                      <div style={{ fontSize: 12, opacity: 0.5 }}>PDF hasil skripsi contoh dari kampusmu</div>
+                    </div>
+                    <input ref={formatFileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleUploadFormatFile(f); }} />
+                    <p style={{ fontSize: 11, opacity: 0.4, margin: 0, textAlign: 'center', lineHeight: 1.5 }}>AI akan membaca struktur bab, format, dan aturan penulisan dari file contoh skripsi.</p>
+                  </div>
+                )}
               </div>
             </Modal>
 
             {/* Add Chapter */}
-            <Modal isOpen={showChapterModal} onClose={() => setShowChapterModal(false)} title="📝 Tambah Bab">
+            <Modal isOpen={showChapterModal} onClose={() => setShowChapterModal(false)} title="Tambah Bab">
               <form onSubmit={handleCreateChapter} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <TextInput label="Judul Bab" value={chapterForm.title} onChange={v => setChapterForm(f => ({ ...f, title: v }))} placeholder="BAB I - Pendahuluan" required />
-                <TextInput label="Nomor Bab" value={chapterForm.chapterNum} onChange={v => setChapterForm(f => ({ ...f, chapterNum: v }))} placeholder="1" />
+                <TextInput label="Nomor Bab" value={chapterForm.chapterNum} onChange={v => setChapterForm(f => ({ ...f, chapterNum: v.replace(/\D/g, '') }))} placeholder="1" />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-                  <TextInput label="Target Kata" value={chapterForm.targetWords} onChange={v => setChapterForm(f => ({ ...f, targetWords: v }))} placeholder="3000" />
-                  <TextInput label="Target Halaman" value={chapterForm.targetPages} onChange={v => setChapterForm(f => ({ ...f, targetPages: v }))} placeholder="12" />
-                  <TextInput label="Target Paragraf" value={chapterForm.targetParagraphs} onChange={v => setChapterForm(f => ({ ...f, targetParagraphs: v }))} placeholder="30" />
+                  <TextInput label="Target Kata" value={chapterForm.targetWords} onChange={v => setChapterForm(f => ({ ...f, targetWords: v.replace(/\D/g, '') }))} placeholder="3000" />
+                  <TextInput label="Target Halaman" value={chapterForm.targetPages} onChange={v => setChapterForm(f => ({ ...f, targetPages: v.replace(/\D/g, '') }))} placeholder="12" />
+                  <TextInput label="Target Paragraf" value={chapterForm.targetParagraphs} onChange={v => setChapterForm(f => ({ ...f, targetParagraphs: v.replace(/\D/g, '') }))} placeholder="30" />
                 </div>
-                <Button type="submit" disabled={submitting} style={{ borderRadius: 12, padding: '12px 0' }}>{submitting ? <Loader2 className="spin" size={16} /> : '📝 Tambah Bab'}</Button>
+                <Button type="submit" disabled={submitting} style={{ borderRadius: 12, padding: '12px 0' }}>{submitting ? <Loader2 className="spin" size={16} /> : 'Tambah Bab'}</Button>
               </form>
             </Modal>
 
+            {/* Add Revision */}
+            <Modal isOpen={!!revisionModal} onClose={() => { setRevisionModal(null); setRevisionNote(''); }} title={`Tambah Revisi — ${revisionModal?.chapterTitle || ''}`}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <p style={{ fontSize: 13, opacity: 0.6, margin: 0, lineHeight: 1.6 }}>Catat apa yang perlu direvisi di bab ini berdasarkan feedback dosen.</p>
+                <TextArea value={revisionNote} onChange={setRevisionNote} placeholder="Contoh: Tambahkan pembahasan teori X di sub-bab 2.3, perkuat argumen metodologi..." rows={4} />
+                <Button onClick={handleAddRevision} disabled={submitting || !revisionNote.trim()} style={{ borderRadius: 12, padding: '12px 0' }}>
+                  {submitting ? <Loader2 className="spin" size={16} /> : 'Tambah Revisi'}
+                </Button>
+              </div>
+            </Modal>
+
             {/* Add Journal Manual */}
-            <Modal isOpen={showJournalModal} onClose={() => setShowJournalModal(false)} title="📚 Tambah Jurnal Manual">
-              <form onSubmit={handleAddJournal} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <Modal isOpen={showJournalModal} onClose={() => { setShowJournalModal(false); setEditingJournal(null); setJournalForm({ title: '', authors: '', journalName: '', year: '', doi: '', url: '', abstract: '', relevance: '', citationKey: '' }); }} title={editingJournal ? 'Edit Jurnal' : 'Tambah Jurnal Manual'}>
+              <form onSubmit={editingJournal ? handleUpdateJournal : handleAddJournal} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <TextInput label="Judul Paper" value={journalForm.title} onChange={v => setJournalForm(f => ({ ...f, title: v }))} placeholder="Judul paper..." required />
                 <TextInput label="Penulis" value={journalForm.authors} onChange={v => setJournalForm(f => ({ ...f, authors: v }))} placeholder="Smith, J., Doe, A." />
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
@@ -1034,13 +1419,13 @@ export default function SkripsweetPage() {
                 </div>
                 <TextInput label="URL" value={journalForm.url} onChange={v => setJournalForm(f => ({ ...f, url: v }))} placeholder="https://..." />
                 <TextArea label="Relevansi" value={journalForm.relevance} onChange={v => setJournalForm(f => ({ ...f, relevance: v }))} placeholder="Mengapa relevan dengan skripsi..." rows={2} />
-                <Button type="submit" disabled={submitting} style={{ borderRadius: 12, padding: '12px 0' }}>{submitting ? <Loader2 className="spin" size={16} /> : '📚 Simpan'}</Button>
+                <Button type="submit" disabled={submitting} style={{ borderRadius: 12, padding: '12px 0' }}>{submitting ? <Loader2 className="spin" size={16} /> : editingJournal ? 'Perbarui Jurnal' : 'Simpan'}</Button>
               </form>
             </Modal>
 
             {/* Bimbingan Modal */}
-            <Modal isOpen={showBimbinganModal} onClose={() => setShowBimbinganModal(false)} title="📋 Catat Bimbingan">
-              <form onSubmit={handleCreateBimbingan} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <Modal isOpen={showBimbinganModal} onClose={() => { setShowBimbinganModal(false); setEditingBimbingan(null); setBimbinganForm({ date: '', supervisor: '', topic: '', feedback: '', actionItems: '' }); }} title={editingBimbingan ? 'Edit Bimbingan' : 'Catat Bimbingan'}>
+              <form onSubmit={editingBimbingan ? handleSaveBimbingan : handleCreateBimbingan} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div><label style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, display: 'block' }}>Tanggal</label><DateTimePicker mode="date" value={bimbinganForm.date} onChange={v => setBimbinganForm(f => ({ ...f, date: v }))} placeholder="Pilih tanggal" /></div>
                 <SelectOption label="Pembimbing" value={bimbinganForm.supervisor} onChange={v => setBimbinganForm(f => ({ ...f, supervisor: v }))}
                   options={[{ value: '', label: 'Pilih...' }, ...(activeThesis?.supervisor ? [{ value: '1', label: `Pembimbing 1: ${activeThesis.supervisor}` }] : []), ...(activeThesis?.supervisorTwo ? [{ value: '2', label: `Pembimbing 2: ${activeThesis.supervisorTwo}` }] : [])]} />
@@ -1050,12 +1435,12 @@ export default function SkripsweetPage() {
                   <RichTextEditor content={bimbinganForm.feedback} onChange={v => setBimbinganForm(f => ({ ...f, feedback: v }))} placeholder="Feedback dari dosen..." minHeight={100} />
                 </div>
                 <TextArea label="Action Items (1 per baris)" value={bimbinganForm.actionItems} onChange={v => setBimbinganForm(f => ({ ...f, actionItems: v }))} placeholder={'Revisi bab 2\nTambah referensi'} rows={3} />
-                <Button type="submit" disabled={submitting} style={{ borderRadius: 12, padding: '12px 0' }}>{submitting ? <Loader2 className="spin" size={16} /> : '📋 Simpan'}</Button>
+                <Button type="submit" disabled={submitting} style={{ borderRadius: 12, padding: '12px 0' }}>{submitting ? <Loader2 className="spin" size={16} /> : (editingBimbingan ? 'Simpan Perubahan' : 'Simpan')}</Button>
               </form>
             </Modal>
 
             {/* Publish Modal */}
-            <Modal isOpen={showPublishModal} onClose={() => setShowPublishModal(false)} title="🌐 Publikasikan Skripsi">
+            <Modal isOpen={showPublishModal} onClose={() => setShowPublishModal(false)} title="Publikasikan Skripsi">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <p style={{ fontSize: 13, opacity: 0.6, margin: 0, lineHeight: 1.6 }}>Publikasikan skripsimu ke komunitas Skripsweet! Mahasiswa lain bisa melihat, memberi likes, dan berkomentar.</p>
                 <div><label style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, display: 'block' }}>Tags</label><TagInput value={publishTags} onChange={setPublishTags} placeholder="Tambah tag (Enter)..." /></div>
@@ -1094,7 +1479,7 @@ export default function SkripsweetPage() {
                   </div>
                   {showPublicDetail.journals && showPublicDetail.journals.length > 0 && (
                     <div>
-                      <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>📚 Referensi ({showPublicDetail.journals.length})</h4>
+                      <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>Referensi ({showPublicDetail.journals.length})</h4>
                       {showPublicDetail.journals.slice(0, 5).map(j => (
                         <div key={j.id} style={{ fontSize: 12, padding: '8px 12px', borderRadius: 10, background: 'var(--input-bg)', marginBottom: 4, lineHeight: 1.5 }}>
                           <strong>{j.title}</strong>{j.authors && <span style={{ opacity: 0.5 }}> — {j.authors}</span>}{j.year && <span style={{ opacity: 0.5 }}> ({j.year})</span>}
@@ -1103,7 +1488,7 @@ export default function SkripsweetPage() {
                     </div>
                   )}
                   <div>
-                    <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>💬 Komentar ({showPublicDetail._count?.comments || 0})</h4>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10 }}>Komentar ({showPublicDetail._count?.comments || 0})</h4>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 12 }} onKeyDown={(e) => { if (e.key === 'Enter') handleAddComment(); }}>
                       <div style={{ flex: 1 }}><TextInput value={publicCommentInput} onChange={setPublicCommentInput} placeholder="Tulis komentar..." /></div>
                       <Button onClick={handleAddComment} disabled={!publicCommentInput.trim()} size="sm"><Send size={14} /></Button>
@@ -1123,7 +1508,7 @@ export default function SkripsweetPage() {
             </Modal>
 
             {/* Relevance Matrix */}
-            <Modal isOpen={showMatrixModal} onClose={() => setShowMatrixModal(false)} title="📊 Literature Review Matrix">
+            <Modal isOpen={showMatrixModal} onClose={() => setShowMatrixModal(false)} title="Literature Review Matrix">
               {matrixData && matrixData.length > 0 && (
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>

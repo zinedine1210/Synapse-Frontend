@@ -29,6 +29,15 @@ export interface PersonalTodo {
   parentTodoId?: string | null;
   subtasks?: TodoSubtask[];
   reminders: { id: string; remindAt: string; sent: boolean }[];
+  // Event/Jadwal fields
+  type: 'todo' | 'event';
+  startTime?: string;
+  endTime?: string;
+  location?: string;
+  eventType?: 'meeting' | 'kuliah' | 'ujian' | 'penting' | 'lainnya' | null;
+  reminderMinutes: number[];
+  sourceType?: string;
+  sourceId?: string;
 }
 
 export interface TodoStats {
@@ -55,11 +64,12 @@ export const todoService = {
   create: (data: Partial<PersonalTodo>) =>
     apiFetch<PersonalTodo>('/todos', { method: 'POST', body: JSON.stringify(data) }),
 
-  getAll: (params?: { status?: string; priority?: string; category?: string; page?: number; limit?: number }) => {
+  getAll: (params?: { status?: string; priority?: string; category?: string; type?: string; page?: number; limit?: number }) => {
     const q = new URLSearchParams();
     if (params?.status) q.set('status', params.status);
     if (params?.priority) q.set('priority', params.priority);
     if (params?.category) q.set('category', params.category);
+    if (params?.type) q.set('type', params.type);
     if (params?.page) q.set('page', String(params.page));
     if (params?.limit) q.set('limit', String(params.limit));
     return apiFetch<{ data: PersonalTodo[]; total: number; page: number; limit: number; totalPages: number }>(`/todos?${q.toString()}`);
@@ -122,4 +132,47 @@ export const todoService = {
 
   deleteReminder: (todoId: string) =>
     apiFetch<any>(`/todos/${todoId}/reminder`, { method: 'DELETE' }),
+
+  // ─── Agenda ───────────────────────────────────────────────────────
+  getAgenda: (days?: number) =>
+    apiFetch<{ items: PersonalTodo[]; grouped: Record<string, PersonalTodo[]> }>(`/todos/agenda${days ? `?days=${days}` : ''}`),
+
+  // ─── Conflict detection ───────────────────────────────────────────
+  checkConflicts: (date: string, startTime: string, endTime: string, excludeId?: string) =>
+    apiFetch<{ hasConflict: boolean; conflicts: { id: string; title: string; startTime: string; endTime: string }[] }>('/todos/check-conflicts', {
+      method: 'POST',
+      body: JSON.stringify({ date, startTime, endTime, excludeId }),
+    }),
+
+  // ─── Sync class tasks ─────────────────────────────────────────────
+  syncClassTasks: () =>
+    apiFetch<{ synced: number; total: number }>('/todos/sync-class-tasks', { method: 'POST' }),
+
+  // ─── AI Image Parse (bulk) ────────────────────────────────────────
+  parseImage: (imageBase64: string, mimeType: string) =>
+    apiFetch<any[]>('/todos/parse-image', { method: 'POST', body: JSON.stringify({ imageBase64, mimeType }) }),
+
+  // ─── Bulk create ──────────────────────────────────────────────────
+  bulkCreate: (items: Partial<PersonalTodo>[]) =>
+    apiFetch<{ created: number }>('/todos/bulk/create', { method: 'POST', body: JSON.stringify({ items }) }),
+
+  // ─── Sharing ──────────────────────────────────────────────────────
+  shareTodo: (todoId: string, email: string, role: string = 'viewer') =>
+    apiFetch<{ shared: any; targetUser: { id: string; email: string; fullName: string } }>(`/todos/${todoId}/share`, {
+      method: 'POST', body: JSON.stringify({ email, role }),
+    }),
+
+  getSharedWithMe: () =>
+    apiFetch<any[]>('/todos/shared/with-me'),
+
+  getSharedUsers: (todoId: string) =>
+    apiFetch<any[]>(`/todos/${todoId}/shared-users`),
+
+  respondToShare: (shareId: string, accept: boolean) =>
+    apiFetch<{ message: string }>(`/todos/shared/${shareId}/respond`, {
+      method: 'POST', body: JSON.stringify({ accept }),
+    }),
+
+  unshareTodo: (todoId: string, targetUserId: string) =>
+    apiFetch<{ message: string }>(`/todos/${todoId}/share/${targetUserId}`, { method: 'DELETE' }),
 };

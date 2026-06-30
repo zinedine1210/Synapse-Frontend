@@ -489,14 +489,11 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
             onChange={setEditorContent}
             placeholder="Mulai menulis jawaban di sini..."
             minHeight={200}
+            enableAI
           />
 
           {/* Primary action: Save Answer */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', gap: '0.5rem' }}>
-            <Button variant="ghost" size="sm" onClick={() => setShowAiHelper((p) => !p)} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: 'var(--font-xs)', color: 'rgb(var(--text-secondary))' }}>
-              <Sparkles size={12} style={{ color: '#818cf8' }} /> Bantuan AI
-              <ChevronDown size={11} style={{ transform: showAiHelper ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-            </Button>
             <Button onClick={handleSaveAnswer} disabled={!editorContent.replace(/<[^>]+>/g, '').trim() || isSaving} isLoading={isSaving} style={{ background: 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))', color: 'black', borderRadius: 'var(--radius-md)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
               <Save size={14} /> Simpan Jawaban
             </Button>

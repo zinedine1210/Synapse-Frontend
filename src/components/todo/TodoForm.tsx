@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Loader2, Plus, X, Tag, Bell, BookmarkPlus } from 'lucide-react';
+import { Loader2, Plus, X, Tag, Bell, BookmarkPlus, MapPin, Clock } from 'lucide-react';
 import { Button, DateTimePicker, CategoryPicker, TextInput, TextArea } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { RecurrenceSelector } from '@/components/todo/RecurrenceSelector';
@@ -17,6 +17,13 @@ export interface TodoFormState {
   recurrence: 'daily' | 'weekly' | 'monthly' | null;
   tags: string[];
   reminderAt: string;
+  // Event/Jadwal fields
+  type: 'todo' | 'event';
+  startTime: string;
+  endTime: string;
+  location: string;
+  eventType: string;
+  reminderMinutes: number[];
 }
 
 interface CategoryOption { id: string; label: string; emoji?: string; color?: string; }
@@ -31,7 +38,24 @@ interface TodoFormProps {
   editing: boolean;
   onSubmit: (e: React.FormEvent) => void;
   onSaveTemplate?: (name: string, form: TodoFormState, subtasks: DraftSubtask[]) => void;
+  onRequestTemplateName?: () => void;
 }
+
+const EVENT_TYPES: { id: string; label: string; emoji: string; color: string }[] = [
+  { id: 'meeting', label: 'Meeting', emoji: '💼', color: '#f59e0b' },
+  { id: 'kuliah', label: 'Kuliah', emoji: '🎓', color: '#6366f1' },
+  { id: 'ujian', label: 'Ujian', emoji: '📝', color: '#ef4444' },
+  { id: 'penting', label: 'Penting', emoji: '⭐', color: '#ec4899' },
+  { id: 'lainnya', label: 'Lainnya', emoji: '📌', color: '#6b7280' },
+];
+
+const REMINDER_OPTIONS: { value: number; label: string }[] = [
+  { value: 5, label: '5 menit' },
+  { value: 15, label: '15 menit' },
+  { value: 30, label: '30 menit' },
+  { value: 60, label: '1 jam' },
+  { value: 1440, label: '1 hari' },
+];
 
 const PRIORITIES: { id: string; label: string; emoji: string; token: string }[] = [
   { id: 'high', label: 'Tinggi', emoji: '🔥', token: '--color-error' },
@@ -48,7 +72,7 @@ const fieldLabel: React.CSSProperties = {
  * colorful priority segments, category chips, date/time pickers,
  * recurrence selector and a draft subtask editor.
  */
-export function TodoForm({ form, setForm, subtasks, setSubtasks, categories, submitting, editing, onSubmit, onSaveTemplate }: TodoFormProps) {
+export function TodoForm({ form, setForm, subtasks, setSubtasks, categories, submitting, editing, onSubmit, onSaveTemplate, onRequestTemplateName }: TodoFormProps) {
   const { hasFeature } = useFeatureAccess();
   const [tagInput, setTagInput] = useState('');
 
@@ -66,16 +90,77 @@ export function TodoForm({ form, setForm, subtasks, setSubtasks, categories, sub
 
   return (
     <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {/* Type toggle: Todo vs Event */}
+      <div>
+        <label style={fieldLabel}>Tipe</label>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[
+            { id: 'todo' as const, label: '✅ Todo', desc: 'Tugas/hal yang harus dikerjakan' },
+            { id: 'event' as const, label: '📅 Jadwal', desc: 'Event/acara dengan waktu tertentu' },
+          ].map(t => {
+            const active = form.type === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setForm({ ...form, type: t.id })}
+                style={{
+                  flex: 1, padding: '12px 10px', borderRadius: 12, cursor: 'pointer',
+                  fontSize: 13, fontWeight: active ? 700 : 500, textAlign: 'center',
+                  background: active ? 'rgba(var(--color-primary), 0.12)' : 'var(--input-bg)',
+                  color: active ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))',
+                  border: active ? '2px solid rgb(var(--color-primary))' : '2px solid transparent',
+                  transition: 'all 0.18s',
+                }}
+              >
+                <div>{t.label}</div>
+                <div style={{ fontSize: 10, fontWeight: 400, opacity: 0.6, marginTop: 2 }}>{t.desc}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Big title */}
       <div>
         <TextInput
-          placeholder="Apa yang mau kamu selesaikan? ✨"
+          placeholder={form.type === 'event' ? 'Nama acara/jadwal ✨' : 'Apa yang mau kamu selesaikan? ✨'}
           value={form.title}
           onChange={v => setForm({ ...form, title: v })}
           required
           autoFocus
         />
       </div>
+
+      {/* Event type selector (only for events) */}
+      {form.type === 'event' && (
+        <div>
+          <label style={fieldLabel}>Jenis Jadwal</label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {EVENT_TYPES.map(et => {
+              const active = form.eventType === et.id;
+              return (
+                <button
+                  key={et.id}
+                  type="button"
+                  onClick={() => setForm({ ...form, eventType: et.id })}
+                  style={{
+                    padding: '8px 14px', borderRadius: 10, cursor: 'pointer',
+                    fontSize: 12, fontWeight: active ? 700 : 500,
+                    background: active ? `${et.color}1a` : 'var(--input-bg)',
+                    color: active ? et.color : 'rgb(var(--text-secondary))',
+                    border: active ? `2px solid ${et.color}55` : '2px solid transparent',
+                    transition: 'all 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 5,
+                  }}
+                >
+                  <span>{et.emoji}</span> {et.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Description */}
       <div>
@@ -118,11 +203,70 @@ export function TodoForm({ form, setForm, subtasks, setSubtasks, categories, sub
           <label style={fieldLabel}>Tanggal</label>
           <DateTimePicker mode="date" value={form.dueDate} onChange={v => setForm({ ...form, dueDate: v })} placeholder="Pilih tanggal" />
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <label style={fieldLabel}>Waktu</label>
-          <DateTimePicker mode="time" value={form.dueTime} onChange={v => setForm({ ...form, dueTime: v })} placeholder="Pilih waktu" />
-        </div>
+        {form.type === 'todo' ? (
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <label style={fieldLabel}>Waktu</label>
+            <DateTimePicker mode="time" value={form.dueTime} onChange={v => setForm({ ...form, dueTime: v })} placeholder="Pilih waktu" />
+          </div>
+        ) : (
+          <>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <label style={fieldLabel}>Mulai</label>
+              <DateTimePicker mode="time" value={form.startTime} onChange={v => setForm({ ...form, startTime: v })} placeholder="Jam mulai" />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <label style={fieldLabel}>Selesai</label>
+              <DateTimePicker mode="time" value={form.endTime} onChange={v => setForm({ ...form, endTime: v })} placeholder="Jam selesai" />
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Location (events only) */}
+      {form.type === 'event' && (
+        <div>
+          <label style={fieldLabel}><MapPin size={12} style={{ display: 'inline', verticalAlign: -1 }} /> Lokasi</label>
+          <TextInput
+            placeholder="Gedung A, Ruang 301..."
+            value={form.location}
+            onChange={v => setForm({ ...form, location: v })}
+          />
+        </div>
+      )}
+
+      {/* Smart reminder (events) */}
+      {form.type === 'event' && (
+        <div>
+          <label style={fieldLabel}><Bell size={12} style={{ display: 'inline', verticalAlign: -1 }} /> Ingatkan Sebelum</label>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {REMINDER_OPTIONS.map(opt => {
+              const active = (form.reminderMinutes || []).includes(opt.value);
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    const current = form.reminderMinutes || [];
+                    const next = active ? current.filter(v => v !== opt.value) : [...current, opt.value];
+                    setForm({ ...form, reminderMinutes: next });
+                  }}
+                  style={{
+                    padding: '7px 12px', borderRadius: 10, cursor: 'pointer',
+                    fontSize: 12, fontWeight: active ? 700 : 500,
+                    background: active ? 'rgba(var(--color-primary), 0.15)' : 'var(--input-bg)',
+                    color: active ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))',
+                    border: active ? '2px solid rgba(var(--color-primary), 0.4)' : '2px solid transparent',
+                    transition: 'all 0.15s',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                  }}
+                >
+                  <Clock size={11} /> {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Category */}
       <div>
@@ -177,29 +321,24 @@ export function TodoForm({ form, setForm, subtasks, setSubtasks, categories, sub
       </div>
 
       {/* Reminder */}
-      <div>
-        <label style={fieldLabel}><Bell size={12} style={{ display: 'inline', verticalAlign: -1 }} /> Pengingat</label>
-        <input
-          type="datetime-local"
-          value={form.reminderAt || ''}
-          onChange={e => setForm({ ...form, reminderAt: e.target.value })}
-          style={{
-            width: '100%', padding: '10px 12px', borderRadius: 12,
-            border: '1px solid var(--border-default)', background: 'var(--input-bg)',
-            color: 'rgb(var(--text-primary))', fontSize: 13,
-          }}
-        />
-      </div>
+      {form.type === 'todo' && (
+        <div>
+          <label style={fieldLabel}><Bell size={12} style={{ display: 'inline', verticalAlign: -1 }} /> Pengingat</label>
+          <DateTimePicker
+            mode="datetime-local"
+            value={form.reminderAt || ''}
+            onChange={v => setForm({ ...form, reminderAt: v })}
+            placeholder="Pilih waktu pengingat"
+          />
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 8 }}>
         <Button type="submit" disabled={submitting} style={{ flex: 1, borderRadius: 12, padding: '13px 0', marginTop: 2, justifyContent: 'center', fontSize: 15 }}>
-          {submitting ? <Loader2 className="spin" size={16} /> : (editing ? '💾 Simpan Perubahan' : '✅ Tambah Tugas')}
+          {submitting ? <Loader2 className="spin" size={16} /> : (editing ? '💾 Simpan Perubahan' : form.type === 'event' ? '📅 Tambah Jadwal' : '✅ Tambah Tugas')}
         </Button>
-        {onSaveTemplate && form.title && (
-          <Button type="button" variant="ghost" onClick={() => {
-            const name = prompt('Nama template:');
-            if (name) onSaveTemplate(name, form, subtasks);
-          }} title="Simpan sebagai template" style={{ borderRadius: 12, padding: '13px', marginTop: 2 }}>
+        {onSaveTemplate && form.title && onRequestTemplateName && (
+          <Button type="button" variant="ghost" onClick={onRequestTemplateName} title="Simpan sebagai template" style={{ borderRadius: 12, padding: '13px', marginTop: 2 }}>
             <BookmarkPlus size={16} />
           </Button>
         )}

@@ -1,9 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Clock, LayoutList, CalendarDays, GitMerge, Grid2X2, LucideIcon } from 'lucide-react';
+import { Clock, LayoutList, CalendarDays, GitMerge, Grid2X2, CalendarCheck, LucideIcon } from 'lucide-react';
 
-export type TodoViewMode = 'time' | 'category' | 'calendar' | 'timeline' | 'eisenhower';
+export type TodoViewMode = 'time' | 'category' | 'calendar' | 'timeline' | 'eisenhower' | 'agenda';
 
 interface ViewSegmentedControlProps {
   value: TodoViewMode;
@@ -14,6 +14,7 @@ interface ViewSegmentedControlProps {
 
 const ALL_VIEWS: { key: TodoViewMode; icon: LucideIcon; label: string }[] = [
   { key: 'time', icon: Clock, label: 'Waktu' },
+  { key: 'agenda', icon: CalendarCheck, label: 'Agenda' },
   { key: 'category', icon: LayoutList, label: 'Kategori' },
   { key: 'eisenhower', icon: Grid2X2, label: 'Matrix' },
   { key: 'calendar', icon: CalendarDays, label: 'Kalender' },

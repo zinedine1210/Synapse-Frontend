@@ -2,7 +2,7 @@
 
 import React from 'react';
 import {
-  CheckCircle2, Circle, Trash2, Edit2, Calendar, AlertTriangle, RefreshCw, ListChecks, ChevronDown, Timer, Tag,
+  CheckCircle2, Circle, Trash2, Edit2, Calendar, AlertTriangle, RefreshCw, ListChecks, ChevronDown, Timer, Tag, MapPin, Clock, Share2,
 } from 'lucide-react';
 import { PersonalTodo } from '@/services/todoService';
 import { SwipeableRow } from '@/components/ui';
@@ -15,6 +15,14 @@ const PRIORITY_META: Record<string, { token: string; label: string }> = {
 };
 
 const RECURRENCE_LABEL: Record<string, string> = { daily: 'Harian', weekly: 'Mingguan', monthly: 'Bulanan' };
+
+const EVENT_TYPE_META: Record<string, { emoji: string; label: string; color: string }> = {
+  meeting: { emoji: '💼', label: 'Meeting', color: '#f59e0b' },
+  kuliah: { emoji: '🎓', label: 'Kuliah', color: '#6366f1' },
+  ujian: { emoji: '📝', label: 'Ujian', color: '#ef4444' },
+  penting: { emoji: '⭐', label: 'Penting', color: '#ec4899' },
+  lainnya: { emoji: '📌', label: 'Lainnya', color: '#6b7280' },
+};
 
 interface CatInfo { id: string; label: string; emoji?: string; color: string; }
 
@@ -33,12 +41,14 @@ interface TodoCardProps {
   onAddSubtask: (title: string) => Promise<void>;
   onToggleSubtask: (subId: string, isDone: boolean) => Promise<void>;
   onDeleteSubtask?: (subId: string) => Promise<void>;
+  onShare?: () => void;
 }
 
 export function TodoCard({
-  todo, catInfo, isExpanded, onToggleExpand, onToggle, onEdit, onDelete, onFocus, selectMode, isSelected, onSelect, onAddSubtask, onToggleSubtask, onDeleteSubtask,
+  todo, catInfo, isExpanded, onToggleExpand, onToggle, onEdit, onDelete, onFocus, onShare, selectMode, isSelected, onSelect, onAddSubtask, onToggleSubtask, onDeleteSubtask,
 }: TodoCardProps) {
   const done = todo.status === 'done';
+  const isEvent = todo.type === 'event';
   const priority = PRIORITY_META[todo.priority] || PRIORITY_META.medium;
   const prioritySolid = `rgb(var(${priority.token}))`;
   const prioritySoft = `rgba(var(${priority.token}), 0.13)`;
@@ -47,6 +57,7 @@ export function TodoCard({
   const hasSubtasks = subtasks.length > 0;
   const doneSubs = subtasks.filter(s => s.isDone).length;
   const subPct = hasSubtasks ? Math.round((doneSubs / subtasks.length) * 100) : 0;
+  const eventMeta = isEvent && todo.eventType ? EVENT_TYPE_META[todo.eventType] : null;
 
   return (
     <SwipeableRow
@@ -69,12 +80,13 @@ export function TodoCard({
           overflow: 'hidden',
         }}
       >
-        {/* Priority accent strip */}
+        {/* Priority/event accent strip */}
         <span
           aria-hidden
           style={{
             position: 'absolute', left: 0, top: 0, bottom: 0, width: 4,
-            background: prioritySolid, opacity: done ? 0.4 : 1,
+            background: isEvent && eventMeta ? eventMeta.color : prioritySolid,
+            opacity: done ? 0.4 : 1,
           }}
         />
 
@@ -132,14 +144,46 @@ export function TodoCard({
 
             {/* Meta chips */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 7, flexWrap: 'wrap' }}>
+              {/* Event type badge */}
+              {isEvent && eventMeta && (
+                <span style={{
+                  fontSize: 10.5, padding: '2px 9px', borderRadius: 999,
+                  background: `${eventMeta.color}1a`, color: eventMeta.color,
+                  fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 3,
+                }}>
+                  {eventMeta.emoji} {eventMeta.label}
+                </span>
+              )}
+              {/* Time range for events */}
+              {isEvent && todo.startTime && (
+                <span style={{
+                  fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 3,
+                  padding: '2px 8px', borderRadius: 999,
+                  background: 'rgba(var(--color-primary), 0.08)',
+                  color: 'rgb(var(--color-primary))', fontWeight: 600,
+                }}>
+                  <Clock size={10} /> {todo.startTime.slice(0, 5)}{todo.endTime ? ` - ${todo.endTime.slice(0, 5)}` : ''}
+                </span>
+              )}
+              {/* Location */}
+              {todo.location && (
+                <span style={{
+                  fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 3,
+                  color: 'rgb(var(--text-muted))', fontWeight: 500,
+                }}>
+                  <MapPin size={10} /> {todo.location}
+                </span>
+              )}
               {todo.category && (
                 <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: `${catInfo.color}1a`, color: catInfo.color, fontWeight: 600 }}>
                   {catInfo.label}
                 </span>
               )}
-              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: prioritySoft, color: prioritySolid, fontWeight: 600 }}>
-                {priority.label}
-              </span>
+              {!isEvent && (
+                <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: prioritySoft, color: prioritySolid, fontWeight: 600 }}>
+                  {priority.label}
+                </span>
+              )}
               {todo.dueDate && (
                 <span style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 3, color: isOverdue ? 'rgb(var(--color-error))' : 'rgb(var(--text-muted))', fontWeight: 500 }}>
                   <Calendar size={11} />
@@ -191,6 +235,11 @@ export function TodoCard({
                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: 'rgb(var(--text-muted))', lineHeight: 0 }}
               >
                 <ChevronDown size={16} style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </button>
+            )}
+            {onShare && (
+              <button onClick={onShare} aria-label="Share" className="todo-card-action" title="Bagikan" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: 'rgb(var(--text-muted))', lineHeight: 0 }}>
+                <Share2 size={15} />
               </button>
             )}
             <button onClick={onEdit} aria-label="Edit" className="todo-card-action" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 5, color: 'rgb(var(--text-muted))', lineHeight: 0 }}>

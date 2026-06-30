@@ -74,14 +74,16 @@ export function SelectOption({ label, error, hint, required, disabled, className
           onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)}
           onKeyDown={handleKeyDown}
           style={{
-            ...inputStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            ...inputStyle,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             gap: '0.5rem', cursor: disabled ? 'not-allowed' : 'pointer', textAlign: 'left',
             color: selected ? 'rgb(var(--text-primary))' : 'rgb(var(--text-muted))',
+            height: 'auto', minHeight: 0,
           }}>
-          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem', lineHeight: 1.4 }}>
             {selected?.icon}{selected?.label || placeholder}
           </span>
-          <ChevronDown size={15} style={{ flexShrink: 0, opacity: 0.4, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} />
+          <ChevronDown size={14} style={{ flexShrink: 0, opacity: 0.4, transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} />
         </button>
 
         {open && (
@@ -91,7 +93,6 @@ export function SelectOption({ label, error, hint, required, disabled, className
               background: 'rgb(var(--bg-surface))', border: '1.5px solid var(--border-default)',
               borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', zIndex: 50,
               maxHeight: 220, overflowY: 'auto', padding: '4px',
-              animation: 'fadeSlideIn 0.15s ease',
             }}>
             {options.map((opt, i) => {
               const isSelected = opt.value === value;
@@ -103,8 +104,8 @@ export function SelectOption({ label, error, hint, required, disabled, className
                   style={{
                     padding: '0.5rem 0.65rem', borderRadius: '7px', cursor: opt.disabled ? 'not-allowed' : 'pointer',
                     display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem',
-                    background: isHighlighted ? 'rgba(var(--color-primary) / 0.06)' : 'transparent',
-                    color: opt.disabled ? 'rgb(var(--text-muted))' : 'rgb(var(--text-primary))',
+                    background: isSelected ? 'rgba(var(--color-primary) / 0.08)' : isHighlighted ? 'rgba(var(--color-primary) / 0.04)' : 'transparent',
+                    color: opt.disabled ? 'rgb(var(--text-muted))' : isSelected ? 'rgb(var(--color-primary))' : 'rgb(var(--text-primary))',
                     fontWeight: isSelected ? 600 : 400, opacity: opt.disabled ? 0.5 : 1,
                     transition: 'background 0.1s',
                   }}>

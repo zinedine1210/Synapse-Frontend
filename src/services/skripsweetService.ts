@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/api';
+import { apiFetch, apiUpload } from '@/lib/api';
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -30,8 +30,33 @@ export interface ThesisChapter {
   notes?: string;
   aiSuggestion?: string;
   sortOrder: number;
+  revisions?: ChapterRevision[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ChapterRevision {
+  id: string;
+  chapterId: string;
+  thesisId: string;
+  note: string;
+  status: string; // pending | resolved
+  round: number;
+  resolvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChapterVersionMeta {
+  id: string;
+  wordCount: number;
+  label?: string;
+  createdAt: string;
+}
+
+export interface ChapterVersionFull extends ChapterVersionMeta {
+  chapterId: string;
+  content: string;
 }
 
 export interface ThesisJournal {
@@ -209,6 +234,12 @@ export const skripsweetService = {
       method: 'POST', body: JSON.stringify({ explanation }),
     }),
 
+  uploadFormatFile: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiUpload<{ template: ThesisFormatTemplate; chapters?: any[] }>(`/skripsweet/${id}/format/upload`, formData);
+  },
+
   // Chapters
   createChapter: (thesisId: string, data: Partial<ThesisChapter>) =>
     apiFetch<ThesisChapter>(`/skripsweet/${thesisId}/chapters`, { method: 'POST', body: JSON.stringify(data) }),
@@ -219,8 +250,37 @@ export const skripsweetService = {
   deleteChapter: (thesisId: string, chapterId: string) =>
     apiFetch<{ deleted: boolean }>(`/skripsweet/${thesisId}/chapters/${chapterId}`, { method: 'DELETE' }),
 
+  reorderChapters: (thesisId: string, chapterIds: string[]) =>
+    apiFetch<{ reordered: boolean }>(`/skripsweet/${thesisId}/chapters/reorder`, { method: 'POST', body: JSON.stringify({ chapterIds }) }),
+
   getChapterFeedback: (thesisId: string, chapterId: string) =>
     apiFetch<{ feedback: string }>(`/skripsweet/${thesisId}/chapters/${chapterId}/feedback`, { method: 'POST' }),
+
+  // Chapter Revisions
+  addRevision: (thesisId: string, chapterId: string, note: string, round?: number) =>
+    apiFetch<ChapterRevision>(`/skripsweet/${thesisId}/chapters/${chapterId}/revisions`, { method: 'POST', body: JSON.stringify({ note, round }) }),
+
+  resolveRevision: (thesisId: string, chapterId: string, revisionId: string) =>
+    apiFetch<ChapterRevision>(`/skripsweet/${thesisId}/chapters/${chapterId}/revisions/${revisionId}/resolve`, { method: 'PATCH' }),
+
+  unresolveRevision: (thesisId: string, chapterId: string, revisionId: string) =>
+    apiFetch<ChapterRevision>(`/skripsweet/${thesisId}/chapters/${chapterId}/revisions/${revisionId}/unresolve`, { method: 'PATCH' }),
+
+  deleteRevision: (thesisId: string, chapterId: string, revisionId: string) =>
+    apiFetch<{ deleted: boolean }>(`/skripsweet/${thesisId}/chapters/${chapterId}/revisions/${revisionId}`, { method: 'DELETE' }),
+
+  // Chapter Versions
+  getChapterVersions: (thesisId: string, chapterId: string) =>
+    apiFetch<ChapterVersionMeta[]>(`/skripsweet/${thesisId}/chapters/${chapterId}/versions`),
+
+  getChapterVersion: (thesisId: string, chapterId: string, versionId: string) =>
+    apiFetch<ChapterVersionFull>(`/skripsweet/${thesisId}/chapters/${chapterId}/versions/${versionId}`),
+
+  saveChapterVersion: (thesisId: string, chapterId: string, label?: string) =>
+    apiFetch<ChapterVersionFull>(`/skripsweet/${thesisId}/chapters/${chapterId}/versions/save`, { method: 'POST', body: JSON.stringify({ label }) }),
+
+  restoreChapterVersion: (thesisId: string, chapterId: string, versionId: string) =>
+    apiFetch<ThesisChapter>(`/skripsweet/${thesisId}/chapters/${chapterId}/versions/${versionId}/restore`, { method: 'POST' }),
 
   // Journals
   addJournal: (thesisId: string, data: Partial<ThesisJournal>) =>
@@ -228,6 +288,9 @@ export const skripsweetService = {
 
   removeJournal: (thesisId: string, journalId: string) =>
     apiFetch<{ deleted: boolean }>(`/skripsweet/${thesisId}/journals/${journalId}`, { method: 'DELETE' }),
+
+  updateJournal: (thesisId: string, journalId: string, data: Partial<ThesisJournal>) =>
+    apiFetch<ThesisJournal>(`/skripsweet/${thesisId}/journals/${journalId}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   searchJournals: (thesisId: string, query: string, limit?: number) =>
     apiFetch<{ results: JournalSearchResult[]; source: string }>(`/skripsweet/${thesisId}/journals/search`, {
@@ -246,6 +309,12 @@ export const skripsweetService = {
 
   deleteBimbingan: (thesisId: string, bimbinganId: string) =>
     apiFetch<{ deleted: boolean }>(`/skripsweet/${thesisId}/bimbingan/${bimbinganId}`, { method: 'DELETE' }),
+
+  uploadBimbinganAttachment: (thesisId: string, bimbinganId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiUpload<ThesisBimbingan>(`/skripsweet/${thesisId}/bimbingan/${bimbinganId}/upload`, formData);
+  },
 
   // Chat AI
   chat: (thesisId: string, message: string, context?: string) =>

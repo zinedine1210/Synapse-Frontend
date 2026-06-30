@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -11,8 +11,10 @@ import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   Code, Heading1, Heading2, List, ListOrdered,
   Quote, CodeSquare, Undo2, Redo2, Link as LinkIcon, Minus,
-  ImageIcon,
+  ImageIcon, Sparkles, Send, X, Wand2, FileText, ArrowRight,
+  Languages, PenLine, ChevronDown,
 } from 'lucide-react';
+import { apiFetch } from '@/lib/api';
 
 interface RichTextEditorProps {
   content: string;
@@ -23,6 +25,8 @@ interface RichTextEditorProps {
   autoFocus?: boolean;
   /** Callback for image upload. Return the URL of the uploaded image. */
   onImageUpload?: (file: File) => Promise<string>;
+  /** Enable inline AI assistant */
+  enableAI?: boolean;
 }
 
 const ToolbarButton = ({ onClick, active, disabled, children, title }: {
@@ -53,9 +57,16 @@ const ToolbarButton = ({ onClick, active, disabled, children, title }: {
 
 const Divider = () => <div style={{ width: 1, height: 18, background: 'var(--border-default)', margin: '0 2px', flexShrink: 0 }} />;
 
-export function RichTextEditor({ content, onChange, placeholder, readOnly, minHeight = 200, autoFocus, onImageUpload }: RichTextEditorProps) {
+export function RichTextEditor({ content, onChange, placeholder, readOnly, minHeight = 200, autoFocus, onImageUpload, enableAI }: RichTextEditorProps) {
   const imageInputRef = React.useRef<HTMLInputElement>(null);
   const [isUploadingImage, setIsUploadingImage] = React.useState(false);
+  const [showAI, setShowAI] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [showQuickActions, setShowQuickActions] = useState(false);
+  const aiInputRef = React.useRef<HTMLInputElement>(null);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -94,6 +105,76 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly, minHe
   }, [readOnly, editor]);
 
   if (!editor) return null;
+
+  const getSelectedText = () => {
+    const { from, to } = editor.state.selection;
+    return editor.state.doc.textBetween(from, to, ' ');
+  };
+
+  const getFullText = () => editor.state.doc.textContent;
+
+  const handleAIRequest = async (prompt: string, action?: string) => {
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
+    try {
+      const selectedText = getSelectedText();
+      const contextText = selectedText || getFullText();
+      const res = await apiFetch<{ content: string }>('/ai/editor-assist', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt,
+          context: contextText || undefined,
+          action,
+        }),
+      });
+      setAiResult(res.content);
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'Gagal memproses AI.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleAISubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiPrompt.trim()) return;
+    handleAIRequest(aiPrompt.trim());
+  };
+
+  const handleInsertAI = () => {
+    if (!aiResult) return;
+    const selectedText = getSelectedText();
+    if (selectedText) {
+      // Replace selection with AI result
+      editor.chain().focus().deleteSelection().insertContent(aiResult).run();
+    } else {
+      // Insert at cursor or end
+      editor.chain().focus().insertContent('<hr/>' + aiResult).run();
+    }
+    onChange(editor.getHTML());
+    setAiResult(null);
+    setAiPrompt('');
+    setShowAI(false);
+  };
+
+  const handleReplaceAll = () => {
+    if (!aiResult) return;
+    editor.commands.setContent(aiResult);
+    onChange(editor.getHTML());
+    setAiResult(null);
+    setAiPrompt('');
+    setShowAI(false);
+  };
+
+  const quickActions = [
+    { icon: <FileText size={12} />, label: 'Ringkas', action: 'summarize', needsContext: true },
+    { icon: <Wand2 size={12} />, label: 'Perbaiki', action: 'improve', needsContext: true },
+    { icon: <ArrowRight size={12} />, label: 'Lanjutkan', action: 'continue', needsContext: true },
+    { icon: <PenLine size={12} />, label: 'Jelaskan', action: 'explain', needsContext: true },
+    { icon: <Languages size={12} />, label: '→ English', action: 'translate_en', needsContext: true },
+    { icon: <Languages size={12} />, label: '→ Indonesia', action: 'translate_id', needsContext: true },
+  ];
 
   const addLink = () => {
     const url = window.prompt('URL:');
@@ -192,6 +273,19 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly, minHe
 
           <div style={{ flex: 1 }} />
 
+          {enableAI && (
+            <>
+              <Divider />
+              <ToolbarButton
+                onClick={() => { setShowAI(!showAI); setAiResult(null); setAiError(null); setTimeout(() => aiInputRef.current?.focus(), 100); }}
+                active={showAI}
+                title="AI Assist (Ctrl+J)"
+              >
+                <Sparkles size={14} />
+              </ToolbarButton>
+            </>
+          )}
+
           <ToolbarButton onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()} title="Undo (Ctrl+Z)">
             <Undo2 size={14} />
           </ToolbarButton>
@@ -203,6 +297,148 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly, minHe
 
       {/* Editor content */}
       <EditorContent editor={editor} />
+
+      {/* AI Assist Panel */}
+      {enableAI && showAI && !readOnly && (
+        <div style={{
+          borderTop: '1px solid rgba(129, 140, 248, 0.2)',
+          background: 'rgba(99, 102, 241, 0.02)',
+          padding: '0.75rem',
+        }}>
+          {/* Quick actions */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
+            {quickActions.map(qa => (
+              <button
+                key={qa.action}
+                onClick={() => handleAIRequest('', qa.action)}
+                disabled={aiLoading || (qa.needsContext && !getFullText())}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  padding: '0.25rem 0.5rem', borderRadius: 6, border: '1px solid rgba(129, 140, 248, 0.2)',
+                  background: 'rgba(99, 102, 241, 0.06)', color: '#818cf8',
+                  fontSize: '0.65rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                  opacity: aiLoading ? 0.5 : 1, transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99, 102, 241, 0.12)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99, 102, 241, 0.06)'; }}
+              >
+                {qa.icon} {qa.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Free-form prompt */}
+          <form onSubmit={handleAISubmit} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Sparkles size={13} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: '#818cf8', opacity: 0.6 }} />
+              <input
+                ref={aiInputRef}
+                type="text"
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                placeholder="Tanya AI apapun... (misal: buatkan paragraf pembuka tentang...)"
+                disabled={aiLoading}
+                style={{
+                  width: '100%', padding: '0.45rem 0.5rem 0.45rem 1.75rem', borderRadius: 6,
+                  border: '1px solid rgba(129, 140, 248, 0.25)', background: 'rgb(var(--bg-primary))',
+                  fontSize: 'var(--font-xs)', color: 'rgb(var(--text-primary))', fontFamily: 'inherit',
+                  outline: 'none',
+                }}
+                onFocus={e => { e.currentTarget.style.borderColor = 'rgba(129, 140, 248, 0.5)'; }}
+                onBlur={e => { e.currentTarget.style.borderColor = 'rgba(129, 140, 248, 0.25)'; }}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={!aiPrompt.trim() || aiLoading}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 32, height: 32, borderRadius: 6, border: 'none', cursor: 'pointer',
+                background: aiPrompt.trim() ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                color: '#818cf8', opacity: !aiPrompt.trim() || aiLoading ? 0.4 : 1,
+                transition: 'all 0.15s',
+              }}
+            >
+              <Send size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowAI(false); setAiResult(null); setAiError(null); setAiPrompt(''); }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 32, height: 32, borderRadius: 6, border: 'none', cursor: 'pointer',
+                background: 'transparent', color: 'rgb(var(--text-muted))',
+              }}
+            >
+              <X size={14} />
+            </button>
+          </form>
+
+          {/* Loading */}
+          {aiLoading && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: '0.5rem', color: '#818cf8', fontSize: 'var(--font-xs)' }}>
+              <div className="rte-ai-spinner" /> Sedang diproses AI...
+            </div>
+          )}
+
+          {/* Error */}
+          {aiError && (
+            <div style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', borderRadius: 6, background: 'rgba(239, 68, 68, 0.08)', color: '#ef4444', fontSize: 'var(--font-xs)' }}>
+              {aiError}
+            </div>
+          )}
+
+          {/* AI Result */}
+          {aiResult && (
+            <div style={{ marginTop: '0.5rem' }}>
+              <div style={{
+                padding: '0.6rem 0.75rem', borderRadius: 8,
+                border: '1px solid rgba(129, 140, 248, 0.2)',
+                background: 'rgb(var(--bg-primary))',
+                fontSize: 'var(--font-xs)', lineHeight: 1.6,
+                maxHeight: 200, overflowY: 'auto',
+                color: 'rgb(var(--text-primary))',
+              }}>
+                <div dangerouslySetInnerHTML={{ __html: aiResult }} />
+              </div>
+              <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.4rem' }}>
+                <button
+                  onClick={handleInsertAI}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '0.3rem 0.6rem', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15))',
+                    color: '#818cf8', fontSize: '0.65rem', fontWeight: 600, fontFamily: 'inherit',
+                  }}
+                >
+                  <Sparkles size={11} /> Sisipkan
+                </button>
+                <button
+                  onClick={handleReplaceAll}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '0.3rem 0.6rem', borderRadius: 6, border: '1px solid rgba(129, 140, 248, 0.2)',
+                    background: 'transparent', cursor: 'pointer',
+                    color: '#818cf8', fontSize: '0.65rem', fontWeight: 600, fontFamily: 'inherit',
+                  }}
+                >
+                  Ganti Semua
+                </button>
+                <button
+                  onClick={() => { setAiResult(null); setAiPrompt(''); aiInputRef.current?.focus(); }}
+                  style={{
+                    padding: '0.3rem 0.6rem', borderRadius: 6, border: 'none',
+                    background: 'transparent', cursor: 'pointer',
+                    color: 'rgb(var(--text-muted))', fontSize: '0.65rem', fontFamily: 'inherit',
+                  }}
+                >
+                  Buang
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Styles for editor */}
       <style>{`
@@ -250,6 +486,12 @@ export function RichTextEditor({ content, onChange, placeholder, readOnly, minHe
           content: attr(data-placeholder);
           float: left; color: rgb(var(--text-muted)); pointer-events: none;
           height: 0; opacity: 0.5;
+        }
+        @keyframes rte-spin { to { transform: rotate(360deg); } }
+        .rte-ai-spinner {
+          width: 14px; height: 14px; border: 2px solid rgba(129, 140, 248, 0.2);
+          border-top-color: #818cf8; border-radius: 50%;
+          animation: rte-spin 0.6s linear infinite;
         }
       `}</style>
     </div>

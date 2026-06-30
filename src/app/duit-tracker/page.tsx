@@ -14,12 +14,12 @@ import { siBawelService, BawelSetting, WeeklyRoast } from '@/services/siBawelSer
 import { SubscriptionCard } from '@/components/duit-tracker/SubscriptionCard';
 import { FinancialHero } from '@/components/duit-tracker/FinancialHero';
 import { TransactionSheet } from '@/components/duit-tracker/TransactionSheet';
-import { ReceiptScannerModal, ScannedItem } from '@/components/duit-tracker/ReceiptScannerModal';
+import { SmartInputModal, ScannedItem, AiParseResult } from '@/components/duit-tracker/SmartInputModal';
 import { PieChartSvg, LineChartSvg, SpendingHeatmap, ForecastCard, ComparisonCard, ChallengeSection, CustomCategoryManager, CsvImportModal, ExportButton, ReminderBanner } from '@/components/duit-tracker/DuitTrackerAdvanced';
 import { WhatIfCalculator } from '@/components/duit-tracker/WhatIfCalculator';
 import { useCache } from '@/lib/cache';
 import { useAiJob } from '@/lib/useAiJob';
-import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X, Camera, ExternalLink, Check, CalendarClock, ToggleLeft, ToggleRight, TrendingDown, TrendingUp, Upload, BarChart3, Users, PieChart, Calendar, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X, ExternalLink, Check, CalendarClock, ToggleLeft, ToggleRight, TrendingDown, TrendingUp, Upload, BarChart3, Users, PieChart, Calendar, ArrowRight } from 'lucide-react';
 
 type PeriodPreset = 'today' | 'yesterday' | '2days' | 'this_week' | 'last_week' | 'this_month' | 'last_month' | 'custom';
 
@@ -297,15 +297,13 @@ export default function DuitTrackerPage() {
     refetchOverview();
   }, [refreshTx, refetchSummary, refetchTrees, refetchBudgets, refetchOverview]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showScannerModal, setShowScannerModal] = useState(false);
+  const [showSmartInput, setShowSmartInput] = useState(false);
   const [showTreeModal, setShowTreeModal] = useState(false);
-  const [showAiInput, setShowAiInput] = useState(false);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [form, setForm] = useState({ amount: '', type: 'expense', category: 'lainnya', label: '', note: '', date: '' });
   const [treeForm, setTreeForm] = useState({ name: '', targetAmount: '', deadline: '' });
   const [budgetForm, setBudgetForm] = useState({ category: 'makanan', amount: '' });
-  const [aiText, setAiText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [depositTreeId, setDepositTreeId] = useState<string | null>(null);
   const [depositAmount, setDepositAmount] = useState('');
@@ -810,32 +808,24 @@ export default function DuitTrackerPage() {
     }
   };
 
-  const handleAiParse = async () => {
-    if (!aiText.trim()) return;
-    setSubmitting(true);
-    try {
-      const p = await duitTrackerService.parseNaturalInput(aiText);
-      if (p.amount) {
-        if (p.isDebt) {
-          setDebtForm({ description: p.label || aiText, amount: String(p.amount), debtType: p.debtType || 'owed_by_me', personName: p.personName || '', dueDate: '' });
-          setShowAiInput(false); setShowDebtModal(true);
-          showToast('Terdeteksi sebagai hutang! Cek datanya ya 🤝', 'success');
-        } else if (p.isBill) {
-          setBillForm({ name: p.label || aiText, amount: String(p.amount), dueDay: String(p.dueDay || 1), category: p.category || 'tagihan', notes: p.note || '' });
-          setShowAiInput(false); setShowBillModal(true);
-          showToast('Terdeteksi sebagai tagihan rutin! Cek datanya ya 💳', 'success');
-        } else if (p.isWishlist) {
-          setWishlistForm({ name: p.label || aiText, estimatedPrice: String(p.amount), priority: p.priority || 'medium', category: p.category || '', targetDate: '', notes: p.note || '', url: '' });
-          setShowAiInput(false); setShowWishlistModal(true);
-          showToast('Terdeteksi sebagai wishlist! Cek datanya ya 🛒', 'success');
-        } else {
-          setForm({ amount: String(p.amount), type: p.type || 'expense', category: p.category || 'lainnya', label: p.label || aiText, note: p.note || '', date: p.date || '' });
-          setShowAiInput(false); setShowAddModal(true);
-          showToast('Berhasil di-parse! Cek datanya ya~', 'success');
-        }
-      } else { showToast('Hmm, gak bisa di-parse nih. Coba tulis ulang!', 'error'); }
-    } catch (e: any) { showToast(e.message, 'error'); }
-    finally { setSubmitting(false); setAiText(''); }
+  const handleSmartParsed = (p: AiParseResult, rawText: string) => {
+    if (p.isDebt) {
+      setDebtForm({ description: p.label || rawText, amount: String(p.amount), debtType: p.debtType || 'owed_by_me', personName: p.personName || '', dueDate: '' });
+      setShowDebtModal(true);
+      showToast('Terdeteksi sebagai hutang! Cek datanya ya 🤝', 'success');
+    } else if (p.isBill) {
+      setBillForm({ name: p.label || rawText, amount: String(p.amount), dueDay: String(p.dueDay || 1), category: p.category || 'tagihan', notes: p.note || '' });
+      setShowBillModal(true);
+      showToast('Terdeteksi sebagai tagihan rutin! Cek datanya ya 💳', 'success');
+    } else if (p.isWishlist) {
+      setWishlistForm({ name: p.label || rawText, estimatedPrice: String(p.amount), priority: p.priority || 'medium', category: p.category || '', targetDate: '', notes: p.note || '', url: '' });
+      setShowWishlistModal(true);
+      showToast('Terdeteksi sebagai wishlist! Cek datanya ya 🛒', 'success');
+    } else {
+      setForm({ amount: String(p.amount), type: p.type || 'expense', category: p.category || 'lainnya', label: p.label || rawText, note: p.note || '', date: p.date || '' });
+      setShowAddModal(true);
+      showToast('Berhasil di-parse! Cek datanya ya~', 'success');
+    }
   };
 
   const handleAddTree = async (e: React.FormEvent) => {
@@ -933,7 +923,7 @@ export default function DuitTrackerPage() {
                       <Settings size={14} />
                     </button>
                   )}
-                  <Button onClick={() => setShowAiInput(true)} variant="secondary" size="sm"><Sparkles size={14} /> AI Input</Button>
+                  <Button onClick={() => setShowSmartInput(true)} variant="secondary" size="sm"><Sparkles size={14} /> AI Input</Button>
                   <Button onClick={() => { setEditingTx(null); setForm({ amount: '', type: 'expense', category: 'lainnya', label: '', note: '', date: '' }); setShowAddModal(true); }} size="sm"><Plus size={14} /> Tambah</Button>
                 </div>
               </div>
@@ -1892,59 +1882,12 @@ export default function DuitTrackerPage() {
               incomeCategories={allIncomeCategories}
             />
 
-            <ReceiptScannerModal
-              isOpen={showScannerModal}
-              onClose={() => setShowScannerModal(false)}
+            <SmartInputModal
+              isOpen={showSmartInput}
+              onClose={() => setShowSmartInput(false)}
+              onParsed={handleSmartParsed}
               onBulkCreate={handleBulkCreate}
             />
-
-            {/* AI Input */}
-            <Modal isOpen={showAiInput} onClose={() => setShowAiInput(false)} title="✨ Input Cerdas">
-              {/* Scan Struk option */}
-              <div
-                onClick={() => { setShowAiInput(false); setShowScannerModal(true); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px',
-                  borderRadius: 12, cursor: 'pointer', marginBottom: 16,
-                  background: 'rgba(var(--color-warning) / 0.06)',
-                  border: '1.5px dashed rgba(var(--color-warning) / 0.4)',
-                  transition: 'background 0.15s ease, border-color 0.15s ease',
-                }}
-              >
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'rgba(var(--color-warning) / 0.12)', flexShrink: 0,
-                }}>
-                  <Camera size={18} style={{ color: 'rgb(var(--color-warning))' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontWeight: 700, fontSize: 14, display: 'block' }}>📸 Scan Struk</span>
-                  <span style={{ fontSize: 12, color: 'rgb(var(--text-muted))' }}>Foto struk belanja, AI otomatis catat semua item</span>
-                </div>
-              </div>
-
-              <div style={{ position: 'relative', margin: '0 0 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ flex: 1, height: 1, background: 'var(--border-default)' }} />
-                <span style={{ fontSize: 11, color: 'rgb(var(--text-muted))', fontWeight: 600 }}>atau ketik manual</span>
-                <span style={{ flex: 1, height: 1, background: 'var(--border-default)' }} />
-              </div>
-
-              <p style={{ marginBottom: 12, fontSize: 13, opacity: 0.6 }}>Ketik aja kayak ngobrol biasa, AI langsung ngerti mau catat apa! 🧠</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
-                {['kopi 25rb', 'makan warteg 15rb', 'gaji 5.5 juta', 'grab 12k'].map(ex => (
-                  <button key={ex} type="button" onClick={() => setAiText(ex)} style={{
-                    padding: '5px 10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                    fontSize: 11, background: 'var(--input-bg)', opacity: 0.7, transition: 'opacity 0.2s',
-                  }}>&ldquo;{ex}&rdquo;</button>
-                ))}
-              </div>
-              <TextArea placeholder="Ketik di sini..." value={aiText} onChange={setAiText} rows={3} resize="none" />
-              <div style={{ marginTop: 14 }}>
-                <Button onClick={handleAiParse} disabled={submitting || !aiText.trim()} style={{ width: '100%', borderRadius: 12, padding: '12px 0' }}>
-                  {submitting ? <Loader2 className="spin" size={16} /> : <><Sparkles size={16} /> Parse & Tambahkan</>}
-                </Button>
-              </div>
-            </Modal>
 
             {/* Tree Modal */}
             <Modal isOpen={showTreeModal} onClose={() => setShowTreeModal(false)} title="🌱 Buat Pohon Tabungan">

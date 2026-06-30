@@ -10,8 +10,8 @@ import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, useToast, TextInput, TextArea, SelectOption } from '@/components/ui';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { HtmlRenderer } from '@/components/ui/HtmlRenderer';
-import { skripsweetService, ThesisChapter } from '@/services/skripsweetService';
-import { ArrowLeft, Loader2, Save, Sparkles, FileText, BarChart3, Wand2, PenTool, ListOrdered, CornerDownRight, X, ChevronDown, Send } from 'lucide-react';
+import { skripsweetService, ThesisChapter, ChapterVersionMeta } from '@/services/skripsweetService';
+import { ArrowLeft, Loader2, Save, Sparkles, FileText, BarChart3, Wand2, PenTool, ListOrdered, CornerDownRight, X, ChevronDown, ChevronLeft, ChevronRight, Send, Check, History, RotateCcw, Download } from 'lucide-react';
 
 const RichTextEditor = dynamic(() => import('@/components/ui/RichTextEditor').then(m => ({ default: m.RichTextEditor })), { ssr: false });
 
@@ -24,13 +24,13 @@ const CHAPTER_STATUS: Record<string, { label: string; color: string }> = {
 };
 
 const AI_ACTIONS = [
-  { key: 'continue', label: 'Lanjutkan Tulisan', icon: '✍️', desc: 'AI melanjutkan dari posisi terakhir' },
-  { key: 'outline', label: 'Buat Kerangka', icon: '📋', desc: 'Generate outline untuk bab ini' },
-  { key: 'opening', label: 'Paragraf Pembuka', icon: '🎯', desc: 'Buat pembukaan bab yang kuat' },
-  { key: 'transition', label: 'Paragraf Transisi', icon: '🔗', desc: 'Hubungkan antar bagian' },
-  { key: 'conclusion', label: 'Paragraf Penutup', icon: '🏁', desc: 'Buat kesimpulan bab' },
-  { key: 'expand', label: 'Kembangkan Teks', icon: '📝', desc: 'Perluas teks yang dipilih', needsSelection: true },
-  { key: 'rewrite', label: 'Tulis Ulang', icon: '🔄', desc: 'Rewrite teks lebih akademis', needsSelection: true },
+  { key: 'continue', label: 'Lanjutkan Tulisan', desc: 'AI melanjutkan dari posisi terakhir' },
+  { key: 'outline', label: 'Buat Kerangka', desc: 'Generate outline untuk bab ini' },
+  { key: 'opening', label: 'Paragraf Pembuka', desc: 'Buat pembukaan bab yang kuat' },
+  { key: 'transition', label: 'Paragraf Transisi', desc: 'Hubungkan antar bagian' },
+  { key: 'conclusion', label: 'Paragraf Penutup', desc: 'Buat kesimpulan bab' },
+  { key: 'expand', label: 'Kembangkan Teks', desc: 'Perluas teks yang dipilih', needsSelection: true },
+  { key: 'rewrite', label: 'Tulis Ulang', desc: 'Rewrite teks lebih akademis', needsSelection: true },
 ];
 
 export default function ChapterEditorPage() {
@@ -43,6 +43,7 @@ export default function ChapterEditorPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [chapter, setChapter] = useState<ThesisChapter | null>(null);
+  const [allChapters, setAllChapters] = useState<ThesisChapter[]>([]);
   const [content, setContent] = useState('');
   const [status, setStatus] = useState('not_started');
   const [targetWords, setTargetWords] = useState('');
@@ -53,6 +54,7 @@ export default function ChapterEditorPage() {
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const [hasUnsaved, setHasUnsaved] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   // AI Assist state
   const [showAiPanel, setShowAiPanel] = useState(false);
@@ -62,12 +64,19 @@ export default function ChapterEditorPage() {
   const [selectedText, setSelectedText] = useState('');
   const [customPrompt, setCustomPrompt] = useState('');
 
+  // Version history
+  const [showVersions, setShowVersions] = useState(false);
+  const [versions, setVersions] = useState<ChapterVersionMeta[]>([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+
   useEffect(() => {
     if (!thesisId || !chapterId) return;
     (async () => {
       try {
         const thesis = await skripsweetService.getDetail(thesisId);
-        const ch = thesis.chapters.find(c => c.id === chapterId);
+        const sortedChapters = (thesis.chapters || []).sort((a, b) => a.sortOrder - b.sortOrder);
+        setAllChapters(sortedChapters);
+        const ch = sortedChapters.find(c => c.id === chapterId);
         if (ch) {
           setChapter(ch);
           setContent(ch.content || '');
@@ -97,7 +106,8 @@ export default function ChapterEditorPage() {
         targetParagraphs: targetParagraphs ? parseInt(targetParagraphs) : undefined,
       } as any);
       setHasUnsaved(false);
-      showToast('Bab berhasil disimpan! 💾', 'success');
+      setLastSaved(new Date());
+      showToast('Bab berhasil disimpan!', 'success');
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSaving(false); }
   };
@@ -146,7 +156,7 @@ export default function ChapterEditorPage() {
     setHasUnsaved(true);
     setAiResult(null);
     setAiAction(null);
-    showToast('Teks AI ditambahkan ke konten! ✨', 'success');
+    showToast('Teks AI ditambahkan ke konten!', 'success');
   };
 
   const handleReplaceWithAi = () => {
@@ -156,7 +166,7 @@ export default function ChapterEditorPage() {
     setAiResult(null);
     setAiAction(null);
     setSelectedText('');
-    showToast('Teks berhasil diganti! ✨', 'success');
+    showToast('Teks berhasil diganti!', 'success');
   };
 
   // Auto-save every 30 seconds if there are unsaved changes
@@ -170,6 +180,62 @@ export default function ChapterEditorPage() {
   const wordPct = chapter?.targetWords ? Math.min(Math.round((wordCount / chapter.targetWords) * 100), 100) : null;
   const pagePct = targetPages ? Math.min(Math.round((pageEstimate / parseInt(targetPages)) * 100), 100) : null;
   const paraPct = targetParagraphs ? Math.min(Math.round((paragraphCount / parseInt(targetParagraphs)) * 100), 100) : null;
+
+  // Chapter navigation
+  const currentIndex = allChapters.findIndex(c => c.id === chapterId);
+  const prevChapter = currentIndex > 0 ? allChapters[currentIndex - 1] : null;
+  const nextChapter = currentIndex < allChapters.length - 1 ? allChapters[currentIndex + 1] : null;
+
+  const navigateToChapter = async (ch: ThesisChapter) => {
+    if (hasUnsaved) await handleSave();
+    router.push(`/skripsweet/chapter?thesisId=${thesisId}&chapterId=${ch.id}`);
+  };
+
+  // Version history
+  const loadVersions = async () => {
+    if (!thesisId || !chapterId) return;
+    setVersionsLoading(true);
+    try {
+      const v = await skripsweetService.getChapterVersions(thesisId, chapterId);
+      setVersions(v);
+      setShowVersions(true);
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setVersionsLoading(false); }
+  };
+
+  const handleSaveVersion = async () => {
+    if (!thesisId || !chapterId) return;
+    try {
+      await skripsweetService.saveChapterVersion(thesisId, chapterId);
+      showToast('Versi tersimpan!', 'success');
+      loadVersions();
+    } catch (e: any) { showToast(e.message, 'error'); }
+  };
+
+  const handleRestoreVersion = async (versionId: string) => {
+    if (!thesisId || !chapterId) return;
+    try {
+      const restored = await skripsweetService.restoreChapterVersion(thesisId, chapterId, versionId);
+      setContent(restored.content || '');
+      setHasUnsaved(false);
+      setLastSaved(new Date());
+      showToast('Versi berhasil di-restore!', 'success');
+      setShowVersions(false);
+    } catch (e: any) { showToast(e.message, 'error'); }
+  };
+
+  // DOCX export
+  const handleExportDocx = () => {
+    if (!chapter) return;
+    const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>body{font-family:'Times New Roman',serif;font-size:12pt;line-height:1.5;margin:2.54cm 2.54cm 2.54cm 3.17cm}h1,h2,h3{font-weight:bold}h1{font-size:14pt;text-align:center}h2{font-size:13pt}h3{font-size:12pt}</style></head><body><h1>${chapter.title}</h1>${content}</body></html>`;
+    const blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${chapter.title.replace(/[^a-zA-Z0-9 ]/g, '')}.doc`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <AuthGuard requiredFeature="skripsweet">
@@ -192,21 +258,58 @@ export default function ChapterEditorPage() {
                   {/* Header */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, borderRadius: 10, display: 'flex' }}><ArrowLeft size={20} /></button>
+                      <button onClick={() => router.push('/skripsweet')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, borderRadius: 10, display: 'flex' }}><ArrowLeft size={20} /></button>
                       <div>
-                        <h1 style={{ fontSize: 20, fontWeight: 800 }}>{chapter.title}</h1>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <h1 style={{ fontSize: 20, fontWeight: 800 }}>{chapter.title}</h1>
+                          {allChapters.length > 1 && (
+                            <span style={{ fontSize: 11, opacity: 0.4, fontWeight: 500 }}>({currentIndex + 1}/{allChapters.length})</span>
+                          )}
+                        </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                           <span style={{ fontSize: 10, padding: '3px 10px', borderRadius: 20, background: `${st.color}15`, color: st.color, fontWeight: 700 }}>{st.label}</span>
                           {hasUnsaved && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>● Belum disimpan</span>}
+                          {!hasUnsaved && lastSaved && (
+                            <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                              <Check size={10} /> Tersimpan
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {/* Prev/Next chapter navigation */}
+                      {allChapters.length > 1 && (
+                        <div style={{ display: 'flex', gap: 2, marginRight: 4 }}>
+                          <button
+                            onClick={() => prevChapter && navigateToChapter(prevChapter)}
+                            disabled={!prevChapter}
+                            title={prevChapter ? `← ${prevChapter.title}` : 'Bab pertama'}
+                            style={{ padding: '6px 8px', borderRadius: '8px 0 0 8px', border: '1px solid var(--border-default)', background: 'var(--card-bg)', cursor: prevChapter ? 'pointer' : 'default', opacity: prevChapter ? 1 : 0.3, display: 'flex', alignItems: 'center' }}
+                          >
+                            <ChevronLeft size={14} />
+                          </button>
+                          <button
+                            onClick={() => nextChapter && navigateToChapter(nextChapter)}
+                            disabled={!nextChapter}
+                            title={nextChapter ? `→ ${nextChapter.title}` : 'Bab terakhir'}
+                            style={{ padding: '6px 8px', borderRadius: '0 8px 8px 0', border: '1px solid var(--border-default)', borderLeft: 'none', background: 'var(--card-bg)', cursor: nextChapter ? 'pointer' : 'default', opacity: nextChapter ? 1 : 0.3, display: 'flex', alignItems: 'center' }}
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      )}
                       <Button onClick={() => setShowAiPanel(!showAiPanel)} variant="secondary" size="sm" style={{ background: showAiPanel ? 'rgba(99, 102, 241, 0.1)' : undefined, color: showAiPanel ? '#6366f1' : undefined, border: showAiPanel ? '1.5px solid rgba(99, 102, 241, 0.3)' : undefined }}>
                         <Wand2 size={14} /> AI Assist
                       </Button>
                       <Button onClick={handleGetFeedback} variant="secondary" size="sm" disabled={feedbackLoading || wordCount < 20} style={{ background: 'rgba(168, 85, 247, 0.06)', color: '#a855f7', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
                         {feedbackLoading ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />} Review
+                      </Button>
+                      <Button onClick={loadVersions} variant="secondary" size="sm" disabled={versionsLoading}>
+                        {versionsLoading ? <Loader2 size={14} className="spin" /> : <History size={14} />} Riwayat
+                      </Button>
+                      <Button onClick={handleExportDocx} variant="secondary" size="sm">
+                        <Download size={14} /> .doc
                       </Button>
                       <Button onClick={handleSave} disabled={saving} size="sm">
                         {saving ? <Loader2 size={14} className="spin" /> : <Save size={14} />} Simpan
@@ -217,7 +320,7 @@ export default function ChapterEditorPage() {
                   {/* Stats bar */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginBottom: 20 }}>
                     <Card style={{ padding: '14px 16px', borderRadius: 14 }}>
-                      <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 4 }}>📝 Kata</div>
+                      <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 4 }}>Kata</div>
                       <div style={{ fontSize: 20, fontWeight: 800, color: '#6366f1' }}>{wordCount.toLocaleString()}</div>
                       {wordPct !== null && (
                         <div style={{ marginTop: 6 }}>
@@ -229,7 +332,7 @@ export default function ChapterEditorPage() {
                       )}
                     </Card>
                     <Card style={{ padding: '14px 16px', borderRadius: 14 }}>
-                      <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 4 }}>📄 Halaman</div>
+                      <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 4 }}>Halaman</div>
                       <div style={{ fontSize: 20, fontWeight: 800, color: '#8b5cf6' }}>{pageEstimate}</div>
                       {pagePct !== null && (
                         <div style={{ marginTop: 6 }}>
@@ -253,16 +356,16 @@ export default function ChapterEditorPage() {
                       )}
                     </Card>
                     <Card style={{ padding: '14px 16px', borderRadius: 14 }}>
-                      <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 4 }}>⚙️ Status</div>
+                      <div style={{ fontSize: 11, opacity: 0.5, marginBottom: 4 }}>Status</div>
                       <SelectOption value={status} onChange={setStatus} options={Object.entries(CHAPTER_STATUS).map(([k, v]) => ({ value: k, label: v.label }))} />
                     </Card>
                   </div>
 
                   {/* Target settings row */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 20 }}>
-                    <TextInput label="Target Kata" value={targetWords} onChange={setTargetWords} placeholder="e.g. 3000" />
-                    <TextInput label="Target Halaman" value={targetPages} onChange={setTargetPages} placeholder="e.g. 12" />
-                    <TextInput label="Target Paragraf" value={targetParagraphs} onChange={setTargetParagraphs} placeholder="e.g. 30" />
+                    <TextInput label="Target Kata" value={targetWords} onChange={v => setTargetWords(v.replace(/\D/g, ''))} placeholder="e.g. 3000" />
+                    <TextInput label="Target Halaman" value={targetPages} onChange={v => setTargetPages(v.replace(/\D/g, ''))} placeholder="e.g. 12" />
+                    <TextInput label="Target Paragraf" value={targetParagraphs} onChange={v => setTargetParagraphs(v.replace(/\D/g, ''))} placeholder="e.g. 30" />
                   </div>
 
                   {/* AI Writing Panel */}
@@ -281,7 +384,7 @@ export default function ChapterEditorPage() {
                           <button key={a.key} onClick={() => handleAiAssist(a.key)} disabled={aiLoading}
                             style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-default)', background: aiAction === a.key ? 'rgba(99, 102, 241, 0.08)' : 'var(--card-bg)', cursor: aiLoading ? 'not-allowed' : 'pointer', textAlign: 'left', transition: 'all 0.2s', opacity: aiLoading && aiAction !== a.key ? 0.5 : 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}>
-                              <span>{a.icon}</span> {a.label}
+                              {a.label}
                             </div>
                             <div style={{ fontSize: 10, opacity: 0.5, marginTop: 3 }}>{a.desc}</div>
                           </button>
@@ -315,15 +418,15 @@ export default function ChapterEditorPage() {
                       {aiResult && (
                         <div style={{ marginTop: 16, borderRadius: 14, border: '1px solid rgba(99, 102, 241, 0.15)', overflow: 'hidden' }}>
                           <div style={{ padding: '10px 16px', background: 'rgba(99, 102, 241, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(99, 102, 241, 0.1)' }}>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: '#6366f1' }}>✨ Hasil AI</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#6366f1' }}>Hasil AI</span>
                             <div style={{ display: 'flex', gap: 6 }}>
                               {(aiAction === 'expand' || aiAction === 'rewrite') && selectedText && (
                                 <Button size="sm" onClick={handleReplaceWithAi} style={{ fontSize: 11, borderRadius: 8, padding: '4px 10px', background: '#f59e0b', border: 'none', color: '#fff' }}>
-                                  🔄 Ganti Teks
+                                  Ganti Teks
                                 </Button>
                               )}
                               <Button size="sm" onClick={handleInsertAiResult} style={{ fontSize: 11, borderRadius: 8, padding: '4px 10px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', color: '#fff' }}>
-                                ➕ Tambahkan ke Konten
+                                Tambahkan ke Konten
                               </Button>
                               <button onClick={() => { setAiResult(null); setAiAction(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, padding: 4 }}><X size={14} /></button>
                             </div>
@@ -331,6 +434,40 @@ export default function ChapterEditorPage() {
                           <div style={{ padding: '16px 20px', maxHeight: 300, overflowY: 'auto', fontSize: 13, lineHeight: 1.8 }}>
                             <HtmlRenderer content={aiResult} compact />
                           </div>
+                        </div>
+                      )}
+                    </Card>
+                  )}
+
+                  {/* Version History Panel */}
+                  {showVersions && (
+                    <Card style={{ padding: '18px 22px', borderRadius: 18, marginBottom: 20, border: '1.5px solid rgba(34, 197, 94, 0.15)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                        <h3 style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+                          <History size={16} style={{ color: '#22c55e' }} /> Riwayat Versi
+                        </h3>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <Button size="sm" variant="secondary" onClick={handleSaveVersion} style={{ fontSize: 11, borderRadius: 8 }}>
+                            <Save size={12} /> Simpan Versi
+                          </Button>
+                          <button onClick={() => setShowVersions(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, padding: 4 }}><X size={16} /></button>
+                        </div>
+                      </div>
+                      {versions.length === 0 ? (
+                        <p style={{ fontSize: 13, opacity: 0.5, margin: 0 }}>Belum ada riwayat versi. Versi otomatis tersimpan saat ada perubahan signifikan (&gt;50 kata).</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 250, overflowY: 'auto' }}>
+                          {versions.map(v => (
+                            <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: 'var(--input-bg)' }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 13, fontWeight: 600 }}>{v.label || new Date(v.createdAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+                                <div style={{ fontSize: 11, opacity: 0.5 }}>{v.wordCount} kata</div>
+                              </div>
+                              <Button size="sm" variant="secondary" onClick={() => handleRestoreVersion(v.id)} style={{ fontSize: 11, borderRadius: 8 }}>
+                                <RotateCcw size={11} /> Restore
+                              </Button>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </Card>
@@ -346,10 +483,12 @@ export default function ChapterEditorPage() {
                           <Wand2 size={11} /> AI Assist
                         </button>
                       )}
-                      <span style={{ marginLeft: 'auto', fontSize: 11, opacity: 0.4 }}>Auto-save dalam 30 detik</span>
+                      <span style={{ marginLeft: 'auto', fontSize: 11, opacity: 0.4 }}>
+                        {saving ? 'Menyimpan...' : hasUnsaved ? 'Auto-save dalam 30 detik' : lastSaved ? `Tersimpan ${lastSaved.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : 'Auto-save aktif'}
+                      </span>
                     </div>
                     <div style={{ padding: '16px 20px' }}>
-                      <RichTextEditor content={content} onChange={handleContentChange} placeholder="Mulai menulis konten bab..." minHeight={500} />
+                      <RichTextEditor content={content} onChange={handleContentChange} placeholder="Mulai menulis konten bab..." minHeight={500} enableAI />
                     </div>
                   </Card>
 
@@ -368,10 +507,34 @@ export default function ChapterEditorPage() {
 
                   {/* Notes */}
                   {chapter.notes && (
-                    <Card style={{ padding: '16px 20px', borderRadius: 14, opacity: 0.7 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>📌 Catatan:</div>
+                    <Card style={{ padding: '16px 20px', borderRadius: 14, opacity: 0.7, marginBottom: 20 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Catatan:</div>
                       <p style={{ fontSize: 13, lineHeight: 1.6, margin: 0 }}>{chapter.notes}</p>
                     </Card>
+                  )}
+
+                  {/* Chapter Navigation Footer */}
+                  {allChapters.length > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderTop: '1px solid var(--border-default)', marginTop: 8 }}>
+                      {prevChapter ? (
+                        <button onClick={() => navigateToChapter(prevChapter)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 12, border: '1px solid var(--border-default)', background: 'var(--card-bg)', cursor: 'pointer', fontSize: 13 }}>
+                          <ChevronLeft size={16} />
+                          <div style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: 10, opacity: 0.4, fontWeight: 500 }}>Sebelumnya</div>
+                            <div style={{ fontWeight: 600 }}>{prevChapter.title}</div>
+                          </div>
+                        </button>
+                      ) : <div />}
+                      {nextChapter ? (
+                        <button onClick={() => navigateToChapter(nextChapter)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 12, border: '1px solid var(--border-default)', background: 'var(--card-bg)', cursor: 'pointer', fontSize: 13 }}>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 10, opacity: 0.4, fontWeight: 500 }}>Selanjutnya</div>
+                            <div style={{ fontWeight: 600 }}>{nextChapter.title}</div>
+                          </div>
+                          <ChevronRight size={16} />
+                        </button>
+                      ) : <div />}
+                    </div>
                   )}
                 </>
               )}

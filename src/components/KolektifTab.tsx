@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { kolektifService, Kolektif } from '@/services/kolektifService';
-import { classService } from '@/services/classService';
+import { useKolektifFunds, useKolektifSummary, useClassMembers, classKeys } from '@/lib/hooks/useClass';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, Button, Modal, useToast, useConfirm, TextInput, SelectOption, CurrencyInput, TextArea } from '@/components/ui';
 import {
   Wallet, Plus, ArrowDownLeft, ArrowUpRight, Trash2, Loader2, Target, Users, ChevronRight
@@ -21,17 +22,17 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
   const canCreateKas = hasPerm('KAS_CREATE');
   const canTransaction = hasPerm('KAS_TRANSACTION');
 
-  const [funds, setFunds] = useState<Kolektif[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: funds = [], isLoading: loading } = useKolektifFunds(classId);
   const [selectedFund, setSelectedFund] = useState<Kolektif | null>(null);
 
   // Sub-tab: 'ringkasan' | 'riwayat' | 'anggota'
   const [subTab, setSubTab] = useState<'ringkasan' | 'riwayat' | 'anggota'>('ringkasan');
-  const [perUserSummary, setPerUserSummary] = useState<any[]>([]);
-  const [summaryLoading, setSummaryLoading] = useState(false);
+  const { data: summaryData, isLoading: summaryLoading } = useKolektifSummary(selectedFund?.id ?? null);
+  const perUserSummary = summaryData?.summary ?? [];
 
   // Class members for dropdown
-  const [members, setMembers] = useState<any[]>([]);
+  const { data: members = [] } = useClassMembers(selectedFund ? classId : undefined);
 
   // Create fund form
   const [showCreateFund, setShowCreateFund] = useState(false);
@@ -54,35 +55,9 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
   const [updateTargetAmount, setUpdateTargetAmount] = useState('');
   const [isUpdatingTarget, setIsUpdatingTarget] = useState(false);
 
-  const fetchFunds = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await kolektifService.getAll(classId);
-      setFunds(data || []);
-    } catch { } finally { setLoading(false); }
-  }, [classId]);
-
-  useEffect(() => {
-    fetchFunds();
-  }, [fetchFunds]);
-
-  useEffect(() => {
-    if (selectedFund) {
-      // Fetch user summary
-      setSummaryLoading(true);
-      kolektifService.getSummaryByUser(selectedFund.id)
-        .then(res => {
-          setPerUserSummary(res.summary || []);
-        })
-        .catch(() => {
-          showToast('Gagal memuat rekap kas anggota.', 'error');
-        })
-        .finally(() => setSummaryLoading(false));
-
-      // Fetch class members for uploader dropdown
-      classService.getClassMembers(classId).then(setMembers).catch(() => {});
-    }
-  }, [selectedFund, classId]);
+  const fetchFunds = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: classKeys.kolektifFunds(classId) });
+  }, [classId, queryClient]);
 
   const cleanAmount = (val: string) => {
     return val ? parseFloat(val.replace(/\D/g, '')) : 0;
@@ -131,8 +106,7 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
       setTxTargetUserId('');
       fetchFunds();
       // Refresh summary
-      const res = await kolektifService.getSummaryByUser(selectedFund.id);
-      setPerUserSummary(res.summary || []);
+      queryClient.invalidateQueries({ queryKey: classKeys.kolektifSummary(selectedFund.id) });
       showToast('Transaksi kas ditambahkan!', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Gagal menambahkan transaksi.', 'error');
@@ -151,8 +125,7 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
       setUpdateTargetAmount('');
       fetchFunds();
       // Refresh summary
-      const res = await kolektifService.getSummaryByUser(selectedFund.id);
-      setPerUserSummary(res.summary || []);
+      queryClient.invalidateQueries({ queryKey: classKeys.kolektifSummary(selectedFund.id) });
       showToast('Target iuran kelas diperbarui!', 'success');
     } catch (err) {
       showToast('Gagal merubah target iuran.', 'error');
@@ -168,8 +141,7 @@ export function KolektifTab({ classId, memberRole, permissions }: KolektifTabPro
       await kolektifService.deleteTransaction(txId);
       fetchFunds();
       if (selectedFund) {
-        const res = await kolektifService.getSummaryByUser(selectedFund.id);
-        setPerUserSummary(res.summary || []);
+        queryClient.invalidateQueries({ queryKey: classKeys.kolektifSummary(selectedFund.id) });
       }
       showToast('Transaksi dihapus.', 'success');
     } catch {

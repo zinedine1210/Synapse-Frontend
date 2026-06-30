@@ -5,7 +5,8 @@ import { Card, Button, Modal, useToast, AIPhotoInput, useConfirm, TextInput, Sel
 import { useFeatureAccess } from '@/lib/feature-access';
 import { useAiJob } from '@/lib/useAiJob';
 import { ExamPrediction, examPredictionService } from '@/services/examPredictionService';
-import { classService } from '@/services/classService';
+import { useExamPredictions, useClassSessions, classKeys } from '@/lib/hooks/useClass';
+import { useQueryClient } from '@tanstack/react-query';
 import { Session } from '@/models/Class';
 import { Sparkles, Download, Trash2, BookOpen, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
@@ -21,9 +22,9 @@ export function PrediksiUjianTab({ classId, memberRole = 'MEMBER', permissions }
   const { hasFeature } = useFeatureAccess();
   const isOwner = memberRole === 'OWNER' || (permissions || []).includes('PREDICTION_MANAGE');
 
-  const [predictions, setPredictions] = useState<ExamPrediction[]>([]);
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: predictions = [], isLoading } = useExamPredictions(classId);
+  const { data: sessions = [] } = useClassSessions(classId);
 
   // Modals & form state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -48,6 +49,11 @@ export function PrediksiUjianTab({ classId, memberRole = 'MEMBER', permissions }
     onError: (err) => { showToast(err || 'Gagal membuat prediksi ujian.', 'error'); setIsGenerating(false); },
   });
 
+  const fetchPredictionsAndSessions = () => {
+    queryClient.invalidateQueries({ queryKey: classKeys.predictions(classId) });
+    queryClient.invalidateQueries({ queryKey: classKeys.sessions(classId) });
+  };
+
   // Manual questions list
   const [manualQuestions, setManualQuestions] = useState<Array<{
     type: 'ESSAY' | 'MULTIPLE_CHOICE';
@@ -62,26 +68,6 @@ export function PrediksiUjianTab({ classId, memberRole = 'MEMBER', permissions }
   const [showPracticeModal, setShowPracticeModal] = useState(false);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
   const [showAnswers, setShowAnswers] = useState(false);
-
-  const fetchPredictionsAndSessions = async () => {
-    try {
-      setIsLoading(true);
-      const [predList, sessList] = await Promise.all([
-        examPredictionService.getClassPredictions(classId),
-        classService.getClassSessions(classId),
-      ]);
-      setPredictions(predList || []);
-      setSessions(sessList || []);
-    } catch (err) {
-      showToast('Gagal memuat prediksi ujian.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPredictionsAndSessions();
-  }, [classId]);
 
   const handleSessionToggle = (id: string) => {
     setSelectedSessions(prev =>
@@ -204,7 +190,7 @@ export function PrediksiUjianTab({ classId, memberRole = 'MEMBER', permissions }
     try {
       await examPredictionService.delete(id);
       showToast('Prediksi ujian dihapus.', 'success');
-      setPredictions(prev => prev.filter(p => p.id !== id));
+      queryClient.invalidateQueries({ queryKey: classKeys.predictions(classId) });
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Gagal menghapus prediksi.', 'error');
     }

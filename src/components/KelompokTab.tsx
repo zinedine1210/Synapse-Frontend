@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { groupService, TaskGroupFull } from '@/services/groupService';
+import { useClassGroups, classKeys } from '@/lib/hooks/useClass';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, Button, Modal, useToast, useConfirm, NumberInput, TextInput, UserAvatar } from '@/components/ui';
 import {
   Users, Plus, Trash2, Loader2, Shuffle, UserMinus, ChevronRight,
@@ -21,8 +23,8 @@ export function KelompokTab({ classId, memberRole, permissions, userId, classMem
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const canManageGroup = memberRole === 'OWNER' || (permissions || []).includes('GROUP_MANAGE');
-  const [groups, setGroups] = useState<TaskGroupFull[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: groups = [], isLoading: loading } = useClassGroups(classId);
   const [selectedGroup, setSelectedGroup] = useState<TaskGroupFull | null>(null);
 
   // Create group
@@ -35,13 +37,9 @@ export function KelompokTab({ classId, memberRole, permissions, userId, classMem
   const [autoCount, setAutoCount] = useState('4');
   const [isAutoGen, setIsAutoGen] = useState(false);
 
-  const fetchGroups = useCallback(async () => {
-    setLoading(true);
-    try { const data = await groupService.getClassGroups(classId); setGroups(data || []); }
-    catch { } finally { setLoading(false); }
-  }, [classId]);
-
-  useEffect(() => { fetchGroups(); }, [fetchGroups]);
+  const fetchGroups = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: classKeys.groups(classId) });
+  }, [classId, queryClient]);
 
   // Open group from URL
   useEffect(() => {

@@ -4,7 +4,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { useClassDetail } from '@/viewmodels/useClassDetail';
-import { classService } from '@/services/classService';
+import { useClassMembers, useClassRoles, useClassTasks, classKeys } from '@/lib/hooks/useClass';
+import { useQueryClient } from '@tanstack/react-query';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Button, useToast } from '@/components/ui';
@@ -138,20 +139,24 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
 
   const hasQuizFeature = hasFeature('quiz');
 
-  // Class members — shared between Info tab and ForumTab to avoid duplicate fetches
-  const [classMembers, setClassMembers] = useState<any[]>([]);
-  const [classRoles, setClassRoles] = useState<any[]>([]);
-  const [classTasks, setClassTasks] = useState<{ id: string; title: string }[]>([]);
+  // Class members, roles, tasks — shared between tabs via TanStack Query
+  const queryClient = useQueryClient();
+  const { data: classMembers = [] } = useClassMembers(classData?.id);
+  const { data: classRoles = [] } = useClassRoles(classData?.id);
+  const { data: classTasks = [] } = useClassTasks(classData?.id);
 
-  useEffect(() => {
-    if (classData?.id) {
-      classService.getClassMembers(classData.id).then(setClassMembers).catch(() => {});
-      classService.getClassRoles(classData.id).then(setClassRoles).catch(() => {});
-      import('@/services/taskService').then(({ taskService }) => {
-        taskService.getClassTasks(classData.id).then((t) => setClassTasks((t || []).map((x: any) => ({ id: x.id, title: x.title })))).catch(() => {});
-      });
-    }
-  }, [classData?.id]);
+  // Setters that update query cache for child components that call them
+  const setClassMembers = useCallback((updater: any) => {
+    queryClient.setQueryData(classKeys.members(classData?.id ?? ''), (prev: any) =>
+      typeof updater === 'function' ? updater(prev ?? []) : updater
+    );
+  }, [queryClient, classData?.id]);
+
+  const setClassRoles = useCallback((updater: any) => {
+    queryClient.setQueryData(classKeys.roles(classData?.id ?? ''), (prev: any) =>
+      typeof updater === 'function' ? updater(prev ?? []) : updater
+    );
+  }, [queryClient, classData?.id]);
 
   // Filter features by plan — memoized
   const availableFeatures = useMemo(() =>

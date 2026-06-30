@@ -18,6 +18,19 @@ import {
   ThesisComment, ExploreResult, ChapterRevision,
 } from '@/services/skripsweetService';
 import {
+  useTheses, useThesisDetail, useThesisProgress, useChatHistory,
+  useExplore, useTrendingTags, useCreateThesis, useDeleteThesis,
+  useExplainFormat, useUploadFormatFile, useCreateChapter, useUpdateChapter,
+  useDeleteChapter, useReorderChapters, useGetChapterFeedback,
+  useAddJournal, useUpdateJournal, useRemoveJournal,
+  useCreateBimbingan, useUpdateBimbingan, useDeleteBimbingan,
+  useSendChat, useGenerateBibliography, usePublishThesis, useUnpublishThesis,
+  useAddRevision, useResolveRevision, useUnresolveRevision, useDeleteRevision,
+  useToggleLike, useToggleBookmark, useAddComment, useSearchJournals,
+  useUploadBimbinganAttachment, skripsweetKeys,
+} from '@/lib/hooks/useSkripsweet';
+import { useQueryClient } from '@tanstack/react-query';
+import {
   Plus, Loader2, BookOpen, Search, Sparkles, Trash2, X, ChevronRight, ChevronDown, ChevronUp,
   FileText, MessageSquare, ClipboardList, BookMarked, Globe,
   BarChart3, Edit2, Check, Send, RefreshCw, ExternalLink, Eye,
@@ -55,10 +68,66 @@ export default function SkripsweetPage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // State
-  const [theses, setTheses] = useState<ThesisProject[]>([]);
-  const [activeThesis, setActiveThesis] = useState<ThesisProject | null>(null);
-  const [progress, setProgress] = useState<ThesisProgress | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [activeThesisId, setActiveThesisId] = useState<string | null>(null);
+  const [exploreQuery2, setExploreQuery2] = useState('');
+  const [exploreTag, setExploreTag] = useState('');
+  const queryClient = useQueryClient();
+
+  // ─── TanStack Query ─────────────────────────────────────────
+  const thesesQuery = useTheses();
+  const theses = thesesQuery.data ?? [];
+  const loading = thesesQuery.isLoading;
+
+  const detailQuery = useThesisDetail(activeThesisId);
+  const activeThesis = detailQuery.data ?? null;
+
+  const progressQuery = useThesisProgress(activeThesisId, tab === 'dashboard');
+  const progress = progressQuery.data ?? null;
+
+  const chatQuery = useChatHistory(activeThesisId, tab === 'chat');
+  const chatMessages = chatQuery.data ?? [];
+
+  const exploreResult = useExplore(exploreQuery2, exploreTag, tab === 'explore');
+  const exploreData = exploreResult.data ?? null;
+  const exploreLoading = exploreResult.isLoading;
+
+  const trendingQuery = useTrendingTags(tab === 'explore');
+  const trendingTags = trendingQuery.data ?? [];
+
+  // Auto-select first thesis
+  useEffect(() => {
+    if (theses.length > 0 && !activeThesisId) setActiveThesisId(theses[0].id);
+  }, [theses, activeThesisId]);
+
+  // Mutations
+  const createThesisMut = useCreateThesis();
+  const deleteThesisMut = useDeleteThesis();
+  const explainFormatMut = useExplainFormat();
+  const uploadFormatMut = useUploadFormatFile();
+  const createChapterMut = useCreateChapter();
+  const updateChapterMut = useUpdateChapter();
+  const deleteChapterMut = useDeleteChapter();
+  const reorderChaptersMut = useReorderChapters();
+  const feedbackMut = useGetChapterFeedback();
+  const addJournalMut = useAddJournal();
+  const updateJournalMut = useUpdateJournal();
+  const removeJournalMut = useRemoveJournal();
+  const createBimbinganMut = useCreateBimbingan();
+  const updateBimbinganMut = useUpdateBimbingan();
+  const deleteBimbinganMut = useDeleteBimbingan();
+  const sendChatMut = useSendChat();
+  const generateBibMut = useGenerateBibliography();
+  const publishMut = usePublishThesis();
+  const unpublishMut = useUnpublishThesis();
+  const addRevisionMut = useAddRevision();
+  const resolveRevisionMut = useResolveRevision();
+  const unresolveRevisionMut = useUnresolveRevision();
+  const deleteRevisionMut = useDeleteRevision();
+  const toggleLikeMut = useToggleLike();
+  const toggleBookmarkMut = useToggleBookmark();
+  const addCommentMut = useAddComment();
+  const searchJournalsMut = useSearchJournals();
+  const uploadBimbinganMut = useUploadBimbinganAttachment();
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -91,16 +160,10 @@ export default function SkripsweetPage() {
   const [bibStyle, setBibStyle] = useState('apa7');
 
   // Chat
-  const [chatMessages, setChatMessages] = useState<ThesisChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatContext, setChatContext] = useState('');
 
   // Explore
-  const [exploreData, setExploreData] = useState<ExploreResult | null>(null);
-  const [exploreQuery, setExploreQuery] = useState('');
-  const [exploreTag, setExploreTag] = useState('');
-  const [trendingTags, setTrendingTags] = useState<{ tag: string; count: number }[]>([]);
-  const [exploreLoading, setExploreLoading] = useState(false);
   const [publicCommentInput, setPublicCommentInput] = useState('');
 
   // Relevance matrix
@@ -125,51 +188,14 @@ export default function SkripsweetPage() {
   const [revisionNote, setRevisionNote] = useState('');
   const [expandedRevisions, setExpandedRevisions] = useState<string | null>(null);
 
-  // ─── Data Loading ───────────────────────────────────────────
-  const fetchTheses = useCallback(async () => {
-    try {
-      const data = await skripsweetService.getAll();
-      setTheses(data);
-      if (data.length > 0 && !activeThesis) setActiveThesis(data[0]);
-    } catch { } finally { setLoading(false); }
-  }, [activeThesis]);
-
-  const fetchDetail = useCallback(async () => {
-    if (!activeThesis) return;
-    try { setActiveThesis(await skripsweetService.getDetail(activeThesis.id)); } catch { }
-  }, [activeThesis?.id]);
-
-  const fetchProgress = useCallback(async () => {
-    if (!activeThesis) return;
-    try { setProgress(await skripsweetService.getProgress(activeThesis.id)); } catch { }
-  }, [activeThesis?.id]);
-
-  const fetchChat = useCallback(async () => {
-    if (!activeThesis) return;
-    try { setChatMessages(await skripsweetService.getChatHistory(activeThesis.id)); } catch { }
-  }, [activeThesis?.id]);
-
-  const fetchExplore = useCallback(async () => {
-    setExploreLoading(true);
-    try {
-      const [data, tags] = await Promise.all([
-        skripsweetService.explore({ q: exploreQuery || undefined, tag: exploreTag || undefined }),
-        trendingTags.length ? Promise.resolve(trendingTags) : skripsweetService.getTrendingTags(),
-      ]);
-      setExploreData(data);
-      if (!trendingTags.length) setTrendingTags(tags as any);
-    } catch { } finally { setExploreLoading(false); }
-  }, [exploreQuery, exploreTag]);
-
-  useEffect(() => { fetchTheses(); }, []);
-  useEffect(() => { if (activeThesis) { fetchDetail(); fetchProgress(); } }, [activeThesis?.id]);
-  useEffect(() => { if (tab === 'chat' && activeThesis) fetchChat(); }, [tab, activeThesis?.id]);
-  useEffect(() => { if (tab === 'explore') fetchExplore(); }, [tab, exploreQuery, exploreTag]);
+  // Scroll chat
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages]);
 
   const refreshAll = useCallback(async () => {
-    await Promise.all([fetchDetail(), fetchProgress()]);
-  }, [fetchDetail, fetchProgress]);
+    if (!activeThesisId) return;
+    queryClient.invalidateQueries({ queryKey: skripsweetKeys.detail(activeThesisId) });
+    queryClient.invalidateQueries({ queryKey: skripsweetKeys.progress(activeThesisId) });
+  }, [activeThesisId, queryClient]);
 
   // ─── Handlers ───────────────────────────────────────────────
   const handleCreateThesis = async (e: React.FormEvent) => {
@@ -177,19 +203,17 @@ export default function SkripsweetPage() {
     if (!thesisForm.title.trim()) return;
     setSubmitting(true);
     try {
-      const thesis = await skripsweetService.create({
+      const thesis = await createThesisMut.mutateAsync({
         title: thesisForm.title, university: thesisForm.university || undefined,
         faculty: thesisForm.faculty || undefined, department: thesisForm.department || undefined,
         supervisor: thesisForm.supervisor || undefined, supervisorTwo: thesisForm.supervisorTwo || undefined,
         startDate: thesisForm.startDate || undefined, targetDate: thesisForm.targetDate || undefined,
         abstract: thesisForm.abstract || undefined,
       });
-      setTheses(prev => [thesis, ...prev]);
-      setActiveThesis(thesis);
+      setActiveThesisId(thesis.id);
       setShowCreateModal(false);
       setThesisForm({ title: '', university: '', faculty: '', department: '', supervisor: '', supervisorTwo: '', startDate: '', targetDate: '', abstract: '' });
       showToast('Proyek skripsi berhasil dibuat! Sekarang atur format skripsimu.', 'success');
-      // Auto-open format modal to guide the user
       setTimeout(() => setShowFormatModal(true), 300);
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
@@ -199,9 +223,8 @@ export default function SkripsweetPage() {
     if (!activeThesis) return;
     if (!await confirm({ title: 'Hapus Proyek Skripsi?', message: `"${activeThesis.title}" dan semua datanya akan dihapus permanen.`, variant: 'danger', confirmText: 'Hapus' })) return;
     try {
-      await skripsweetService.delete(activeThesis.id);
-      setTheses(prev => prev.filter(t => t.id !== activeThesis.id));
-      setActiveThesis(null); setProgress(null);
+      await deleteThesisMut.mutateAsync(activeThesis.id);
+      setActiveThesisId(null);
       showToast('Proyek skripsi dihapus.', 'success');
     } catch (e: any) { showToast(e.message, 'error'); }
   };
@@ -210,10 +233,9 @@ export default function SkripsweetPage() {
     if (!activeThesis || !formatExplanation.trim()) return;
     setSubmitting(true);
     try {
-      await skripsweetService.explainFormat(activeThesis.id, formatExplanation);
+      await explainFormatMut.mutateAsync({ thesisId: activeThesis.id, explanation: formatExplanation });
       showToast('Format berhasil diparsing oleh AI! Bab-bab sudah otomatis dibuat.', 'success');
       setShowFormatModal(false); setFormatExplanation('');
-      refreshAll();
     } catch (e: any) { showToast(e.message || 'Gagal mengatur format', 'error'); }
     finally { setSubmitting(false); }
   };
@@ -222,10 +244,9 @@ export default function SkripsweetPage() {
     if (!activeThesis) return;
     setSubmitting(true);
     try {
-      await skripsweetService.uploadFormatFile(activeThesis.id, file);
+      await uploadFormatMut.mutateAsync({ thesisId: activeThesis.id, file });
       showToast('File berhasil dianalisis! Struktur bab sudah dibuat otomatis.', 'success');
       setShowFormatModal(false);
-      refreshAll();
     } catch (e: any) { showToast(e.message || 'Gagal menganalisis file', 'error'); }
     finally { setSubmitting(false); }
   };
@@ -235,31 +256,33 @@ export default function SkripsweetPage() {
     if (!activeThesis || !chapterForm.title.trim()) return;
     setSubmitting(true);
     try {
-      await skripsweetService.createChapter(activeThesis.id, {
-        title: chapterForm.title,
-        chapterNum: parseInt(chapterForm.chapterNum) || (activeThesis.chapters?.length || 0) + 1,
-        targetWords: chapterForm.targetWords ? parseInt(chapterForm.targetWords) : undefined,
-        targetPages: chapterForm.targetPages ? parseInt(chapterForm.targetPages) : undefined,
-        targetParagraphs: chapterForm.targetParagraphs ? parseInt(chapterForm.targetParagraphs) : undefined,
-      } as any);
+      await createChapterMut.mutateAsync({
+        thesisId: activeThesis.id,
+        data: {
+          title: chapterForm.title,
+          chapterNum: parseInt(chapterForm.chapterNum) || (activeThesis.chapters?.length || 0) + 1,
+          targetWords: chapterForm.targetWords ? parseInt(chapterForm.targetWords) : undefined,
+          targetPages: chapterForm.targetPages ? parseInt(chapterForm.targetPages) : undefined,
+          targetParagraphs: chapterForm.targetParagraphs ? parseInt(chapterForm.targetParagraphs) : undefined,
+        } as any,
+      });
       showToast('Bab ditambahkan!', 'success');
       setShowChapterModal(false);
       setChapterForm({ title: '', chapterNum: '', targetWords: '', targetPages: '', targetParagraphs: '' });
-      refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
 
   const handleUpdateChapterStatus = async (chapterId: string, status: string) => {
     if (!activeThesis) return;
-    try { await skripsweetService.updateChapter(activeThesis.id, chapterId, { status } as any); refreshAll(); }
+    try { await updateChapterMut.mutateAsync({ thesisId: activeThesis.id, chapterId, data: { status } as any }); }
     catch (e: any) { showToast(e.message, 'error'); }
   };
 
   const handleDeleteChapter = async (chapterId: string) => {
     if (!activeThesis) return;
     if (!await confirm({ message: 'Yakin hapus bab ini?', variant: 'danger' })) return;
-    try { await skripsweetService.deleteChapter(activeThesis.id, chapterId); showToast('Bab dihapus.', 'success'); refreshAll(); }
+    try { await deleteChapterMut.mutateAsync({ thesisId: activeThesis.id, chapterId }); showToast('Bab dihapus.', 'success'); }
     catch (e: any) { showToast(e.message, 'error'); }
   };
 
@@ -267,8 +290,7 @@ export default function SkripsweetPage() {
     if (!activeThesis) return;
     setFeedbackLoading(chapterId);
     try {
-      const res = await skripsweetService.getChapterFeedback(activeThesis.id, chapterId);
-      setActiveThesis(prev => prev ? { ...prev, chapters: prev.chapters.map(c => c.id === chapterId ? { ...c, aiSuggestion: res.feedback } : c) } : null);
+      await feedbackMut.mutateAsync({ thesisId: activeThesis.id, chapterId });
       showToast('Feedback AI sudah siap!', 'success');
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setFeedbackLoading(null); }
@@ -279,7 +301,7 @@ export default function SkripsweetPage() {
     if (!activeThesis || !journalSearchQuery.trim()) return;
     setJournalSearching(true);
     try {
-      const res = await skripsweetService.searchJournals(activeThesis.id, journalSearchQuery);
+      const res = await searchJournalsMut.mutateAsync({ thesisId: activeThesis.id, query: journalSearchQuery });
       setJournalSearchResults(res.results);
       if (res.results.length === 0) showToast('Tidak ada hasil. Coba kata kunci lain (dalam bahasa Inggris untuk hasil lebih baik).', 'info');
     } catch (e: any) { showToast(e.message, 'error'); }
@@ -289,12 +311,14 @@ export default function SkripsweetPage() {
   const handleAddFromSearch = async (result: JournalSearchResult) => {
     if (!activeThesis) return;
     try {
-      await skripsweetService.addJournal(activeThesis.id, {
-        title: result.title, authors: result.authors, journalName: result.journalName,
-        year: result.year, doi: result.doi, url: result.url, abstract: result.abstract, isFromSearch: true,
-      } as any);
+      await addJournalMut.mutateAsync({
+        thesisId: activeThesis.id,
+        data: {
+          title: result.title, authors: result.authors, journalName: result.journalName,
+          year: result.year, doi: result.doi, url: result.url, abstract: result.abstract, isFromSearch: true,
+        },
+      });
       showToast('Jurnal ditambahkan!', 'success');
-      refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
   };
 
@@ -303,24 +327,26 @@ export default function SkripsweetPage() {
     if (!activeThesis || !journalForm.title.trim()) return;
     setSubmitting(true);
     try {
-      await skripsweetService.addJournal(activeThesis.id, {
-        title: journalForm.title, authors: journalForm.authors || undefined,
-        journalName: journalForm.journalName || undefined, year: journalForm.year ? parseInt(journalForm.year) : undefined,
-        doi: journalForm.doi || undefined, url: journalForm.url || undefined,
-        abstract: journalForm.abstract || undefined, relevance: journalForm.relevance || undefined,
-        citationKey: journalForm.citationKey || undefined,
-      } as any);
+      await addJournalMut.mutateAsync({
+        thesisId: activeThesis.id,
+        data: {
+          title: journalForm.title, authors: journalForm.authors || undefined,
+          journalName: journalForm.journalName || undefined, year: journalForm.year ? parseInt(journalForm.year) : undefined,
+          doi: journalForm.doi || undefined, url: journalForm.url || undefined,
+          abstract: journalForm.abstract || undefined, relevance: journalForm.relevance || undefined,
+          citationKey: journalForm.citationKey || undefined,
+        },
+      });
       showToast('Jurnal ditambahkan!', 'success');
       setShowJournalModal(false);
       setJournalForm({ title: '', authors: '', journalName: '', year: '', doi: '', url: '', abstract: '', relevance: '', citationKey: '' });
-      refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
 
   const handleRemoveJournal = async (journalId: string) => {
     if (!activeThesis) return;
-    try { await skripsweetService.removeJournal(activeThesis.id, journalId); refreshAll(); }
+    try { await removeJournalMut.mutateAsync({ thesisId: activeThesis.id, journalId }); }
     catch (e: any) { showToast(e.message, 'error'); }
   };
 
@@ -329,18 +355,21 @@ export default function SkripsweetPage() {
     if (!activeThesis || !editingJournal) return;
     setSubmitting(true);
     try {
-      await skripsweetService.updateJournal(activeThesis.id, editingJournal.id, {
-        title: journalForm.title, authors: journalForm.authors || undefined,
-        journalName: journalForm.journalName || undefined, year: journalForm.year ? parseInt(journalForm.year) : undefined,
-        doi: journalForm.doi || undefined, url: journalForm.url || undefined,
-        abstract: journalForm.abstract || undefined, relevance: journalForm.relevance || undefined,
-        citationKey: journalForm.citationKey || undefined,
-      } as any);
+      await updateJournalMut.mutateAsync({
+        thesisId: activeThesis.id,
+        journalId: editingJournal.id,
+        data: {
+          title: journalForm.title, authors: journalForm.authors || undefined,
+          journalName: journalForm.journalName || undefined, year: journalForm.year ? parseInt(journalForm.year) : undefined,
+          doi: journalForm.doi || undefined, url: journalForm.url || undefined,
+          abstract: journalForm.abstract || undefined, relevance: journalForm.relevance || undefined,
+          citationKey: journalForm.citationKey || undefined,
+        },
+      });
       showToast('Jurnal diperbarui!', 'success');
       setEditingJournal(null);
       setShowJournalModal(false);
       setJournalForm({ title: '', authors: '', journalName: '', year: '', doi: '', url: '', abstract: '', relevance: '', citationKey: '' });
-      refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
@@ -364,8 +393,7 @@ export default function SkripsweetPage() {
     [sorted[idx], sorted[swapIdx]] = [sorted[swapIdx], sorted[idx]];
     const newOrder = sorted.map(c => c.id);
     try {
-      await skripsweetService.reorderChapters(activeThesis.id, newOrder);
-      refreshAll();
+      await reorderChaptersMut.mutateAsync({ thesisId: activeThesis.id, chapterIds: newOrder });
     } catch (e: any) { showToast(e.message, 'error'); }
   };
 
@@ -374,27 +402,31 @@ export default function SkripsweetPage() {
     if (!activeThesis || !bimbinganForm.topic.trim() || !bimbinganForm.date) return;
     setSubmitting(true);
     try {
-      await skripsweetService.createBimbingan(activeThesis.id, {
-        date: bimbinganForm.date, supervisor: bimbinganForm.supervisor || undefined,
-        topic: bimbinganForm.topic, feedback: bimbinganForm.feedback || undefined,
-        actionItems: bimbinganForm.actionItems ? JSON.stringify(bimbinganForm.actionItems.split('\n').filter(Boolean)) : undefined,
+      await createBimbinganMut.mutateAsync({
+        thesisId: activeThesis.id,
+        data: {
+          date: bimbinganForm.date, supervisor: bimbinganForm.supervisor || undefined,
+          topic: bimbinganForm.topic, feedback: bimbinganForm.feedback || undefined,
+          actionItems: bimbinganForm.actionItems ? JSON.stringify(bimbinganForm.actionItems.split('\n').filter(Boolean)) : undefined,
+        },
       });
       showToast('Log bimbingan ditambahkan!', 'success');
       setShowBimbinganModal(false);
       setBimbinganForm({ date: '', supervisor: '', topic: '', feedback: '', actionItems: '' });
-      refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
 
   const handleDeleteBimbingan = async (id: string) => {
     if (!activeThesis || !await confirm({ message: 'Hapus log bimbingan?', variant: 'danger' })) return;
-    try { await skripsweetService.deleteBimbingan(activeThesis.id, id); refreshAll(); } catch (e: any) { showToast(e.message, 'error'); }
+    try { await deleteBimbinganMut.mutateAsync({ thesisId: activeThesis.id, bimbinganId: id }); }
+    catch (e: any) { showToast(e.message, 'error'); }
   };
 
   const handleMarkBimbinganDone = async (id: string) => {
     if (!activeThesis) return;
-    try { await skripsweetService.updateBimbingan(activeThesis.id, id, { status: 'done' }); refreshAll(); } catch (e: any) { showToast(e.message, 'error'); }
+    try { await updateBimbinganMut.mutateAsync({ thesisId: activeThesis.id, bimbinganId: id, data: { status: 'done' } }); }
+    catch (e: any) { showToast(e.message, 'error'); }
   };
 
   const startEditBimbingan = (b: ThesisBimbingan) => {
@@ -422,15 +454,14 @@ export default function SkripsweetPage() {
     };
     try {
       if (editingBimbingan) {
-        await skripsweetService.updateBimbingan(activeThesis.id, editingBimbingan.id, payload);
+        await updateBimbinganMut.mutateAsync({ thesisId: activeThesis.id, bimbinganId: editingBimbingan.id, data: payload });
         showToast('Bimbingan diperbarui!', 'success');
       } else {
-        await skripsweetService.createBimbingan(activeThesis.id, payload);
+        await createBimbinganMut.mutateAsync({ thesisId: activeThesis.id, data: payload });
         showToast('Log bimbingan ditambahkan!', 'success');
       }
       setShowBimbinganModal(false); setEditingBimbingan(null);
       setBimbinganForm({ date: '', supervisor: '', topic: '', feedback: '', actionItems: '' });
-      refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
@@ -438,9 +469,8 @@ export default function SkripsweetPage() {
   const handleUploadBimbinganFile = async (bimbinganId: string, file: File) => {
     if (!activeThesis) return;
     try {
-      await skripsweetService.uploadBimbinganAttachment(activeThesis.id, bimbinganId, file);
+      await uploadBimbinganMut.mutateAsync({ thesisId: activeThesis.id, bimbinganId, file });
       showToast('Lampiran berhasil diupload!', 'success');
-      refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
   };
 
@@ -449,10 +479,9 @@ export default function SkripsweetPage() {
     if (!activeThesis || !revisionModal || !revisionNote.trim()) return;
     setSubmitting(true);
     try {
-      await skripsweetService.addRevision(activeThesis.id, revisionModal.chapterId, revisionNote.trim());
+      await addRevisionMut.mutateAsync({ thesisId: activeThesis.id, chapterId: revisionModal.chapterId, note: revisionNote.trim() });
       showToast('Catatan revisi ditambahkan.', 'success');
       setRevisionModal(null); setRevisionNote('');
-      refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
@@ -461,19 +490,17 @@ export default function SkripsweetPage() {
     if (!activeThesis) return;
     try {
       if (rev.status === 'pending') {
-        await skripsweetService.resolveRevision(activeThesis.id, chapterId, rev.id);
+        await resolveRevisionMut.mutateAsync({ thesisId: activeThesis.id, chapterId, revisionId: rev.id });
       } else {
-        await skripsweetService.unresolveRevision(activeThesis.id, chapterId, rev.id);
+        await unresolveRevisionMut.mutateAsync({ thesisId: activeThesis.id, chapterId, revisionId: rev.id });
       }
-      refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
   };
 
   const handleDeleteRevision = async (chapterId: string, revisionId: string) => {
     if (!activeThesis) return;
     try {
-      await skripsweetService.deleteRevision(activeThesis.id, chapterId, revisionId);
-      refreshAll();
+      await deleteRevisionMut.mutateAsync({ thesisId: activeThesis.id, chapterId, revisionId });
     } catch (e: any) { showToast(e.message, 'error'); }
   };
 
@@ -481,17 +508,10 @@ export default function SkripsweetPage() {
     if (!activeThesis || !chatInput.trim()) return;
     const msg = chatInput.trim();
     setChatInput('');
-    const tempId = `temp-${Date.now()}`;
-    setChatMessages(prev => [...prev, { id: tempId, thesisId: activeThesis.id, role: 'user', content: msg, createdAt: new Date().toISOString() }]);
     setChatLoading(true);
     try {
-      const res = await skripsweetService.chat(activeThesis.id, msg, chatContext || undefined);
-      setChatMessages(prev => [
-        ...prev.filter(m => m.id !== tempId),
-        { id: `u-${Date.now()}`, thesisId: activeThesis.id, role: 'user', content: msg, createdAt: new Date().toISOString() },
-        { id: `a-${Date.now()}`, thesisId: activeThesis.id, role: 'assistant', content: res.response, createdAt: new Date().toISOString() },
-      ]);
-    } catch (e: any) { showToast(e.message, 'error'); setChatMessages(prev => prev.filter(m => m.id !== tempId)); }
+      await sendChatMut.mutateAsync({ thesisId: activeThesis.id, message: msg, context: chatContext || undefined });
+    } catch (e: any) { showToast(e.message, 'error'); }
     finally { setChatLoading(false); }
   };
 
@@ -499,9 +519,8 @@ export default function SkripsweetPage() {
     if (!activeThesis) return;
     setSubmitting(true);
     try {
-      const res = await skripsweetService.generateBibliography(activeThesis.id, bibStyle);
+      const res = await generateBibMut.mutateAsync({ thesisId: activeThesis.id, style: bibStyle });
       showToast(`Daftar pustaka di-generate (${res.bibliography.length} entri, format ${bibStyle.toUpperCase()})!`, 'success');
-      refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
@@ -510,17 +529,16 @@ export default function SkripsweetPage() {
     if (!activeThesis) return;
     setSubmitting(true);
     try {
-      await skripsweetService.publish(activeThesis.id, publishTags);
+      await publishMut.mutateAsync({ thesisId: activeThesis.id, tags: publishTags });
       showToast('Skripsi dipublikasikan ke komunitas!', 'success');
       setShowPublishModal(false); setPublishTags([]);
-      refreshAll();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
 
   const handleUnpublish = async () => {
     if (!activeThesis) return;
-    try { await skripsweetService.unpublish(activeThesis.id); showToast('Skripsi di-unpublish.', 'success'); refreshAll(); }
+    try { await unpublishMut.mutateAsync(activeThesis.id); showToast('Skripsi di-unpublish.', 'success'); }
     catch (e: any) { showToast(e.message, 'error'); }
   };
 
@@ -569,9 +587,11 @@ export default function SkripsweetPage() {
 
   const handleToggleLike = async (id: string) => {
     try {
-      const res = await skripsweetService.toggleLike(id);
+      const res = await toggleLikeMut.mutateAsync(id);
       if (exploreData) {
-        setExploreData(prev => prev ? { ...prev, items: prev.items.map(i => i.id === id ? { ...i, isLiked: res.liked, _count: { ...i._count!, likes: (i._count?.likes || 0) + (res.liked ? 1 : -1) } } : i) } : null);
+        queryClient.setQueryData(skripsweetKeys.explore(exploreQuery2, exploreTag), (prev: ExploreResult | undefined) =>
+          prev ? { ...prev, items: prev.items.map(i => i.id === id ? { ...i, isLiked: res.liked, _count: { ...i._count!, likes: (i._count?.likes || 0) + (res.liked ? 1 : -1) } } : i) } : prev
+        );
       }
       if (showPublicDetail?.id === id) {
         setShowPublicDetail(prev => prev ? { ...prev, isLiked: res.liked, _count: { ...prev._count!, likes: (prev._count?.likes || 0) + (res.liked ? 1 : -1) } } : null);
@@ -580,7 +600,7 @@ export default function SkripsweetPage() {
   };
 
   const handleToggleBookmark = async (id: string) => {
-    try { await skripsweetService.toggleBookmark(id); } catch { }
+    try { await toggleBookmarkMut.mutateAsync(id); } catch { }
   };
 
   const handleViewPublic = async (id: string) => {
@@ -590,7 +610,7 @@ export default function SkripsweetPage() {
   const handleAddComment = async () => {
     if (!showPublicDetail || !publicCommentInput.trim()) return;
     try {
-      const comment = await skripsweetService.addComment(showPublicDetail.id, publicCommentInput);
+      const comment = await addCommentMut.mutateAsync({ thesisId: showPublicDetail.id, content: publicCommentInput });
       setShowPublicDetail(prev => prev ? { ...prev, comments: [comment, ...(prev as any).comments] } : null);
       setPublicCommentInput('');
     } catch (e: any) { showToast(e.message, 'error'); }
@@ -668,7 +688,7 @@ export default function SkripsweetPage() {
               {theses.length > 1 && (
                 <div style={{ display: 'flex', gap: 6, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
                   {theses.map(t => (
-                    <button key={t.id} onClick={() => { setActiveThesis(t); setProgress(null); }} style={{
+                    <button key={t.id} onClick={() => { setActiveThesisId(t.id); }} style={{
                       padding: '8px 16px', borderRadius: 10, border: activeThesis?.id === t.id ? '1.5px solid rgb(var(--color-primary))' : '1px solid var(--border-default)',
                       cursor: 'pointer', whiteSpace: 'nowrap', fontSize: 13, fontWeight: activeThesis?.id === t.id ? 700 : 400,
                       background: activeThesis?.id === t.id ? 'rgba(var(--color-primary), 0.06)' : 'transparent',
@@ -1265,8 +1285,8 @@ export default function SkripsweetPage() {
                   {tab === 'explore' && (
                     <div>
                       <div style={{ marginBottom: 20 }}>
-                        <div style={{ display: 'flex', gap: 8 }} onKeyDown={(e) => { if (e.key === 'Enter') fetchExplore(); }}>
-                          <div style={{ flex: 1 }}><TextInput value={exploreQuery} onChange={setExploreQuery} placeholder="Cari skripsi, topik, universitas..." /></div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <div style={{ flex: 1 }}><TextInput value={exploreQuery2} onChange={setExploreQuery2} placeholder="Cari skripsi, topik, universitas..." /></div>
                         </div>
                         {trendingTags.length > 0 && (
                           <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>

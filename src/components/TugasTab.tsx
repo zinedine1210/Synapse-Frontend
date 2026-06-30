@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { taskService, Task, TaskSubmission } from '@/services/taskService';
-import { classService } from '@/services/classService';
 import { groupService, TaskGroupFull } from '@/services/groupService';
 import { aiService } from '@/services/aiService';
 import { forumService } from '@/services/forumService';
+import { useClassTasksFull, useClassMembers, useClassGroups, useClassSessions, useTaskSubmissions, classKeys } from '@/lib/hooks/useClass';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, Button, Modal, useToast, useConfirm, MarkdownRenderer, HtmlRenderer, TextInput, SelectOption, DateTimePicker, TextArea } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
 import dynamic from 'next/dynamic';
@@ -34,10 +35,10 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
   const canEdit = hasPerm('TASK_EDIT');
   const isOwner = canCreate || canEdit;
 
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data: tasks = [], isLoading: loading } = useClassTasksFull(classId, filterSessionId);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [taskSubmissions, setTaskSubmissions] = useState<TaskSubmission[]>([]);
+  const { data: taskSubmissions = [] } = useTaskSubmissions(selectedTask?.id ?? null);
   const [taskInput, setTaskInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -60,10 +61,6 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
   const [isReadingImage, setIsReadingImage] = useState(false);
   const [newDescHtml, setNewDescHtml] = useState('');
 
-  // Lists for assignment
-  const [members, setMembers] = useState<any[]>([]);
-  const [groups, setGroups] = useState<TaskGroupFull[]>([]);
-  const [sessions, setSessions] = useState<any[]>([]);
   const [sessionId, setSessionId] = useState(filterSessionId || '');
 
   // Edit task state
@@ -77,35 +74,23 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
   const [editSessionId, setEditSessionId] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
-  const fetchTasks = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = filterSessionId
-        ? await taskService.getSessionTasks(filterSessionId)
-        : await taskService.getClassTasks(classId);
-      setTasks(data || []);
-    } catch { } finally { setLoading(false); }
-  }, [classId, filterSessionId]);
+  // Lists for assignment (fetched via TanStack when form is open)
+  const formOpen = showNewTask || showEditTask;
+  const { data: members = [] } = useClassMembers(formOpen ? classId : undefined);
+  const { data: groups = [] } = useClassGroups(formOpen ? classId : '');
+  const { data: sessions = [] } = useClassSessions(formOpen ? classId : '');
 
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
+  const fetchTasks = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: classKeys.classTasks_full(classId, filterSessionId) });
+  }, [classId, filterSessionId, queryClient]);
 
-  useEffect(() => {
-    if (showNewTask) {
-      classService.getClassMembers(classId).then(setMembers).catch(() => {});
-      groupService.getClassGroups(classId).then(setGroups).catch(() => {});
-      classService.getClassSessions(classId).then((res) => setSessions(res || [])).catch(() => {});
-    }
-  }, [showNewTask, classId]);
+  const refetchSubmissions = useCallback(() => {
+    if (selectedTask) queryClient.invalidateQueries({ queryKey: classKeys.taskSubmissions(selectedTask.id) });
+  }, [selectedTask, queryClient]);
 
   const openTask = async (task: Task) => {
     setSelectedTask(task);
     onTaskSelect?.(task.id);
-    try {
-      const subs = await taskService.getSubmissions(task.id);
-      setTaskSubmissions(subs || []);
-    } catch { }
   };
 
   // Open task from URL
@@ -199,10 +184,6 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
     setEditAssignedUserIds(selectedTask.assignedUserIds || []);
     setEditTaskGroupId(selectedTask.taskGroup?.id || '');
     setEditSessionId(selectedTask.sessionId || '');
-    // Fetch lists for assignment
-    classService.getClassMembers(classId).then(setMembers).catch(() => {});
-    groupService.getClassGroups(classId).then(setGroups).catch(() => {});
-    classService.getClassSessions(classId).then((res) => setSessions(res || [])).catch(() => {});
     setShowEditTask(true);
   };
 
@@ -270,8 +251,8 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
     if (!plainText || !selectedTask) { showToast('Editor kosong. Tulis jawaban terlebih dahulu.', 'warning'); return; }
     setIsSaving(true);
     try {
-      const sub = await taskService.submitTask(selectedTask.id, { content: editorContent, skipAi: true });
-      setTaskSubmissions((p) => [sub, ...p]);
+      await taskService.submitTask(selectedTask.id, { content: editorContent, skipAi: true });
+      refetchSubmissions();
       showToast('Jawaban berhasil disimpan!', 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Gagal menyimpan jawaban.', 'error');
@@ -381,7 +362,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
   const handleToggleVisibility = async (subId: string) => {
     try {
       const updated = await taskService.toggleSubmissionVisibility(subId);
-      setTaskSubmissions((prev) => prev.map(s => s.id === subId ? { ...s, visibility: updated.visibility } : s));
+      refetchSubmissions();
       showToast(updated.visibility === 'PUBLIC' ? 'Jawaban sekarang publik.' : 'Jawaban sekarang privat.', 'success');
     } catch {
       showToast('Gagal mengubah visibilitas.', 'error');
@@ -569,7 +550,7 @@ export function TugasTab({ classId, memberRole, permissions, filterSessionId, ur
                   <button onClick={async () => {
                     const ok = await confirm({ title: 'Hapus Riwayat', message: 'Hapus riwayat jawaban ini?', confirmText: 'Hapus', variant: 'danger' });
                     if (!ok) return;
-                    try { await taskService.deleteSubmission(sub.id); setTaskSubmissions((p) => p.filter(s => s.id !== sub.id)); showToast('Riwayat dihapus.', 'success'); }
+                    try { await taskService.deleteSubmission(sub.id); refetchSubmissions(); showToast('Riwayat dihapus.', 'success'); }
                     catch { showToast('Gagal menghapus.', 'error'); }
                   }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--color-error))', padding: '0.2rem', opacity: 0.6 }} title="Hapus riwayat"><Trash2 size={12} /></button>
                 </div>

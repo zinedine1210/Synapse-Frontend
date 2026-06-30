@@ -6,6 +6,8 @@ import { io, Socket } from 'socket.io-client';
 import { forumService, ForumPost, ForumAttachment, ForumDiscussion } from '@/services/forumService';
 import { classService, CustomTab } from '@/services/classService';
 import { groupService } from '@/services/groupService';
+import { useForumDiscussions, useForumUnread, useCustomTabs, useClassGroups, useClassMembers, classKeys } from '@/lib/hooks/useClass';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button, Modal, useToast, useConfirm, TextInput, SelectOption, DatePicker, TimePicker, TextArea } from '@/components/ui';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
@@ -148,8 +150,23 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
   const canPin = hasPerm('FORUM_PIN');
   const canDelete = hasPerm('FORUM_DELETE');
 
-  // Discussions sidebar
-  const [discussions, setDiscussions] = useState<ForumDiscussion[]>([]);
+  // TanStack Query for supporting data
+  const queryClient = useQueryClient();
+  const { data: discussions = [] } = useForumDiscussions(classId);
+  const { data: unreadCounts = {} } = useForumUnread(classId, hasFeature('unread_tracking'));
+  const setUnreadCounts = useCallback((updater: (prev: Record<string, number>) => Record<string, number>) => {
+    queryClient.setQueryData(classKeys.forumUnread(classId), (prev: Record<string, number> | undefined) => updater(prev ?? {}));
+  }, [queryClient, classId]);
+  const { data: discGroups = [] } = useClassGroups(classId);
+  const { data: internalMembersData = [] } = useClassMembers(
+    (!externalMembers || externalMembers.length === 0) ? classId : undefined
+  );
+  const internalMembers = internalMembersData;
+
+  const fetchDiscussions = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: classKeys.forumDiscussions(classId) });
+  }, [classId, queryClient]);
+
   const [activeDiscussionId, setActiveDiscussionId] = useState<string | null>(null);
   const [showCreateDiscussion, setShowCreateDiscussion] = useState(false);
   const [newDiscTitle, setNewDiscTitle] = useState('');
@@ -161,7 +178,6 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [discSearch, setDiscSearch] = useState('');
   const [discMenuId, setDiscMenuId] = useState<string | null>(null);
-  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   // Mobile responsive: detect viewport and use WhatsApp-style navigation
   const [isMobile, setIsMobile] = useState(false);
@@ -205,7 +221,6 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
   const [discAssignType, setDiscAssignType] = useState<'ALL' | 'INDIVIDUAL' | 'GROUP'>('ALL');
   const [discAssignedUserIds, setDiscAssignedUserIds] = useState<string[]>([]);
   const [discAssignedGroupId, setDiscAssignedGroupId] = useState('');
-  const [discGroups, setDiscGroups] = useState<any[]>([]);
 
   // Edit discussion state
   const [editingDiscussion, setEditingDiscussion] = useState<ForumDiscussion | null>(null);
@@ -219,10 +234,8 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
   // Posts & chat
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [internalMembers, setInternalMembers] = useState<any[]>([]);
   // Use external members from parent if provided (avoids duplicate fetch)
   const classMembers = externalMembers && externalMembers.length > 0 ? externalMembers : internalMembers;
-  const setClassMembers = setInternalMembers;
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
 
   // Message input
@@ -281,7 +294,15 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
   const socketRef = useRef<Socket | null>(null);
 
   // Custom tabs (Slack-like canvas)
-  const [customTabs, setCustomTabs] = useState<CustomTab[]>([]);
+  const { data: customTabs = [] } = useCustomTabs(
+    hasFeature('class_custom_tabs') ? classId : '',
+    activeDiscussionId,
+  );
+  const setCustomTabs = useCallback((updater: CustomTab[] | ((prev: CustomTab[]) => CustomTab[])) => {
+    queryClient.setQueryData(classKeys.customTabs(classId, activeDiscussionId), (prev: CustomTab[] | undefined) =>
+      typeof updater === 'function' ? updater(prev ?? []) : updater
+    );
+  }, [queryClient, classId, activeDiscussionId]);
   const [showCreateTabModal, setShowCreateTabModal] = useState(false);
   const [newTabName, setNewTabName] = useState('');
   const [creatingTab, setCreatingTab] = useState(false);
@@ -397,23 +418,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
     } catch { } finally { setLoadingMore(false); }
   }, [classId, activeDiscussionId, posts, loadingMore, hasMore]);
 
-  const fetchDiscussions = useCallback(async () => {
-    try { const data = await forumService.getClassDiscussions(classId); setDiscussions(data || []); } catch { }
-  }, [classId]);
-
   useEffect(() => { fetchPosts(); }, [fetchPosts]);
-  useEffect(() => {
-    fetchDiscussions();
-    // Only fetch members internally if not provided from parent
-    if (!externalMembers || externalMembers.length === 0) {
-      classService.getClassMembers(classId).then(setInternalMembers).catch(() => {});
-    }
-    groupService.getClassGroups(classId).then(setDiscGroups).catch(() => {});
-    if (hasFeature('unread_tracking')) forumService.getUnreadCounts(classId).then(setUnreadCounts).catch(() => {});
-  }, [classId, fetchDiscussions, externalMembers]);
-  useEffect(() => {
-    if (hasFeature('class_custom_tabs')) classService.getCustomTabs(classId, activeDiscussionId ?? null).then(setCustomTabs).catch(() => {});
-  }, [classId, activeDiscussionId]);
   useEffect(() => { if (!loading && posts.length > 0) scrollToBottom(false); }, [loading]);
   useEffect(() => { setDiscussionTab('chat'); setReplyToPost(null); setPendingFile(null); setPendingFilePreview(null); setMessageText(''); }, [activeDiscussionId]);
 

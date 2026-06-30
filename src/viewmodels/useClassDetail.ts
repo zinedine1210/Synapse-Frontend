@@ -5,25 +5,37 @@ import { Class, Session } from '@/models/Class';
 import { Material, MaterialStatus } from '@/models/File';
 import { classService } from '@/services/classService';
 import { aiService } from '@/services/aiService';
-import { useCache } from '@/lib/cache';
+import { useQueryClient } from '@tanstack/react-query';
+import { useClassDetailQuery, useClassSessions, classKeys } from '@/lib/hooks/useClass';
 
 /**
  * useClassDetail – ViewModel untuk halaman detail kelas.
- * Uses useCache for stale-while-revalidate on class data and sessions.
+ * Uses TanStack Query for stale-while-revalidate on class data and sessions.
  */
 export function useClassDetail(classId: string) {
+  const queryClient = useQueryClient();
+
   const {
     data: classData,
-    loading: classLoading,
+    isLoading: classLoading,
     error: classError,
-    mutate: mutateClassData,
-  } = useCache<Class>(`class:${classId}:detail`, () => classService.getClassById(classId));
+  } = useClassDetailQuery(classId);
+
+  const mutateClassData = useCallback((updater: (prev: Class | undefined) => Class | undefined) => {
+    queryClient.setQueryData<Class>(classKeys.detail(classId), (prev) => updater(prev));
+  }, [queryClient, classId]);
 
   const {
     data: sessions = [],
-    revalidate: refetchSessions,
-    mutate: mutateSessions,
-  } = useCache<Session[]>(`class:${classId}:sessions`, async () => (await classService.getClassSessions(classId)) ?? []);
+  } = useClassSessions(classId);
+
+  const refetchSessions = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: classKeys.sessions(classId) });
+  }, [queryClient, classId]);
+
+  const mutateSessions = useCallback((updater: (prev: Session[] | undefined) => Session[]) => {
+    queryClient.setQueryData<Session[]>(classKeys.sessions(classId), (prev) => updater(prev));
+  }, [queryClient, classId]);
 
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const isLoading = classLoading && !classData;

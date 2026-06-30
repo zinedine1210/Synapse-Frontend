@@ -57,6 +57,7 @@ sw.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   const targetUrl = event.notification.data?.url || '/notifications';
+  const urlToOpen = new URL(targetUrl, sw.location.origin).href;
 
   event.waitUntil(
     sw.clients
@@ -64,14 +65,16 @@ sw.addEventListener('notificationclick', (event) => {
       .then((clientList) => {
         // If app is already open, focus it and navigate
         for (const client of clientList) {
-          if (client.url.includes(sw.location.origin)) {
-            client.focus();
-            client.navigate(targetUrl);
-            return;
+          if (client.url.includes(sw.location.origin) && 'focus' in client) {
+            return client.focus().then((focusedClient) => {
+              if (focusedClient && 'navigate' in focusedClient) {
+                return focusedClient.navigate(urlToOpen);
+              }
+            });
           }
         }
         // Otherwise open a new window
-        return sw.clients.openWindow(targetUrl);
+        return sw.clients.openWindow(urlToOpen);
       }),
   );
 });

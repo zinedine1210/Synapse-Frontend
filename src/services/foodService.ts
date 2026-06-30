@@ -49,6 +49,8 @@ export interface MenuResult {
 
 export interface MealPlanDay {
   day: number;
+  dayLabel?: string;
+  dayTheme?: string;
   totalCalories?: number;
   meals: {
     type: 'breakfast' | 'lunch' | 'dinner';
@@ -61,6 +63,7 @@ export interface MealPlanDay {
     tags: string[];
     note?: string;
     healthNote?: string;
+    source?: string;
   }[];
 }
 
@@ -69,6 +72,42 @@ export interface MealPlanResult {
   totalEstimatedCost: number;
   dailyCalorieTarget?: number;
   days: MealPlanDay[];
+}
+
+export interface MealPlanEntry {
+  id: string;
+  planId: string;
+  day: number;
+  mealType: string;
+  completed: boolean;
+  completedAt: string | null;
+  skipped: boolean;
+  actualCost: number | null;
+}
+
+export interface SavedMealPlan {
+  id: string;
+  userId: string;
+  weekStart: string;
+  planData: string;
+  createdAt: string;
+  updatedAt: string;
+  entries: MealPlanEntry[];
+}
+
+export interface UserMealCatalogItem {
+  id: string;
+  userId: string;
+  name: string;
+  mealType: string;
+  price: number;
+  calories: number | null;
+  protein: number | null;
+  tags: string[];
+  source: string | null;
+  frequency: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface FoodRating {
@@ -139,4 +178,20 @@ export const foodService = {
   // Weekly Meal Plan
   generateMealPlan: (days = 7) =>
     apiFetch<MealPlanResult>('/food/meal-plan', { method: 'POST', body: JSON.stringify({ days }) }),
+  getActiveMealPlan: () =>
+    apiFetch<SavedMealPlan | null>('/food/meal-plan/active'),
+  saveMealPlan: (planData: string, weekStart: string) =>
+    apiFetch<SavedMealPlan>('/food/meal-plan/save', { method: 'POST', body: JSON.stringify({ planData, weekStart }) }),
+  updateMealEntry: (data: { planId: string; day: number; mealType: string; completed?: boolean; skipped?: boolean; actualCost?: number }) =>
+    apiFetch<MealPlanEntry>('/food/meal-plan/entry', { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Meal Catalog
+  getMealCatalog: () =>
+    apiFetch<UserMealCatalogItem[]>('/food/meal-catalog'),
+  addMealToCatalog: (data: { name: string; mealType: string; price: number; calories?: number; protein?: number; tags?: string[]; source?: string }) =>
+    apiFetch<UserMealCatalogItem>('/food/meal-catalog', { method: 'POST', body: JSON.stringify(data) }),
+  updateCatalogMeal: (id: string, data: Partial<UserMealCatalogItem>) =>
+    apiFetch<UserMealCatalogItem>(`/food/meal-catalog/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCatalogMeal: (id: string) =>
+    apiFetch<{ success: boolean }>(`/food/meal-catalog/${id}`, { method: 'DELETE' }),
 };

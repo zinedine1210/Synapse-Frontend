@@ -8,10 +8,14 @@ import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, useToast, useConfirm, TextInput, TagInput, TimePicker, SelectOption } from '@/components/ui';
-import { apiFetch, apiUpload } from '@/lib/api';
-import { useCache } from '@/lib/cache';
 import { ProfileCard } from '@/components/gamification/ProfileCard';
 import { useFeatureAccess } from '@/lib/feature-access';
+import {
+  usePreferences, useUserProfile,
+  useSaveProfile, useUploadAvatar, useSaveOnboardingProfile,
+  useUpdatePreferences, useSaveQuietHours,
+  useExportData, useDeleteAccount,
+} from '@/lib/hooks/useSettings';
 
 import { usePushNotifications } from '@/lib/usePushNotifications';
 import {
@@ -22,27 +26,6 @@ import {
 } from 'lucide-react';
 
 // Types
-interface NotificationPreferences {
-  deadlineReminder: boolean;
-  budgetAlert: boolean;
-  streakReminder: boolean;
-  idleReminder: boolean;
-  weeklyRecap: boolean;
-  forumReply: boolean;
-  qnaAnswer: boolean;
-  achievementAlert: boolean;
-  quietHoursStart: string | null;
-  quietHoursEnd: string | null;
-  pushEnabled: boolean;
-}
-
-interface UserPreferences {
-  theme: string;
-  language: string;
-  accountStatus: string;
-  notifications: NotificationPreferences;
-}
-
 type TabId = 'profile' | 'notifications' | 'appearance' | 'data' | 'account';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
@@ -64,9 +47,11 @@ const NOTIFICATION_GROUPS: NotifToggleGroup[] = [
     category: 'Akademik',
     emoji: '📚',
     items: [
-      { key: 'deadlineReminder', label: 'Reminder Deadline', description: 'Ingatkan H-1 sebelum deadline tugas/task' },
+      { key: 'deadlineReminder', label: 'Reminder Deadline', description: 'Ingatkan H-1/H-3 sebelum deadline tugas/task' },
       { key: 'forumReply', label: 'Balasan Forum', description: 'Ada yang bales postingan kamu di forum' },
       { key: 'qnaAnswer', label: 'Jawaban Q&A', description: 'Pertanyaan kamu udah dijawab' },
+      { key: 'scheduleReminder', label: 'Jadwal Kelas', description: 'Pengingat kelas besok setiap malam' },
+      { key: 'materialNotif', label: 'Materi Baru', description: 'Ada materi baru diupload di kelas kamu' },
     ],
   },
   {
@@ -76,6 +61,17 @@ const NOTIFICATION_GROUPS: NotifToggleGroup[] = [
       { key: 'budgetAlert', label: 'Alert Budget', description: 'Warning kalo budget kategori udah 80%+' },
       { key: 'idleReminder', label: 'Reminder Catat', description: 'Nudge kalo 3 hari gak catat transaksi' },
       { key: 'weeklyRecap', label: 'Rekap Mingguan', description: 'Rangkuman pengeluaran & insight minggu ini' },
+      { key: 'debtReminder', label: 'Hutang & Piutang', description: 'Pengingat hutang/piutang yang mau jatuh tempo' },
+      { key: 'splitBillReminder', label: 'Split Bill', description: 'Pengingat split bill yang belum lunas' },
+      { key: 'billReminder', label: 'Tagihan Rutin', description: 'Pengingat tagihan bulanan yang jatuh tempo' },
+    ],
+  },
+  {
+    category: 'Lifestyle',
+    emoji: '🍽️',
+    items: [
+      { key: 'mealReminder', label: 'Pengingat Makan', description: 'Reminder makan siang & malam dari AI' },
+      { key: 'todoReminder', label: 'Pengingat Todo', description: 'Notif pengingat todo/jadwal yang sudah diatur' },
     ],
   },
   {
@@ -114,12 +110,9 @@ export default function SettingsPage() {
     }
   }, [searchParams]);
 
-  const [saving, setSaving] = useState(false);
-
   // Profile state
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>();
-  const [avatarUploading, setAvatarUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Onboarding profile state
@@ -131,7 +124,6 @@ export default function SettingsPage() {
   const [onboardingLifeGoals, setOnboardingLifeGoals] = useState('');
   const [onboardingStudySchedule, setOnboardingStudySchedule] = useState('');
   const [onboardingPersonalNotes, setOnboardingPersonalNotes] = useState('');
-  const [onboardingSaving, setOnboardingSaving] = useState(false);
 
   // Preferences state
   const [notifToggles, setNotifToggles] = useState<Record<string, boolean>>({});
@@ -143,21 +135,18 @@ export default function SettingsPage() {
   // Push notification state
   const pushNotifications = usePushNotifications();
 
-  // Cached data fetching
-  const { data: prefData, loading } = useCache<UserPreferences>(
-    user ? 'settings:preferences' : null,
-    () => apiFetch<UserPreferences>('/settings/preferences')
-  );
+  // TanStack Query - data fetching
+  const { data: prefData, isLoading: loading } = usePreferences(!!user);
+  const { data: onboardingData, isLoading: onboardingLoading } = useUserProfile(!!user);
 
-  const { data: onboardingData, loading: onboardingLoading } = useCache<{
-    university: string | null; hobbies: string[]; job: string | null; reason: string | null;
-    dailyHabits: string | null; lifeGoals: string | null; studySchedule: string | null; personalNotes: string | null;
-  }>(
-    user ? 'settings:onboarding-profile' : null,
-    () => apiFetch('/user/profile')
-  );
+  // TanStack Mutations
+  const saveProfileMutation = useSaveProfile();
+  const uploadAvatarMutation = useUploadAvatar();
+  const saveOnboardingMutation = useSaveOnboardingProfile();
+  const updatePrefsMutation = useUpdatePreferences();
+  const saveQuietHoursMutation = useSaveQuietHours();
 
-  // Hydrate state from cached data
+  // Hydrate state from query data
   useEffect(() => {
     if (prefData) {
       const toggles: Record<string, boolean> = {};
@@ -206,104 +195,86 @@ export default function SettingsPage() {
       return;
     }
 
-    setAvatarUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const result = await apiUpload<{ avatarUrl: string }>('/user/profile/avatar', formData);
-      setAvatarUrl(result.avatarUrl);
-
-      await refetchProfile();
-      showToast('Avatar udah diganti! Fresh~ ✨', 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Yah, gagal upload avatar. Coba lagi ya!', 'error');
-    } finally {
-      setAvatarUploading(false);
-    }
+    uploadAvatarMutation.mutate(file, {
+      onSuccess: async (result) => {
+        setAvatarUrl(result.avatarUrl);
+        await refetchProfile();
+        showToast('Avatar udah diganti! Fresh~ ✨', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.message || 'Yah, gagal upload avatar. Coba lagi ya!', 'error');
+      },
+    });
   };
 
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = () => {
     if (!fullName.trim()) {
       showToast('Nama-nya jangan kosong dong!', 'error');
       return;
     }
-    setSaving(true);
-    try {
-      await apiFetch('/settings/profile', {
-        method: 'PATCH',
-        body: JSON.stringify({ fullName: fullName.trim() }),
-      });
-      await refetchProfile();
-      showToast('Profil udah ke-save! 💾', 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Duh, gagal nyimpen profil. Coba lagi!', 'error');
-    } finally {
-      setSaving(false);
-    }
+    saveProfileMutation.mutate({ fullName: fullName.trim() }, {
+      onSuccess: async () => {
+        await refetchProfile();
+        showToast('Profil udah ke-save! 💾', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.message || 'Duh, gagal nyimpen profil. Coba lagi!', 'error');
+      },
+    });
   };
 
   // Save onboarding profile handler
-  const handleSaveOnboardingProfile = async () => {
-    setOnboardingSaving(true);
-    try {
-      await apiFetch('/user/profile', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          university: onboardingUniversity.trim(),
-          hobbies: onboardingHobbies,
-          job: onboardingJob.trim(),
-          reason: onboardingReason.trim(),
-          dailyHabits: onboardingDailyHabits.trim(),
-          lifeGoals: onboardingLifeGoals.trim(),
-          studySchedule: onboardingStudySchedule.trim(),
-          personalNotes: onboardingPersonalNotes.trim(),
-        }),
-      });
-      showToast('Profil udah ke-update! ✅', 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Gagal nyimpen profil nih.', 'error');
-    } finally {
-      setOnboardingSaving(false);
-    }
+  const handleSaveOnboardingProfile = () => {
+    saveOnboardingMutation.mutate({
+      university: onboardingUniversity.trim(),
+      hobbies: onboardingHobbies,
+      job: onboardingJob.trim(),
+      reason: onboardingReason.trim(),
+      dailyHabits: onboardingDailyHabits.trim(),
+      lifeGoals: onboardingLifeGoals.trim(),
+      studySchedule: onboardingStudySchedule.trim(),
+      personalNotes: onboardingPersonalNotes.trim(),
+    }, {
+      onSuccess: () => {
+        showToast('Profil udah ke-update! ✅', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.message || 'Gagal nyimpen profil nih.', 'error');
+      },
+    });
   };
 
   // Notification handlers
   const handleToggleNotif = async (key: string, value: boolean) => {
     setNotifToggles(prev => ({ ...prev, [key]: value }));
-    try {
-      await apiFetch('/settings/preferences', {
-        method: 'PATCH',
-        body: JSON.stringify({ [key]: value }),
-      });
-      showToast(value ? 'Notif udah nyala! 🔔' : 'Notif dimatiin', 'success');
-    } catch (err: any) {
-      // Revert on error
-      setNotifToggles(prev => ({ ...prev, [key]: !value }));
-      showToast(err.message || 'Gagal update notif nih, coba lagi!', 'error');
-    }
+    updatePrefsMutation.mutate({ [key]: value }, {
+      onSuccess: () => {
+        showToast(value ? 'Notif udah nyala! 🔔' : 'Notif dimatiin', 'success');
+      },
+      onError: (err: any) => {
+        // Revert on error
+        setNotifToggles(prev => ({ ...prev, [key]: !value }));
+        showToast(err.message || 'Gagal update notif nih, coba lagi!', 'error');
+      },
+    });
   };
 
-  const handleSaveQuietHours = async () => {
-    setSaving(true);
-    try {
-      await apiFetch('/settings/quiet-hours', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          quietHoursStart: quietStart || null,
-          quietHoursEnd: quietEnd || null,
-        }),
-      });
-      showToast('Quiet hours udah di-set! 🌙', 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Gagal nyimpen quiet hours nih.', 'error');
-    } finally {
-      setSaving(false);
-    }
+  const handleSaveQuietHours = () => {
+    saveQuietHoursMutation.mutate({
+      quietHoursStart: quietStart || null,
+      quietHoursEnd: quietEnd || null,
+    }, {
+      onSuccess: () => {
+        showToast('Quiet hours udah di-set! 🌙', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.message || 'Gagal nyimpen quiet hours nih.', 'error');
+      },
+    });
   };
 
   // Appearance handlers
-  const handleThemeChange = async (newTheme: 'light' | 'dark' | 'system') => {
+  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
     setThemeChoice(newTheme);
 
     // Apply to ThemeContext immediately
@@ -315,27 +286,23 @@ export default function SettingsPage() {
     }
 
     // Persist to backend
-    try {
-      await apiFetch('/settings/preferences', {
-        method: 'PATCH',
-        body: JSON.stringify({ theme: newTheme }),
-      });
-    } catch (err: any) {
-      showToast(err.message || 'Gagal ganti tema nih.', 'error');
-    }
+    updatePrefsMutation.mutate({ theme: newTheme }, {
+      onError: (err: any) => {
+        showToast(err.message || 'Gagal ganti tema nih.', 'error');
+      },
+    });
   };
 
-  const handleLanguageChange = async (newLang: 'id' | 'en') => {
+  const handleLanguageChange = (newLang: 'id' | 'en') => {
     setLanguage(newLang);
-    try {
-      await apiFetch('/settings/preferences', {
-        method: 'PATCH',
-        body: JSON.stringify({ language: newLang }),
-      });
-      showToast('Bahasa udah diganti! 🌍', 'success');
-    } catch (err: any) {
-      showToast(err.message || 'Gagal ganti bahasa nih.', 'error');
-    }
+    updatePrefsMutation.mutate({ language: newLang }, {
+      onSuccess: () => {
+        showToast('Bahasa udah diganti! 🌍', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.message || 'Gagal ganti bahasa nih.', 'error');
+      },
+    });
   };
 
   // Sign out
@@ -423,11 +390,11 @@ export default function SettingsPage() {
                     fullName={fullName}
                     setFullName={setFullName}
                     avatarUrl={avatarUrl}
-                    avatarUploading={avatarUploading}
+                    avatarUploading={uploadAvatarMutation.isPending}
                     fileInputRef={fileInputRef}
                     handleAvatarUpload={handleAvatarUpload}
                     handleSaveProfile={handleSaveProfile}
-                    saving={saving}
+                    saving={saveProfileMutation.isPending}
                     onboardingUniversity={onboardingUniversity}
                     setOnboardingUniversity={setOnboardingUniversity}
                     onboardingHobbies={onboardingHobbies}
@@ -444,7 +411,7 @@ export default function SettingsPage() {
                     setOnboardingStudySchedule={setOnboardingStudySchedule}
                     onboardingPersonalNotes={onboardingPersonalNotes}
                     setOnboardingPersonalNotes={setOnboardingPersonalNotes}
-                    onboardingSaving={onboardingSaving}
+                    onboardingSaving={saveOnboardingMutation.isPending}
                     onboardingLoading={onboardingLoading}
                     handleSaveOnboardingProfile={handleSaveOnboardingProfile}
                   />
@@ -459,7 +426,7 @@ export default function SettingsPage() {
                     quietEnd={quietEnd}
                     setQuietEnd={setQuietEnd}
                     handleSaveQuietHours={handleSaveQuietHours}
-                    saving={saving}
+                    saving={saveQuietHoursMutation.isPending}
                     pushNotifications={pushNotifications}
                   />
                 )}
@@ -1153,36 +1120,32 @@ function DataTab() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { signOut } = useAuth();
-  const [exporting, setExporting] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [confirmationText, setConfirmationText] = useState('');
 
-  const handleExportData = async () => {
-    setExporting(true);
-    try {
-      const data = await apiFetch<{ csv: string; filename: string }>('/settings/export-data', {
-        method: 'POST',
-      });
+  const exportMutation = useExportData();
+  const deleteMutation = useDeleteAccount();
 
-      // Create a Blob from CSV string and trigger browser download
-      const blob = new Blob([data.csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = data.filename || 'synapse-export.csv';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+  const handleExportData = () => {
+    exportMutation.mutate(undefined, {
+      onSuccess: (data) => {
+        // Create a Blob from CSV string and trigger browser download
+        const blob = new Blob([data.csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = data.filename || 'synapse-export.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
 
-      showToast('Data udah di-export! Check download-an kamu 📂', 'success');
-    } catch (err: any) {
-      // Rate limit (429) — backend enforces 1 export/hour
-      showToast(err.message || 'Gagal export data nih. Coba lagi ya!', 'error');
-    } finally {
-      setExporting(false);
-    }
+        showToast('Data udah di-export! Check download-an kamu 📂', 'success');
+      },
+      onError: (err: any) => {
+        showToast(err.message || 'Gagal export data nih. Coba lagi ya!', 'error');
+      },
+    });
   };
 
   const handleDeleteAccount = async () => {
@@ -1202,31 +1165,26 @@ function DataTab() {
     setConfirmationText('');
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (confirmationText !== 'HAPUS AKUN') {
       showToast('Ketik "HAPUS AKUN" yang bener ya buat konfirmasi.', 'error');
       return;
     }
 
-    setDeleting(true);
-    try {
-      await apiFetch('/settings/delete-account', {
-        method: 'POST',
-        body: JSON.stringify({ confirmationText: 'HAPUS AKUN' }),
-      });
+    deleteMutation.mutate('HAPUS AKUN', {
+      onSuccess: () => {
+        showToast('Akun udah dihapus. Kamu bakal di-logout bentar lagi...', 'success');
+        setShowDeleteDialog(false);
 
-      showToast('Akun udah dihapus. Kamu bakal di-logout bentar lagi...', 'success');
-      setShowDeleteDialog(false);
-
-      // Sign out after a brief delay
-      setTimeout(() => {
-        signOut();
-      }, 1500);
-    } catch (err: any) {
-      showToast(err.message || 'Gagal hapus akun nih. Coba lagi!', 'error');
-    } finally {
-      setDeleting(false);
-    }
+        // Sign out after a brief delay
+        setTimeout(() => {
+          signOut();
+        }, 1500);
+      },
+      onError: (err: any) => {
+        showToast(err.message || 'Gagal hapus akun nih. Coba lagi!', 'error');
+      },
+    });
   };
 
   return (
@@ -1244,7 +1202,7 @@ function DataTab() {
           variant="secondary"
           size="md"
           leftIcon={<Database size={14} />}
-          isLoading={exporting}
+          isLoading={exportMutation.isPending}
           onClick={handleExportData}
         >
           Ekspor Data (CSV)
@@ -1344,7 +1302,7 @@ function DataTab() {
               <Button
                 variant="danger"
                 onClick={handleConfirmDelete}
-                isLoading={deleting}
+                isLoading={deleteMutation.isPending}
                 disabled={confirmationText !== 'HAPUS AKUN'}
                 style={{ flex: 1 }}
               >

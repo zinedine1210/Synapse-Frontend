@@ -87,16 +87,16 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
         router.push('/superadmin');
       } else if (requiredRole && user.role !== requiredRole) {
         router.push('/dashboard');
-      } else if (requiredFeature && user.pricingPlan && !user.pricingPlan.features.includes(requiredFeature)) {
-        router.push('/billing');
+      } else if (requiredFeature && !hasFeature(requiredFeature)) {
+        router.push('/fitur-tidak-tersedia');
       }
     }
-  }, [loading, session, user, requiredRole, requiredFeature, router, pathname]);
+  }, [loading, session, user, requiredRole, requiredFeature, router, pathname, hasFeature]);
 
   const shouldBlock = loading || !session || !user ||
       (user?.role === 'SUPERADMIN' && !pathname.startsWith('/superadmin') && !pathname.startsWith('/settings')) ||
       (requiredRole && user?.role !== requiredRole) ||
-      (requiredFeature && user?.pricingPlan && !user.pricingPlan.features.includes(requiredFeature));
+      (requiredFeature && !hasFeature(requiredFeature));
 
   // First load — never been authed, hard block with SplashScreen (unmount children)
   if (shouldBlock && !wasAuthed) {

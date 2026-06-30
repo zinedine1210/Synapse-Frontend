@@ -251,6 +251,7 @@ export default function SuperadminPlansPage() {
   const [planMaxSize, setPlanMaxSize] = useState(10);
   const [planAiLimit, setPlanAiLimit] = useState(10);
   const [planDurationDays, setPlanDurationDays] = useState(0);
+  const [isCustomDuration, setIsCustomDuration] = useState(false);
   const [planFeatures, setPlanFeatures] = useState<string[]>(['class', 'pdf_export']);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const [planError, setPlanError] = useState<string | null>(null);
@@ -281,6 +282,7 @@ export default function SuperadminPlansPage() {
       setPlanMaxSize(plan.maxFileSizeMb);
       setPlanAiLimit(plan.aiRequestLimit);
       setPlanDurationDays(plan.durationDays || 0);
+      setIsCustomDuration(!DURATION_PRESETS.find(d => d.days === (plan.durationDays || 0)));
       setPlanFeatures(plan.features);
       const lim: Record<string, number> = {};
       AI_LIMITS.forEach(l => { lim[l.key] = (plan as any)[l.key] ?? l.default; });
@@ -288,7 +290,7 @@ export default function SuperadminPlansPage() {
     } else {
       setPlanName(''); setPlanDescription(''); setPlanPrice('Rp 0');
       setPlanMaxUpload(5); setPlanMaxSize(10); setPlanAiLimit(10);
-      setPlanDurationDays(0); setPlanFeatures(['class', 'pdf_export']);
+      setPlanDurationDays(0); setIsCustomDuration(false); setPlanFeatures(['class', 'pdf_export']);
       const d: Record<string, number> = {};
       AI_LIMITS.forEach(l => { d[l.key] = l.default; });
       setAiLimits(d as Record<AiLimitKey, number>);
@@ -464,7 +466,7 @@ export default function SuperadminPlansPage() {
         </div>
 
         {/* ────── Modal Create/Edit Plan ────── */}
-        <Modal isOpen={showPlanModal} onClose={() => setShowPlanModal(false)} title={editingPlan ? 'Edit Paket "' + editingPlan.name + '"' : 'Buat Paket Baru'}>
+        <Modal isOpen={showPlanModal} onClose={() => setShowPlanModal(false)} title={editingPlan ? 'Edit Paket "' + editingPlan.name + '"' : 'Buat Paket Baru'} size="xl">
           <form onSubmit={handleSavePlan} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {planError && <Alert type="error" message={planError} />}
 
@@ -479,13 +481,13 @@ export default function SuperadminPlansPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                   <label style={fl}>Durasi Berlaku</label>
                   <SelectOption
-                    value={String(DURATION_PRESETS.find(d => d.days === planDurationDays) ? planDurationDays : 'custom')}
-                    onChange={v => { if (v !== 'custom') setPlanDurationDays(Number(v)); }}
+                    value={String(isCustomDuration ? 'custom' : planDurationDays)}
+                    onChange={v => { if (v === 'custom') { setIsCustomDuration(true); setPlanDurationDays(1); } else { setIsCustomDuration(false); setPlanDurationDays(Number(v)); } }}
                     options={[...DURATION_PRESETS.map(d => ({ value: String(d.days), label: d.label })), { value: 'custom', label: 'Kustom...' }]}
                   />
                 </div>
               </div>
-              {!DURATION_PRESETS.find(d => d.days === planDurationDays) && (
+              {isCustomDuration && (
                 <div>
                   <label style={fl}>Durasi Kustom (hari)</label>
                   <NumberInput value={String(planDurationDays)} onChange={v => setPlanDurationDays(Number(v))} min={1} />

@@ -13,7 +13,6 @@ export interface NavItem {
   label: string;
   path: string;
   icon: React.ElementType;
-  requiredPlan?: 'FREE' | 'PRO';
   requiredRole?: 'USER' | 'SUPERADMIN';
   requiredFeature?: string; // Feature key from PricingPlan.features for access control
   badge?: string; // Label badge opsional (e.g., "NEW", "PRO")

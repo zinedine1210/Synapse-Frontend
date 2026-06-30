@@ -591,10 +591,10 @@ function ProfileTab({
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
-                background: user?.plan === 'PRO' ? 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))' : 'rgba(var(--text-muted) / 0.1)',
-                color: user?.plan === 'PRO' ? 'white' : 'rgb(var(--text-secondary))',
+                background: user?.pricingPlan?.price > 0 ? 'linear-gradient(135deg, rgb(var(--color-primary)), rgb(var(--color-secondary)))' : 'rgba(var(--text-muted) / 0.1)',
+                color: user?.pricingPlan?.price > 0 ? 'white' : 'rgb(var(--text-secondary))',
               }}>
-                {user?.plan || 'FREE'}
+                {user?.plan || 'Unknown'}
               </span>
               {onboardingUniversity && (
                 <span style={{
@@ -1431,7 +1431,7 @@ function AccountTab({
           </div>
           <div>
             <p style={{ fontSize: 'var(--font-sm)', fontWeight: 600 }}>{user?.fullName}</p>
-            <span className={`badge ${user?.plan === 'PRO' ? 'badge-pro' : 'badge-free'}`} style={{ fontSize: 'var(--font-xs)' }}>
+            <span className={`badge ${user?.pricingPlan?.price > 0 ? 'badge-pro' : 'badge-free'}`} style={{ fontSize: 'var(--font-xs)' }}>
               Paket {user?.plan}
             </span>
           </div>

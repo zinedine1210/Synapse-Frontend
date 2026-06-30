@@ -59,7 +59,7 @@ export default function PromoManagementPage() {
 
   const fetchPlans = () => {
     apiFetch<PricingPlan[]>('/payments/plans')
-      .then(data => setPlans(Array.isArray(data) ? data.filter(p => p.name !== 'FREE') : []))
+      .then(data => setPlans(Array.isArray(data) ? data.filter(p => p.price > 0) : []))
       .catch(() => setPlans([]));
   };
 

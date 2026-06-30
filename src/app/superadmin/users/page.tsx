@@ -25,6 +25,7 @@ interface UserListItem {
 interface PricingPlan {
   id: string;
   name: string;
+  price: number;
 }
 
 export default function SuperadminUsersPage() {
@@ -48,7 +49,7 @@ export default function SuperadminUsersPage() {
   // Assign modal
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserListItem | null>(null);
-  const [assignPlanName, setAssignPlanName] = useState<string>('FREE');
+  const [assignPlanName, setAssignPlanName] = useState<string>('');
   const [isAssigningPlan, setIsAssigningPlan] = useState(false);
   const [assignError, setAssignError] = useState<string | null>(null);
 
@@ -163,18 +164,22 @@ export default function SuperadminUsersPage() {
     {
       key: 'plan',
       label: 'Paket',
-      render: (row) => (
+      render: (row) => {
+        const planConfig = configs.find(c => c.name === row.plan);
+        const isPaid = planConfig ? planConfig.price > 0 : false;
+        return (
         <span style={{
           padding: '0.2rem 0.6rem',
           borderRadius: '6px',
           fontSize: '0.7rem',
           fontWeight: 700,
-          background: row.plan === 'FREE' ? 'rgba(var(--text-muted) / 0.1)' : 'rgba(var(--color-primary) / 0.15)',
-          color: row.plan === 'FREE' ? 'rgb(var(--text-muted))' : 'rgb(var(--color-primary))',
+          background: isPaid ? 'rgba(var(--color-primary) / 0.15)' : 'rgba(var(--text-muted) / 0.1)',
+          color: isPaid ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))',
         }}>
           {row.plan}
         </span>
-      ),
+        );
+      },
     },
     {
       key: 'role',
@@ -231,12 +236,12 @@ export default function SuperadminUsersPage() {
                   <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Total Pengguna</span>
                 </Card>
                 <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--color-secondary))' }}>{usersList.filter((u) => u.plan === 'PRO').length}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Pengguna PRO</span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--color-secondary))' }}>{usersList.filter((u) => { const pc = configs.find(c => c.name === u.plan); return pc && pc.price > 0; }).length}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Pengguna Berbayar</span>
                 </Card>
                 <Card style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-default)' }}>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--text-secondary))' }}>{usersList.filter((u) => u.plan !== 'PRO').length}</span>
-                  <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Pengguna FREE</span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'rgb(var(--text-secondary))' }}>{usersList.filter((u) => { const pc = configs.find(c => c.name === u.plan); return !pc || pc.price === 0; }).length}</span>
+                  <span style={{ fontSize: '0.8rem', color: 'rgb(var(--text-muted))' }}>Pengguna Gratis</span>
                 </Card>
               </div>
 

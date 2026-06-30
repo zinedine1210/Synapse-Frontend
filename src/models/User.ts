@@ -1,5 +1,5 @@
 export type UserRole = 'USER' | 'SUPERADMIN';
-export type UserPlan = 'FREE' | 'PRO';
+export type UserPlan = string;
 
 export interface PricingPlan {
   id: string;

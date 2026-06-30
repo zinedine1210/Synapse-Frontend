@@ -149,8 +149,8 @@ export default function BillingPage() {
     apiFetch<PlanData[]>('/payments/plans')
       .then(data => {
         setPlans(data);
-        // Fetch auto-promos for each non-free plan
-        data.filter(p => p.name !== 'FREE').forEach(plan => {
+        // Fetch auto-promos for each paid plan
+        data.filter(p => p.price > 0).forEach(plan => {
           apiFetch<any[]>(`/payments/auto-promos?plan=${plan.name}`)
             .then(promos => {
               if (promos && promos.length > 0) {
@@ -199,7 +199,8 @@ export default function BillingPage() {
   };
 
   const handleUpgrade = async (planName: string) => {
-    if (planName === 'FREE') return;
+    const selectedPlan = plans.find(p => p.name === planName);
+    if (!selectedPlan || selectedPlan.price === 0) return;
     setIsLoading(planName);
     setPaymentError(null);
     setPaymentSuccess(null);
@@ -281,7 +282,8 @@ export default function BillingPage() {
     }
   };
 
-  const currentPlanName = user?.pricingPlan?.name || user?.plan || 'FREE';
+  const currentPlanName = user?.pricingPlan?.name || user?.plan || 'Unknown';
+  const currentPlanPrice = user?.pricingPlan?.price ?? 0;
   const pendingPlans = payments
     .filter(p => p.transactionStatus === 'pending' && (Date.now() - new Date(p.createdAt).getTime()) <= 60 * 60 * 1000)
     .map(p => p.plan);
@@ -376,7 +378,7 @@ export default function BillingPage() {
             </div>
 
             {/* Current plan info with expiry */}
-            {currentPlanName !== 'FREE' && (user as any)?.planExpiresAt && (
+            {currentPlanPrice > 0 && (user as any)?.planExpiresAt && (
               <Card style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(var(--color-primary) / 0.05)', border: '1px solid rgba(var(--color-primary) / 0.15)' }}>
                 <Crown size={20} style={{ color: 'rgb(var(--color-primary))', flexShrink: 0 }} />
                 <div>
@@ -391,7 +393,7 @@ export default function BillingPage() {
             )}
 
             {/* Data retention warning — shown when plan expired but data still retained */}
-            {currentPlanName === 'FREE' && (user as any)?.dataRetentionDeadline && (
+            {currentPlanPrice === 0 && (user as any)?.dataRetentionDeadline && (
               <Card style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                 <AlertCircle size={20} style={{ color: '#ef4444', flexShrink: 0 }} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -509,7 +511,7 @@ export default function BillingPage() {
                         position: 'relative',
                         border: isHighlighted ? '1px solid rgba(var(--color-primary) / 0.25)' : undefined,
                         boxShadow: isHighlighted ? 'var(--shadow-lg)' : undefined,
-                        opacity: isActive ? 1 : isFree && currentPlanName !== 'FREE' ? 0.65 : 1,
+                        opacity: isActive ? 1 : isFree && currentPlanPrice > 0 ? 0.65 : 1,
                       }}
                     >
                       {/* Recommended badge for highest plan */}

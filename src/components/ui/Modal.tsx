@@ -8,10 +8,10 @@ interface ModalProps {
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-const sizeWidths = { sm: 420, md: 540, lg: 720 };
+const sizeWidths = { sm: 420, md: 540, lg: 720, xl: '75vw' };
 
 export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalProps) {
   useEffect(() => {

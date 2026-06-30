@@ -67,9 +67,9 @@ export default function FiturTidakTersediaPage() {
         >
           Fitur ini belum available di paket{' '}
           <strong style={{ color: 'rgb(var(--text-secondary))' }}>
-            {user?.plan ?? 'FREE'}
+            {user?.plan ?? 'Gratis'}
           </strong>{' '}
-          kamu. Gas upgrade ke PRO buat unlock semua fitur keren Synapse! 🚀
+          kamu. Gas upgrade buat unlock semua fitur keren Synapse! 🚀
         </p>
 
         {/* Upgrade CTA */}
@@ -86,7 +86,7 @@ export default function FiturTidakTersediaPage() {
               marginBottom: '0.75rem',
             }}
           >
-            Gas Upgrade PRO ✨
+            Gas Upgrade ✨
           </Button>
         </Link>
 

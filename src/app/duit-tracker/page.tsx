@@ -10,8 +10,8 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, Modal, useToast, useConfirm, CurrencyInput, parseCurrency, DateTimePicker, PullToRefresh, SelectOption, TextInput, TextArea } from '@/components/ui';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
-import { duitTrackerService, Transaction, Summary, SavingTree, CategoryBudget, FinancialOverview, WishlistItem, RecurringBill, BudgetChallenge, CustomCategory, FinancialForecast, SpendingComparison, SmartReminders } from '@/services/duitTrackerService';
-import { siBawelService, BawelSetting, WeeklyRoast } from '@/services/siBawelService';
+import { Transaction, CategoryBudget, CustomCategory, RecurringBill, WishlistItem } from '@/services/duitTrackerService';
+import { siBawelService, WeeklyRoast } from '@/services/siBawelService';
 import { SubscriptionCard } from '@/components/duit-tracker/SubscriptionCard';
 import { FinancialHero } from '@/components/duit-tracker/FinancialHero';
 import { TransactionSheet } from '@/components/duit-tracker/TransactionSheet';
@@ -286,25 +286,25 @@ export default function DuitTrackerPage() {
   const summary = summaryQuery.data;
   const loading = summaryQuery.isLoading;
 
-  const treesQuery = useTrees();
+  const treesQuery = useTrees(tab === 'trees');
   const trees = treesQuery.data ?? [];
 
-  const budgetsQuery = useBudgets(month, year);
+  const budgetsQuery = useBudgets(month, year, tab === 'budget');
   const budgets = budgetsQuery.data ?? [];
 
   const overviewQuery = useOverview();
   const overview = overviewQuery.data ?? null;
 
-  const challengesQuery = useChallenges();
+  const challengesQuery = useChallenges(tab === 'challenges');
   const challenges = challengesQuery.data ?? [];
 
   const customCategoriesQuery = useCustomCategories();
   const customCategories = customCategoriesQuery.data ?? [];
 
-  const forecastQuery = useForecast();
+  const forecastQuery = useForecast(tab === 'summary');
   const forecast = forecastQuery.data ?? null;
 
-  const comparisonQuery = useComparison();
+  const comparisonQuery = useComparison(tab === 'summary');
   const comparison = comparisonQuery.data ?? null;
 
   const remindersQuery = useReminders();
@@ -372,18 +372,20 @@ export default function DuitTrackerPage() {
   const billHistoryLoading = billHistoryQuery.isLoading;
 
   const filteredBills = useMemo(() => {
+    if (tab !== 'bills') return [];
     if (billFilter === 'all') return bills;
     return bills.filter(b => billFilter === 'active' ? b.isActive : !b.isActive);
-  }, [bills, billFilter]);
+  }, [bills, billFilter, tab]);
 
   const billsSummary = useMemo(() => {
+    if (tab !== 'bills') return { totalMonthly: 0, unpaidCount: 0, totalUnpaid: 0, dueSoonCount: 0 };
     const active = bills.filter(b => b.isActive);
     const totalMonthly = active.reduce((sum, b) => sum + b.amount, 0);
     const unpaid = active.filter(b => !b.isPaidThisMonth);
     const totalUnpaid = unpaid.reduce((sum, b) => sum + b.amount, 0);
     const dueSoon = active.filter(b => b.isDueSoon);
     return { totalMonthly, unpaidCount: unpaid.length, totalUnpaid, dueSoonCount: dueSoon.length };
-  }, [bills]);
+  }, [bills, tab]);
 
   const handleBillSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -478,20 +480,23 @@ export default function DuitTrackerPage() {
   const [wishlistFilter, setWishlistFilter] = useState<'pending' | 'purchased' | 'all'>('pending');
 
   const filteredWishlist = useMemo(() => {
+    if (tab !== 'wishlist' && tab !== 'summary') return [];
     if (wishlistFilter === 'all') return wishlist;
     return wishlist.filter(w => wishlistFilter === 'purchased' ? w.isPurchased : !w.isPurchased);
-  }, [wishlist, wishlistFilter]);
+  }, [wishlist, wishlistFilter, tab]);
 
   const wishlistSummary = useMemo(() => {
+    if (tab !== 'wishlist' && tab !== 'summary') return { totalNeeded: 0, highPriorityCount: 0, highTotal: 0, pendingCount: 0 };
     const pending = wishlist.filter(w => !w.isPurchased);
     const totalNeeded = pending.reduce((sum, w) => sum + w.estimatedPrice, 0);
     const highPriority = pending.filter(w => w.priority === 'high');
     const highTotal = highPriority.reduce((sum, w) => sum + w.estimatedPrice, 0);
     return { totalNeeded, highPriorityCount: highPriority.length, highTotal, pendingCount: pending.length };
-  }, [wishlist]);
+  }, [wishlist, tab]);
 
-  // Spending Insights computation
+  // Spending Insights computation — only for summary tab
   const spendingInsights = useMemo(() => {
+    if (tab !== 'summary') return null;
     // Exclude tagihan from insights to avoid bill payments always dominating
     const expenses = transactions.filter(t => t.type === 'expense' && t.category !== 'tagihan');
     if (expenses.length === 0) return null;
@@ -538,7 +543,7 @@ export default function DuitTrackerPage() {
     const weekChange = lastWeekExpense > 0 ? Math.round(((thisWeekExpense - lastWeekExpense) / lastWeekExpense) * 100) : null;
 
     return { totalExpense, avgDaily, avgWeekly, busiestDay, biggestTx, thisWeekExpense, lastWeekExpense, weekChange, txCount: expenses.length };
-  }, [transactions]);
+  }, [transactions, tab]);
 
   const handleWishlistSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -625,7 +630,7 @@ export default function DuitTrackerPage() {
 
   // Pie chart data for summary
   const pieChartData = useMemo(() => {
-    if (!summary?.categoryReport) return [];
+    if (tab !== 'summary' || !summary?.categoryReport) return [];
     const colors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4', '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#14b8a6'];
     return summary.categoryReport
       .filter(cr => cr.spent > 0)
@@ -634,10 +639,11 @@ export default function DuitTrackerPage() {
         const catInfo = allExpenseCategories.find(c => c.id === cr.category);
         return { label: catInfo?.label || cr.category, value: cr.spent, color: colors[i % colors.length], emoji: catInfo?.emoji };
       });
-  }, [summary, allExpenseCategories]);
+  }, [summary, allExpenseCategories, tab]);
 
   // Monthly line chart data (computed from transactions grouped by week)
   const weeklyLineData = useMemo(() => {
+    if (tab !== 'summary') return [];
     const expenses = transactions.filter(t => t.type === 'expense');
     const weekMap: Record<number, number> = {};
     expenses.forEach(t => {
@@ -645,7 +651,7 @@ export default function DuitTrackerPage() {
       weekMap[w] = (weekMap[w] || 0) + t.amount;
     });
     return Object.entries(weekMap).sort((a, b) => Number(a[0]) - Number(b[0])).map(([w, v]) => ({ label: `W${w}`, value: v }));
-  }, [transactions]);
+  }, [transactions, tab]);
 
   const handleGenerateWeeklyRoast = async () => {
     if (roastLoading) return;
@@ -692,7 +698,7 @@ export default function DuitTrackerPage() {
     let failed = 0;
     for (const item of items) {
       try {
-        await duitTrackerService.createTransaction({
+        await createTxMutation.mutateAsync({
           amount: item.amount,
           type: item.type as any,
           category: item.category,
@@ -706,7 +712,6 @@ export default function DuitTrackerPage() {
     }
     if (failed > 0) showToast(`${success} transaksi berhasil, ${failed} gagal`, 'error');
     else showToast(`${success} transaksi dari struk berhasil disimpan`, 'success');
-    queryClient.invalidateQueries({ queryKey: dtKeys.all });
   };
 
   const openEdit = (tx: Transaction) => {

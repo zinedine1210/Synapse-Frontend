@@ -856,7 +856,7 @@ export default function TodosPage() {
   const handleRespondInvite = async (shareId: string, accept: boolean) => {
     try {
       await todoService.respondToShare(shareId, accept);
-      setPendingInvites(prev => prev.filter(s => s.id !== shareId));
+      queryClient.invalidateQueries({ queryKey: todoKeys.shared() });
       showToast(accept ? 'Berhasil bergabung! 🎉' : 'Undangan ditolak.', accept ? 'success' : 'info');
       if (accept) fetchData();
     } catch (e: any) {

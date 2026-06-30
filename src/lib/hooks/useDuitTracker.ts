@@ -54,20 +54,22 @@ export function useSummary(month: number, year: number) {
 }
 
 // ─── Trees ──────────────────────────────────────────────────
-export function useTrees() {
+export function useTrees(enabled = true) {
   return useQuery({
     queryKey: dtKeys.trees(),
     queryFn: () => duitTrackerService.getTrees(),
     staleTime: 60_000,
+    enabled,
   });
 }
 
 // ─── Budgets ────────────────────────────────────────────────
-export function useBudgets(month: number, year: number) {
+export function useBudgets(month: number, year: number, enabled = true) {
   return useQuery({
     queryKey: dtKeys.budgets(month, year),
     queryFn: () => duitTrackerService.getBudgets(month, year),
     staleTime: 60_000,
+    enabled,
   });
 }
 
@@ -120,11 +122,12 @@ export function useWishlist(enabled: boolean) {
 }
 
 // ─── Challenges ─────────────────────────────────────────────
-export function useChallenges() {
+export function useChallenges(enabled = true) {
   return useQuery({
     queryKey: dtKeys.challenges(),
     queryFn: () => duitTrackerService.getChallenges(),
     staleTime: 60_000,
+    enabled,
   });
 }
 
@@ -138,20 +141,22 @@ export function useCustomCategories() {
 }
 
 // ─── Forecast ───────────────────────────────────────────────
-export function useForecast() {
+export function useForecast(enabled = true) {
   return useQuery({
     queryKey: dtKeys.forecast(),
     queryFn: () => duitTrackerService.getFinancialForecast(),
     staleTime: 5 * 60_000,
+    enabled,
   });
 }
 
 // ─── Comparison ─────────────────────────────────────────────
-export function useComparison() {
+export function useComparison(enabled = true) {
   return useQuery({
     queryKey: dtKeys.comparison(),
     queryFn: () => duitTrackerService.getSpendingComparison(),
     staleTime: 5 * 60_000,
+    enabled,
   });
 }
 

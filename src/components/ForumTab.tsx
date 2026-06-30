@@ -25,6 +25,7 @@ interface ForumTabProps {
   permissions?: string[];
   sessions?: { id: string; title: string; sequence: number }[];
   tasks?: { id: string; title: string }[];
+  classMembers?: any[];
   onNavigate?: (tab: string, params?: Record<string, string>) => void;
 }
 
@@ -130,7 +131,7 @@ const parseContent = (
   return result.length ? result : linkifyContent(text);
 };
 
-export function ForumTab({ classId, userId, memberRole, permissions, sessions, tasks, onNavigate }: ForumTabProps) {
+export function ForumTab({ classId, userId, memberRole, permissions, sessions, tasks, classMembers: externalMembers, onNavigate }: ForumTabProps) {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { hasFeature } = useFeatureAccess();
@@ -218,7 +219,10 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
   // Posts & chat
   const [posts, setPosts] = useState<ForumPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [classMembers, setClassMembers] = useState<any[]>([]);
+  const [internalMembers, setInternalMembers] = useState<any[]>([]);
+  // Use external members from parent if provided (avoids duplicate fetch)
+  const classMembers = externalMembers && externalMembers.length > 0 ? externalMembers : internalMembers;
+  const setClassMembers = setInternalMembers;
   const [selectedMember, setSelectedMember] = useState<any | null>(null);
 
   // Message input
@@ -400,10 +404,13 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
   useEffect(() => { fetchPosts(); }, [fetchPosts]);
   useEffect(() => {
     fetchDiscussions();
-    classService.getClassMembers(classId).then(setClassMembers).catch(() => {});
+    // Only fetch members internally if not provided from parent
+    if (!externalMembers || externalMembers.length === 0) {
+      classService.getClassMembers(classId).then(setInternalMembers).catch(() => {});
+    }
     groupService.getClassGroups(classId).then(setDiscGroups).catch(() => {});
     if (hasFeature('unread_tracking')) forumService.getUnreadCounts(classId).then(setUnreadCounts).catch(() => {});
-  }, [classId, fetchDiscussions]);
+  }, [classId, fetchDiscussions, externalMembers]);
   useEffect(() => {
     if (hasFeature('class_custom_tabs')) classService.getCustomTabs(classId, activeDiscussionId ?? null).then(setCustomTabs).catch(() => {});
   }, [classId, activeDiscussionId]);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
@@ -12,8 +12,11 @@ import { InfiniteScroll } from '@/components/ui/InfiniteScroll';
 import dynamic from 'next/dynamic';
 
 const RichTextEditor = dynamic(() => import('@/components/ui/RichTextEditor').then(m => ({ default: m.RichTextEditor })), { ssr: false });
-import { qnaService, QnaQuestion, QnaPaginated, UserReputation, SimilarQuestion, LeaderboardEntry } from '@/services/qnaService';
-import { useCache, setCache } from '@/lib/cache';
+import { qnaService } from '@/services/qnaService';
+import {
+  useQnaReputation, useQnaLeaderboard, useQnaQuestions, useQnaSimilar,
+  useCreateQuestion, qnaKeys,
+} from '@/lib/hooks/useQna';
 import { useDebounce } from '@/lib/useDebounce';
 import { Plus, Loader2, MessageSquare, CheckCircle, Search, Award, Clock, User as UserIcon, Hash, Eye, HelpCircle, Flame, Sparkles, Zap, Bookmark, ThumbsUp, Trophy } from 'lucide-react';
 
@@ -53,37 +56,24 @@ export default function QnaPage() {
   const [tab, setTab] = useState<'terbaru' | 'trending' | 'mine' | 'bookmarks'>('terbaru');
   const [selectedCategory, setSelectedCategory] = useState('semua');
 
-  const [questions, setQuestions] = useState<QnaQuestion[]>([]);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
-  const { data: reputation } = useCache<UserReputation>('qna:reputation', () => qnaService.getReputation());
-  const { data: leaderboard } = useCache<LeaderboardEntry[]>('qna:leaderboard', () => qnaService.getWeeklyLeaderboard());
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 350);
-  const [page, setPage] = useState(1);
-  const [similarQuestions, setSimilarQuestions] = useState<SimilarQuestion[]>([]);
 
-  // Cache key for the current view — allows instant data on navigation back
-  const cacheKey = `qna:questions:${tab}:${selectedCategory}:${debouncedSearch || '_'}`;
-  const { data: cachedQuestions } = useCache<{ questions: QnaQuestion[]; totalPages: number; total: number }>(
-    cacheKey,
-    null, // no auto-fetch — we fetch manually to handle append/pagination
-    { revalidateOnMount: false }
+  // ─── TanStack Query ─────────────────────────────────────────
+  const { data: reputation } = useQnaReputation();
+  const { data: leaderboard } = useQnaLeaderboard();
+
+  const questionsQuery = useQnaQuestions({ tab, category: selectedCategory, search: debouncedSearch });
+  const questions = useMemo(
+    () => questionsQuery.data?.pages.flatMap(p => p.questions) ?? [],
+    [questionsQuery.data],
   );
+  const total = questionsQuery.data?.pages[0]?.total ?? 0;
+  const loading = questionsQuery.isLoading;
+  const loadingMore = questionsQuery.isFetchingNextPage;
+  const hasMore = questionsQuery.hasNextPage ?? false;
 
-  // Hydrate from cache on mount / tab change — show stale data instantly
-  const hydratedRef = useRef(false);
-  useEffect(() => {
-    if (cachedQuestions && questions.length === 0 && loading) {
-      setQuestions(cachedQuestions.questions);
-      setTotalPages(cachedQuestions.totalPages);
-      setTotal(cachedQuestions.total);
-      setLoading(false);
-      hydratedRef.current = true;
-    }
-  }, [cachedQuestions]); // eslint-disable-line react-hooks/exhaustive-deps
+  const createQuestionMut = useCreateQuestion();
 
   const [showAskModal, setShowAskModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -92,11 +82,8 @@ export default function QnaPage() {
   const [askBodyError, setAskBodyError] = useState('');
   const debouncedTitle = useDebounce(askForm.title, 500);
 
-  // Duplicate detection — fetch similar questions as user types title
-  useEffect(() => {
-    if (debouncedTitle.length < 10) { setSimilarQuestions([]); return; }
-    qnaService.findSimilarQuestions(debouncedTitle).then(setSimilarQuestions).catch(() => {});
-  }, [debouncedTitle]);
+  // Duplicate detection via TanStack Query
+  const { data: similarQuestions = [] } = useQnaSimilar(debouncedTitle);
 
   // Pick up ?search= deep-links from detail page tag clicks (e.g. /qna?search=java).
   useEffect(() => {
@@ -106,85 +93,10 @@ export default function QnaPage() {
   }, []);
 
   // Fetch questions for the current tab & page
-  const fetchQuestions = useCallback(async (pageNum: number, append: boolean = false) => {
-    if (append) setLoadingMore(true);
-    else setLoading(true);
-    try {
-      if (tab === 'bookmarks') {
-        const bookmarked = await qnaService.getBookmarks();
-        const list = Array.isArray(bookmarked) ? bookmarked : [];
-        setQuestions(list);
-        setTotalPages(1);
-        setTotal(list.length);
-        setCache(cacheKey, { questions: list, totalPages: 1, total: list.length });
-        return;
-      }
-
-      if (tab === 'mine') {
-        const all = await qnaService.getMyQuestions();
-        // Backend returns { data, total, ... } or array — normalize
-        const list = Array.isArray(all) ? all : (all as any).data ?? [];
-        let filtered = list;
-        if (selectedCategory !== 'semua') filtered = filtered.filter((q: any) => q.category?.includes(selectedCategory));
-        if (debouncedSearch) {
-          const s = debouncedSearch.toLowerCase();
-          filtered = filtered.filter((q: any) =>
-            q.title.toLowerCase().includes(s) ||
-            (q.body || '').toLowerCase().includes(s) ||
-            q.tags?.some((t: string) => t.toLowerCase().includes(s))
-          );
-        }
-        setQuestions(filtered);
-        setTotalPages(1);
-        setTotal(filtered.length);
-        setCache(cacheKey, { questions: filtered, totalPages: 1, total: filtered.length });
-        return;
-      }
-
-      let res: QnaPaginated;
-      if (tab === 'trending') {
-        res = await qnaService.getTrendingQuestions({ page: pageNum, limit: 15 });
-      } else {
-        const params: any = { search: debouncedSearch || undefined, page: pageNum, limit: 15 };
-        if (selectedCategory !== 'semua') params.category = selectedCategory;
-        res = await qnaService.getQuestions(params);
-      }
-
-      if (append) {
-        setQuestions(prev => {
-          const newList = [...prev, ...res.questions];
-          setCache(cacheKey, { questions: newList, totalPages: res.totalPages, total: res.total });
-          return newList;
-        });
-      } else {
-        setQuestions(res.questions);
-        setCache(cacheKey, { questions: res.questions, totalPages: res.totalPages, total: res.total });
-      }
-      setTotalPages(res.totalPages);
-      setTotal(res.total);
-    } catch (e: any) {
-      showToast(e.message, 'error');
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
-  }, [debouncedSearch, selectedCategory, tab, showToast, cacheKey]);
-
-  // Reset and fetch when tab, search, or category changes
-  useEffect(() => {
-    setPage(1);
-    fetchQuestions(1, false);
-  }, [tab, debouncedSearch, selectedCategory]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Load more for infinite scroll (paginated tabs only)
   const handleLoadMore = useCallback(() => {
-    if (loadingMore || page >= totalPages || tab === 'mine' || tab === 'bookmarks') return;
-    const nextPage = page + 1;
-    setPage(nextPage);
-    fetchQuestions(nextPage, true);
-  }, [page, totalPages, loadingMore, fetchQuestions, tab]);
-
-  const hasMore = tab !== 'mine' && tab !== 'bookmarks' && page < totalPages;
+    if (!questionsQuery.hasNextPage || questionsQuery.isFetchingNextPage) return;
+    questionsQuery.fetchNextPage();
+  }, [questionsQuery]);
 
   const bodyPlainLen = askForm.body.replace(/<[^>]+>/g, '').trim().length;
 
@@ -204,7 +116,7 @@ export default function QnaPage() {
 
     setSubmitting(true);
     try {
-      await qnaService.createQuestion({
+      await createQuestionMut.mutateAsync({
         title: askForm.title,
         body: askForm.body || undefined,
         tags: askTags.length ? askTags : undefined,
@@ -217,8 +129,6 @@ export default function QnaPage() {
       setAskForm({ title: '', body: '', category: '' });
       setAskTags([]);
       setTab('terbaru');
-      setPage(1);
-      fetchQuestions(1, false);
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
@@ -243,7 +153,7 @@ export default function QnaPage() {
         <div className="app-main">
           <Appbar sidebarCollapsed={sidebarCollapsed} />
           <div className="page-content" style={{ animation: 'fadeSlideIn 0.4s ease-out' }}>
-            <PullToRefresh onRefresh={() => { setPage(1); return fetchQuestions(1, false); }}>
+            <PullToRefresh onRefresh={async () => { await questionsQuery.refetch(); }}>
 
             {/* 3-column layout */}
             <div
@@ -297,7 +207,7 @@ export default function QnaPage() {
                     {QNA_CATEGORIES.map(cat => (
                       <button
                         key={cat.id}
-                        onClick={() => { setSelectedCategory(cat.id); setPage(1); }}
+                        onClick={() => setSelectedCategory(cat.id)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, border: 'none', cursor: 'pointer',
                           background: selectedCategory === cat.id ? `${cat.color}18` : 'transparent',
@@ -353,7 +263,7 @@ export default function QnaPage() {
 
                 {/* Search */}
                 <div style={{ position: 'relative', marginBottom: 14 }}>
-                  <TextInput placeholder="Cari pertanyaan, tag, atau topik..." value={search} onChange={v => { setSearch(v); setPage(1); }} leftIcon={<Search size={16} />} />
+                  <TextInput placeholder="Cari pertanyaan, tag, atau topik..." value={search} onChange={v => setSearch(v)} leftIcon={<Search size={16} />} />
                 </div>
 
                 {/* Tab Pills */}
@@ -364,7 +274,7 @@ export default function QnaPage() {
                     { key: 'mine', label: 'Milikku' },
                     { key: 'bookmarks', label: 'Bookmark' },
                   ].map(t => (
-                    <button key={t.key} onClick={() => { setTab(t.key as any); setPage(1); }} style={{
+                    <button key={t.key} onClick={() => setTab(t.key as any)} style={{
                       padding: '8px 16px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: tab === t.key ? 700 : 400,
                       display: 'flex', alignItems: 'center', gap: 5,
                       background: tab === t.key ? 'var(--card-bg)' : 'transparent',
@@ -379,7 +289,7 @@ export default function QnaPage() {
                 <div className="qna-mobile-cat-filter" style={{ display: 'none', marginBottom: 14 }}>
                   <SelectOption
                     value={selectedCategory}
-                    onChange={v => { setSelectedCategory(v); setPage(1); }}
+                    onChange={v => setSelectedCategory(v)}
                     options={QNA_CATEGORIES.map(cat => ({ value: cat.id, label: `${cat.emoji} ${cat.label}` }))}
                   />
                 </div>
@@ -444,7 +354,7 @@ export default function QnaPage() {
                               {/* Stat column */}
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, minWidth: 52, paddingTop: 2 }} className="qna-card-stats">
                                 <button
-                                  onClick={(e) => { e.stopPropagation(); qnaService.upvoteQuestion(q.id).then(() => { setQuestions(prev => prev.map(p => p.id === q.id ? { ...p, upvotes: (p.upvotes || 0) + 1 } : p)); }).catch(() => {}); }}
+                                  onClick={(e) => { e.stopPropagation(); qnaService.upvoteQuestion(q.id).then(() => questionsQuery.refetch()).catch(() => {}); }}
                                   style={{ textAlign: 'center', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
                                   title="Upvote pertanyaan"
                                 >
@@ -558,7 +468,7 @@ export default function QnaPage() {
                   {trendingTags.length > 0 ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                       {trendingTags.map(({ tag, count }) => (
-                        <button key={tag} onClick={() => { setSearch(tag); setPage(1); }} style={{
+                        <button key={tag} onClick={() => setSearch(tag)} style={{
                           fontSize: 11, padding: '4px 10px', borderRadius: 20,
                           background: 'rgba(var(--color-primary), 0.06)', color: 'rgb(var(--color-primary))', fontWeight: 500,
                           border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, transition: 'all 0.2s',

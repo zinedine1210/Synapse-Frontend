@@ -13,9 +13,7 @@ import { todoService, PersonalTodo, TodoStats } from '@/services/todoService';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useTodos, useTodoStats, useTodoCounts, useSharedWithMe,
-  useCreateTodo, useUpdateTodo, useToggleTodo, useDeleteTodo,
-  useReorderTodos, useBulkDeleteTodos, useBulkToggleTodos,
-  useBulkCreateTodos, todoKeys,
+  todoKeys,
 } from '@/lib/hooks/useTodo';
 import { Plus, Loader2, CheckSquare, Sparkles, ChevronLeft, ChevronRight, Flame, Search, CheckCheck, Trash2, X, BookmarkPlus, CalendarPlus, Camera, Share2, Users } from 'lucide-react';
 import { useCelebration } from '@/components/shared/CelebrationOverlay';
@@ -103,15 +101,7 @@ export default function TodosPage() {
   const sharedQuery = useSharedWithMe();
   const pendingInvites = (sharedQuery.data ?? []).filter((s: any) => !s.accepted);
 
-  // Mutations
-  const createTodoMut = useCreateTodo();
-  const updateTodoMut = useUpdateTodo();
-  const toggleTodoMut = useToggleTodo();
-  const deleteTodoMut = useDeleteTodo();
-  const reorderMut = useReorderTodos();
-  const bulkDeleteMut = useBulkDeleteTodos();
-  const bulkToggleMut = useBulkToggleTodos();
-  const bulkCreateMut = useBulkCreateTodos();
+
 
   // Optimistic mutate helper (local cache update)
   const mutateTodos = (updater: (prev: PersonalTodo[]) => PersonalTodo[]) => {
@@ -288,6 +278,7 @@ export default function TodosPage() {
 
   // Group by time
   const timeGroups = useMemo((): TodoGroup[] => {
+    if (viewMode !== 'time') return [];
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -318,10 +309,11 @@ export default function TodosPage() {
     if (noDue.length) result.push({ label: 'TANPA DEADLINE', emoji: '📝', todos: noDue });
     if (done.length && statusFilter !== 'pending') result.push({ label: 'SELESAI', emoji: '✅', todos: done });
     return result;
-  }, [filteredTodos, statusFilter]);
+  }, [filteredTodos, statusFilter, viewMode]);
 
   // Group by category
   const categoryGroups = useMemo((): TodoGroup[] => {
+    if (viewMode !== 'category') return [];
     const sorted = [...filteredTodos].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     const groups: Record<string, PersonalTodo[]> = {};
     for (const t of sorted) {
@@ -333,10 +325,11 @@ export default function TodosPage() {
       const info = getCategoryInfo(cat, customCategories);
       return { label: info.label, emoji: '', todos: list, color: info.color };
     });
-  }, [filteredTodos, customCategories]);
+  }, [filteredTodos, customCategories, viewMode]);
 
   // ─── Eisenhower Matrix ──────────────────────────────────────────────
   const eisenhowerQuadrants = useMemo(() => {
+    if (viewMode !== 'eisenhower') return [];
     const active = filteredTodos.filter(t => t.status !== 'done');
     const q1: PersonalTodo[] = [], q2: PersonalTodo[] = [], q3: PersonalTodo[] = [], q4: PersonalTodo[] = [];
     const today = new Date();
@@ -355,12 +348,13 @@ export default function TodosPage() {
       { label: 'Delegasikan', emoji: '🤝', todos: q3, color: '#f59e0b' },
       { label: 'Eliminasi', emoji: '🗑️', todos: q4, color: '#6b7280' },
     ];
-  }, [filteredTodos]);
+  }, [filteredTodos, viewMode]);
 
   const groups = viewMode === 'time' ? timeGroups : viewMode === 'category' ? categoryGroups : timeGroups;
 
   // Calendar data
   const calendarData = useMemo(() => {
+    if (viewMode !== 'calendar') return { year: 0, month: 0, firstDay: 0, daysInMonth: 0, today: new Date(), todosByDate: {} as Record<string, PersonalTodo[]> };
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
     const firstDay = new Date(year, month, 1).getDay();
@@ -420,12 +414,13 @@ export default function TodosPage() {
       }
     }
     return { year, month, firstDay, daysInMonth, today, todosByDate };
-  }, [todos, calendarMonth]);
+  }, [filteredTodos, calendarMonth, viewMode]);
 
   // Sortable todo IDs for DnD
   const sortableTodoIds = useMemo(() => {
+    if (viewMode !== 'time' && viewMode !== 'category') return [];
     return todos.filter(t => t.status !== 'done').sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)).map(t => t.id);
-  }, [todos]);
+  }, [todos, viewMode]);
 
   // ─── Drag and Drop handler ────────────────────────────────────────
   const handleReorder = useCallback(async (oldIndex: number, newIndex: number) => {

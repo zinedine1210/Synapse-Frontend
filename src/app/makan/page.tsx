@@ -6,8 +6,13 @@ import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, BottomSheet, useToast } from '@/components/ui';
-import { useCache } from '@/lib/cache';
 import { useAiJob } from '@/lib/useAiJob';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  useFoodBudget, useFoodPreference, useFoodFavorites, useFoodHistory,
+  useAddFavorite, useRemoveFavorite, useRateRecipe, useUpdateFoodPreference,
+  foodKeys,
+} from '@/lib/hooks/useFood';
 import {
   foodService,
   FoodPreference,
@@ -15,10 +20,7 @@ import {
   FridgeRecipe,
   MenuResult,
   MealPlanResult,
-  FoodBudgetInfo,
-  FoodFavorite,
   FoodHistoryItem,
-  FoodRating,
 } from '@/services/foodService';
 import {
   UtensilsCrossed, Loader2, Settings2, Heart, History,
@@ -115,26 +117,24 @@ export default function MakanApaPage() {
   // Derive loading from the active job status — block ALL uploads if ANY job is processing
   const loading = fridgeJob.isProcessing || menuJob.isProcessing || textJob.isProcessing || mealPlanJob.isProcessing;
 
-  // Cached data fetching
-  const budgetFetcher = useCallback(() => foodService.getRemainingBudget().catch(() => null), []);
-  const { data: budgetInfo, loading: budgetLoading, revalidate: refetchBudget } = useCache<FoodBudgetInfo | null>('food:budget', budgetFetcher);
+  // ─── TanStack Query ────────────────────────────────────────
+  const queryClient = useQueryClient();
+  const { data: budgetInfo, isLoading: budgetLoading } = useFoodBudget();
+  const refetchBudget = useCallback(() => { queryClient.invalidateQueries({ queryKey: foodKeys.budget() }); }, [queryClient]);
 
-  const { data: prefData } = useCache<FoodPreference>('food:preference', () => foodService.getPreference());
+  const { data: prefData } = useFoodPreference();
   useEffect(() => { if (prefData) setPref(prefData); }, [prefData]);
 
-  // Favorites state — cached
-  const favFetcher = useCallback(() => foodService.getFavorites(), []);
-  const { data: favorites = [], loading: favoritesLoading, mutate: mutateFavorites } = useCache<FoodFavorite[]>(
-    mode === 'favorites' || mode === 'fridge' || mode === 'text' ? 'food:favorites' : null,
-    favFetcher
-  );
+  const favEnabled = mode === 'favorites' || mode === 'fridge' || mode === 'text';
+  const { data: favorites = [], isLoading: favoritesLoading } = useFoodFavorites(favEnabled);
 
-  // History state — cached
-  const histFetcher = useCallback(() => foodService.getHistory(30), []);
-  const { data: history = [], loading: historyLoading } = useCache<FoodHistoryItem[]>(
-    mode === 'history' ? 'food:history' : null,
-    histFetcher
-  );
+  const { data: history = [], isLoading: historyLoading } = useFoodHistory(mode === 'history', 30);
+
+  // Mutations
+  const addFavMut = useAddFavorite();
+  const removeFavMut = useRemoveFavorite();
+  const rateMut = useRateRecipe();
+  const updatePrefMut = useUpdateFoodPreference();
 
   const handleImageUpload = async (file: File) => {
     if (loading) return; // prevent double upload
@@ -172,7 +172,7 @@ export default function MakanApaPage() {
 
   const handleSavePref = async (data: Partial<FoodPreference>) => {
     try {
-      const updated = await foodService.updatePreference(data);
+      const updated = await updatePrefMut.mutateAsync(data);
       setPref(updated);
       setShowPrefModal(false);
       showToast('Preferensi udah ke-save! ✨', 'success');
@@ -185,16 +185,14 @@ export default function MakanApaPage() {
     const existing = favorites.find(f => f.recipeName.toLowerCase() === recipe.name.toLowerCase());
     if (existing) {
       try {
-        await foodService.removeFavorite(existing.id);
-        mutateFavorites(prev => (prev || []).filter(f => f.id !== existing.id));
+        await removeFavMut.mutateAsync(existing.id);
         showToast('Bye bye dari favorit~ 👋', 'info');
       } catch {
         showToast('Yah gagal hapus favorit nih.', 'error');
       }
     } else {
       try {
-        const fav = await foodService.addFavorite(recipe.name, JSON.stringify(recipe));
-        mutateFavorites(prev => [fav, ...(prev || [])]);
+        await addFavMut.mutateAsync({ recipeName: recipe.name, recipeData: JSON.stringify(recipe) });
         showToast('Masuk list favorit! ❤️', 'success');
       } catch {
         showToast('Gagal simpen favorit nih.', 'error');
@@ -204,8 +202,7 @@ export default function MakanApaPage() {
 
   const handleRemoveFavorite = async (id: string) => {
     try {
-      await foodService.removeFavorite(id);
-      mutateFavorites(prev => (prev || []).filter(f => f.id !== id));
+      await removeFavMut.mutateAsync(id);
       showToast('Bye bye dari favorit~ 👋', 'info');
     } catch {
       showToast('Gagal hapus favorit nih.', 'error');
@@ -248,7 +245,7 @@ export default function MakanApaPage() {
     if (!ratingModal || ratingValue === 0) return;
     setRatingSubmitting(true);
     try {
-      await foodService.rateRecipe(ratingModal.historyId, ratingValue, ratingFeedback || undefined);
+      await rateMut.mutateAsync({ historyId: ratingModal.historyId, rating: ratingValue, feedback: ratingFeedback || undefined });
       showToast('Rating tersimpan! Makasih feedbacknya~ ⭐', 'success');
       setRatingModal(null);
       setRatingValue(0);

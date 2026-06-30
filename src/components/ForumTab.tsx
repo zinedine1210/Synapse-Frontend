@@ -280,15 +280,24 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
 
   // Date jump
   const [dateJumpOpen, setDateJumpOpen] = useState(false);
+  const [showDateJump, setShowDateJump] = useState(false);
+  const dateJumpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [specialPostsOpen, setSpecialPostsOpen] = useState<string | false>(false);
   const [pinBarCollapsed, setPinBarCollapsed] = useState(false);
   const [specialBarCollapsed, setSpecialBarCollapsed] = useState(false);
+  const [canvasCollapsed, setCanvasCollapsed] = useState(false);
   const dateRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Scroll to bottom button
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const postRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Mobile swipe-to-reply
+  const [swipingPostId, setSwipingPostId] = useState<string | null>(null);
+  const [swipeX, setSwipeX] = useState(0);
+  const touchStartRef = useRef<{ x: number; y: number; postId: string } | null>(null);
+  const swipeThreshold = 60;
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -473,13 +482,20 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container;
       setShowScrollBottom(scrollHeight - scrollTop - clientHeight > 120);
+      // Show date jump button while scrolling
+      setShowDateJump(true);
+      if (dateJumpTimerRef.current) clearTimeout(dateJumpTimerRef.current);
+      dateJumpTimerRef.current = setTimeout(() => {
+        setShowDateJump(false);
+        setDateJumpOpen(false);
+      }, 2500);
       // Fetch older posts when scrolled near top
       if (scrollTop < 80 && hasMore && !loadingMore) {
         fetchOlderPosts();
       }
     };
     container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => container.removeEventListener('scroll', handleScroll);
+    return () => { container.removeEventListener('scroll', handleScroll); if (dateJumpTimerRef.current) clearTimeout(dateJumpTimerRef.current); };
   }, [loading, discussionTab, hasMore, loadingMore, fetchOlderPosts]);
 
   // Active custom tab data (derived from discussionTab — if it's not 'chat' or 'lampiran', it's a canvas tab ID)
@@ -1035,7 +1051,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
               📅 Pertemuan {activeDiscussion.session.sequence}
             </div>
           )}
-          <button onClick={() => { setPinBarCollapsed(p => !p); setSpecialBarCollapsed(p => !p); }} title={pinBarCollapsed ? 'Tampilkan panel info' : 'Sembunyikan panel info'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: (!pinBarCollapsed) ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))', padding: '0.2rem', display: 'flex', transition: 'color 0.15s' }}>
+          <button onClick={() => { setPinBarCollapsed(p => !p); setSpecialBarCollapsed(p => !p); setCanvasCollapsed(p => !p); }} title={pinBarCollapsed ? 'Tampilkan panel info' : 'Sembunyikan panel info'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: (!pinBarCollapsed) ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))', padding: '0.2rem', display: 'flex', transition: 'color 0.15s' }}>
             <ChevronsUpDown size={14} />
           </button>
           <button onClick={() => { setShowChatSearch(p => !p); if (showChatSearch) setChatSearch(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: showChatSearch ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))', padding: '0.2rem', display: 'flex' }}>
@@ -1089,6 +1105,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
         )}
 
         {/* Discussion Sub-Tabs: Chat, Lampiran, Canvas tabs, + button */}
+        {!canvasCollapsed && (
         <div className="forum-tab-bar animate-fade-in" style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border-default)', flexShrink: 0, background: 'rgba(var(--color-primary) / 0.01)', paddingLeft: '0.75rem', alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none' }}>
           <button onClick={() => setDiscussionTab('chat')} style={{
             padding: '0.45rem 0.85rem', fontSize: 'var(--font-xs)', fontWeight: discussionTab === 'chat' ? 700 : 500,
@@ -1151,9 +1168,10 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
             </button>
           )}
         </div>
+        )}
 
         {/* ═══ TAB CONTENT ═══ */}
-        {activeCustomTab ? (
+        {activeCustomTab && !canvasCollapsed ? (
           /* ═══ CANVAS CONTENT ═══ */
           <>
             <div style={{ padding: '0.35rem 0.75rem', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0, background: 'rgba(var(--color-primary) / 0.01)' }}>
@@ -1217,7 +1235,7 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
               </div>
             </div>
           </>
-        ) : discussionTab === 'chat' ? (loading ? (
+        ) : (discussionTab === 'chat' || (canvasCollapsed && discussionTab !== 'lampiran')) ? (loading ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Loader2 className="animate-spin" size={24} style={{ color: 'rgb(var(--color-primary))' }} /></div>
         ) : (
           <>
@@ -1310,9 +1328,9 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                   <span style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))', fontStyle: 'italic' }}>Semua pesan telah dimuat</span>
                 </div>
               )}
-              {/* Date Jump Dropdown */}
-              {groupedPosts.length > 1 && (
-                <div style={{ position: 'sticky', top: 0, zIndex: 15, display: 'flex', justifyContent: 'center', paddingBottom: '0.25rem' }}>
+              {/* Date Jump Dropdown — only visible when scrolling */}
+              {groupedPosts.length > 1 && (showDateJump || dateJumpOpen) && (
+                <div style={{ position: 'sticky', top: 0, zIndex: 15, display: 'flex', justifyContent: 'center', paddingBottom: '0.25rem', opacity: showDateJump || dateJumpOpen ? 1 : 0, transition: 'opacity 0.3s ease' }}>
                   <div style={{ position: 'relative' }}>
                     <button onClick={() => setDateJumpOpen(p => !p)} className="btn-bounce" style={{
                       display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.25rem 0.65rem',
@@ -1538,13 +1556,68 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                     // Per-member color from stable map
                     const [avatarC1, avatarC2] = memberColorMap.get(post.authorId) || getMemberColor(post.authorId);
 
+                    // Mobile swipe handlers
+                    const handleTouchStart = (e: React.TouchEvent) => {
+                      if (!isMobile) return;
+                      const touch = e.touches[0];
+                      touchStartRef.current = { x: touch.clientX, y: touch.clientY, postId: post.id };
+                    };
+                    const handleTouchMove = (e: React.TouchEvent) => {
+                      if (!isMobile || !touchStartRef.current || touchStartRef.current.postId !== post.id) return;
+                      const touch = e.touches[0];
+                      const deltaX = touch.clientX - touchStartRef.current.x;
+                      const deltaY = Math.abs(touch.clientY - touchStartRef.current.y);
+                      // Only horizontal swipe (not vertical scroll)
+                      if (deltaY > 30) { touchStartRef.current = null; setSwipingPostId(null); setSwipeX(0); return; }
+                      // Swipe towards center: own messages swipe left, others swipe right
+                      const validSwipe = isOwn ? deltaX < 0 : deltaX > 0;
+                      if (validSwipe) {
+                        const absDelta = Math.min(Math.abs(deltaX), 80);
+                        setSwipingPostId(post.id);
+                        setSwipeX(isOwn ? -absDelta : absDelta);
+                      } else {
+                        setSwipingPostId(null);
+                        setSwipeX(0);
+                      }
+                    };
+                    const handleTouchEnd = () => {
+                      if (!isMobile || !touchStartRef.current) return;
+                      if (swipingPostId === post.id && Math.abs(swipeX) >= swipeThreshold) {
+                        setReplyToPost({ id: post.id, authorName: post.authorName, content: (replyMatch ? replyMatch[3] : post.content).slice(0, 100) });
+                        inputRef.current?.focus();
+                      }
+                      touchStartRef.current = null;
+                      setSwipingPostId(null);
+                      setSwipeX(0);
+                    };
+
+                    const currentSwipeX = swipingPostId === post.id ? swipeX : 0;
+
                     return (
-                      <div key={post.id} ref={el => { postRefs.current[post.id] = el; }} className="chat-msg-enter" style={{
+                      <div key={post.id} ref={el => { postRefs.current[post.id] = el; }} className="chat-msg-enter"
+                        onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}
+                        style={{
                         display: 'flex', justifyContent: isOwn ? 'flex-end' : 'flex-start',
                         marginBottom: isLastInGroup ? '0.5rem' : '0.1rem',
                         marginTop: isFirstInGroup && postIdx > 0 ? '0.25rem' : 0,
                         gap: '0.4rem', alignItems: 'flex-end', paddingLeft: !isOwn ? 0 : undefined,
+                        transform: currentSwipeX ? `translateX(${currentSwipeX}px)` : undefined,
+                        transition: currentSwipeX ? 'none' : 'transform 0.2s ease',
+                        position: 'relative',
                       }}>
+                        {/* Swipe reply indicator */}
+                        {isMobile && Math.abs(currentSwipeX) > 20 && (
+                          <div style={{
+                            position: 'absolute',
+                            ...(isOwn ? { left: '8px' } : { right: '8px' }),
+                            top: '50%', transform: 'translateY(-50%)',
+                            opacity: Math.min(1, Math.abs(currentSwipeX) / swipeThreshold),
+                            color: Math.abs(currentSwipeX) >= swipeThreshold ? 'rgb(var(--color-primary))' : 'rgb(var(--text-muted))',
+                            transition: 'color 0.1s',
+                          }}>
+                            <Reply size={18} />
+                          </div>
+                        )}
                         {/* Avatar: only show on last message of consecutive group */}
                         {!isOwn && (
                           <div style={{ width: 30, height: 30, flexShrink: 0, visibility: isLastInGroup ? 'visible' : 'hidden' }}>
@@ -1657,8 +1730,12 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                           )}
                           <div className="chat-bubble-footer" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.2rem', justifyContent: 'flex-end' }}>
                             <span style={{ fontSize: '0.7rem', color: 'rgb(var(--text-muted))' }}>{timeAgo(post.createdAt)}</span>
-                            <button onClick={() => { setReplyToPost({ id: post.id, authorName: post.authorName, content: actualContent.slice(0, 100) }); inputRef.current?.focus(); }} className="chat-action-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', fontSize: 'var(--font-xs)', display: 'flex', alignItems: 'center', fontFamily: 'inherit', opacity: 0, transition: 'opacity 0.15s' }}><Reply size={10} /></button>
-                            {(isOwn || canDelete) && <button onClick={(e) => { e.stopPropagation(); setContextMenu({ postId: post.id, x: e.clientX, y: e.clientY }); }} className="chat-action-btn" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: 0, opacity: 0, transition: 'opacity 0.15s' }}><MoreVertical size={11} /></button>}
+                            <button onClick={() => { setReplyToPost({ id: post.id, authorName: post.authorName, content: actualContent.slice(0, 100) }); inputRef.current?.focus(); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', fontSize: 'var(--font-xs)', display: 'flex', alignItems: 'center', fontFamily: 'inherit', opacity: 0.6, transition: 'opacity 0.15s, color 0.15s' }}
+                              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'rgb(var(--color-primary))'; }}
+                              onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.color = 'rgb(var(--text-muted))'; }}><Reply size={10} /></button>
+                            {(isOwn || canDelete) && <button onClick={(e) => { e.stopPropagation(); setContextMenu({ postId: post.id, x: e.clientX, y: e.clientY }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(var(--text-muted))', padding: 0, opacity: 0.6, transition: 'opacity 0.15s, color 0.15s' }}
+                              onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'rgb(var(--color-primary))'; }}
+                              onMouseLeave={e => { e.currentTarget.style.opacity = '0.6'; e.currentTarget.style.color = 'rgb(var(--text-muted))'; }}><MoreVertical size={11} /></button>}
                           </div>
                         </div>
                       </div>

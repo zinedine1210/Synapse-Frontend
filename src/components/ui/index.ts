@@ -42,3 +42,4 @@ export { InfiniteScroll } from './InfiniteScroll';
 export { SwipeableRow } from './SwipeableRow';
 export { PullToRefresh } from './PullToRefresh';
 export { UserAvatar } from './UserAvatar';
+export { FeatureLock } from './FeatureLock';

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Clock, LayoutList, CalendarDays, GitMerge, Grid2X2, CalendarCheck, LucideIcon } from 'lucide-react';
+import { Clock, LayoutList, CalendarDays, GitMerge, Grid2X2, CalendarCheck, Lock, LucideIcon } from 'lucide-react';
 
 export type TodoViewMode = 'time' | 'category' | 'calendar' | 'timeline' | 'eisenhower' | 'agenda';
 
@@ -10,6 +10,10 @@ interface ViewSegmentedControlProps {
   onChange: (mode: TodoViewMode) => void;
   /** If provided, only these view modes are shown */
   allowedModes?: TodoViewMode[];
+  /** Modes shown but locked (with lock icon, triggers onLocked callback) */
+  lockedModes?: TodoViewMode[];
+  /** Callback when a locked mode is clicked */
+  onLockedClick?: (mode: TodoViewMode) => void;
 }
 
 const ALL_VIEWS: { key: TodoViewMode; icon: LucideIcon; label: string }[] = [
@@ -26,8 +30,8 @@ const ALL_VIEWS: { key: TodoViewMode; icon: LucideIcon; label: string }[] = [
  * between the To-Do page view modes. The active segment slides via an
  * animated highlight (disabled under prefers-reduced-motion).
  */
-export function ViewSegmentedControl({ value, onChange, allowedModes }: ViewSegmentedControlProps) {
-  const VIEWS = allowedModes ? ALL_VIEWS.filter(v => allowedModes.includes(v.key)) : ALL_VIEWS;
+export function ViewSegmentedControl({ value, onChange, allowedModes, lockedModes = [], onLockedClick }: ViewSegmentedControlProps) {
+  const VIEWS = allowedModes ? ALL_VIEWS.filter(v => allowedModes.includes(v.key) || lockedModes.includes(v.key)) : ALL_VIEWS;
   const activeIndex = VIEWS.findIndex(v => v.key === value);
 
   return (
@@ -64,14 +68,15 @@ export function ViewSegmentedControl({ value, onChange, allowedModes }: ViewSegm
       />
       {VIEWS.map(v => {
         const active = v.key === value;
+        const isLocked = lockedModes.includes(v.key);
         return (
           <button
             key={v.key}
             role="tab"
             aria-selected={active}
             aria-label={v.label}
-            title={v.label}
-            onClick={() => onChange(v.key)}
+            title={isLocked ? `${v.label} (Terkunci)` : v.label}
+            onClick={() => isLocked ? onLockedClick?.(v.key) : onChange(v.key)}
             style={{
               position: 'relative',
               zIndex: 1,
@@ -86,11 +91,12 @@ export function ViewSegmentedControl({ value, onChange, allowedModes }: ViewSegm
               cursor: 'pointer',
               fontSize: 12.5,
               fontWeight: active ? 700 : 500,
-              color: active ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))',
+              color: isLocked ? 'rgb(var(--text-muted))' : active ? 'rgb(var(--color-primary))' : 'rgb(var(--text-secondary))',
+              opacity: isLocked ? 0.5 : 1,
               transition: 'color 0.2s',
             }}
           >
-            <v.icon size={15} />
+            {isLocked ? <Lock size={13} /> : <v.icon size={15} />}
             <span className="todo-segmented-label">{v.label}</span>
           </button>
         );

@@ -133,7 +133,7 @@ const T = {
     faqTitle1: 'Pertanyaan',
     faqTitle2: 'yang Sering Ditanyakan',
     faqs: [
-      { q: 'Apakah Synapse benar-benar gratis?', a: 'Ya! Kamu bisa pakai semua fitur dasar gratis selamanya — kelas, forum, duit tracker, to-do list, virtual pet, dan 10 AI request/bulan. Upgrade ke Pro untuk fitur unlimited.' },
+      { q: 'Apakah Synapse benar-benar gratis?', a: 'Ya! Paket Newbie gratis selama 7 hari trial — kelas, forum, duit tracker, to-do list, virtual pet, dan 20 AI request/hari. Upgrade ke Hustler (Rp 24.900) atau Full Power (Rp 39.900) untuk fitur lengkap & limit lebih besar.' },
       { q: 'AI-nya menggunakan model apa?', a: 'Synapse pakai Google Gemini AI (gemini-2.0-flash) yang udah dioptimasi khusus untuk konten akademik dan keuangan berbahasa Indonesia.' },
       { q: 'Fitur keuangan seperti apa?', a: 'Lengkap banget — catat pemasukan/pengeluaran, tagihan, hutang-piutang, budget, saving tree, wishlist, financial challenges, split bill, scan struk, dan Si Bawel (AI coach yang inget kebiasaanmu).' },
       { q: 'Bisa digunakan untuk jurusan apa saja?', a: 'Synapse dirancang untuk semua jurusan. Fitur akademik (AI summarizer, kuis, prediksi) support semua bidang. Fitur lifestyle (duit, makan, to-do) bisa dipakai siapa aja.' },
@@ -154,18 +154,24 @@ const T = {
     pricingTitle1: 'Pilih Paket',
     pricingTitle2: 'yang Cocok Buatmu',
     pricingSub: 'Mulai gratis, upgrade kapan saja sesuai kebutuhanmu.',
-    pricingFree: 'Gratis',
+    pricingFree: 'Newbie',
     pricingFreePrice: 'Rp 0',
-    pricingFreePeriod: 'selamanya',
+    pricingFreePeriod: '7 hari trial',
     pricingFreeDesc: 'Semua fitur dasar untuk belajar efektif.',
-    pricingFreeFeatures: ['Kelas & Forum Diskusi', 'Duit Tracker (bills & debts)', 'To-Do List + Kategori', 'Q&A Forum', '10 AI Request / bulan', 'Virtual Pet & Streak', 'Gamifikasi & Quiz Keuangan'],
+    pricingFreeFeatures: ['Kelas & Forum Diskusi', 'Duit Tracker (bills & debts)', 'To-Do List + Kategori', 'Q&A Forum', '20 AI Request / hari', 'Virtual Pet & Streak', 'Gamifikasi & Quiz Keuangan'],
     pricingFreeCta: 'Mulai Gratis',
-    pricingPro: 'Pro',
-    pricingProPrice: 'Rp 49.000',
+    pricingMid: 'Hustler',
+    pricingMidPrice: 'Rp 24.900',
+    pricingMidPeriod: '/bulan',
+    pricingMidDesc: 'Fitur lengkap untuk kamu yang mulai serius.',
+    pricingMidFeatures: ['250 AI Request / hari', 'Quiz & Kuis Adaptif', 'Prediksi Ujian', 'AI Insight & Daily Briefing', 'Si Bawel + Split Bill', 'Makan Apa + Meal Plan AI', 'Skripsweet AI Chat', 'Leaderboard & Profile Card'],
+    pricingMidCta: 'Upgrade ke Hustler',
+    pricingPro: 'Full Power',
+    pricingProPrice: 'Rp 39.900',
     pricingProPeriod: '/bulan',
-    pricingProDesc: 'Fitur lengkap tanpa batas untuk kamu yang serius.',
-    pricingProFeatures: ['200 AI Request / bulan', 'Quiz & Kuis Adaptif Unlimited', 'Prediksi Ujian + Kisi-kisi', 'AI Insight & Daily Briefing', 'Si Bawel + Split Bill', 'Makan Apa (AI Food Rec)', 'Receipt Scanner', 'To-Do: Calendar, Timeline, Recurring', 'Q&A Voting + AI Answer', 'Leaderboard & Gamifikasi Pro', 'Profile Card & Command Palette'],
-    pricingProCta: 'Upgrade ke Pro',
+    pricingProDesc: 'Semua fitur tanpa batas untuk kamu yang all-out.',
+    pricingProFeatures: ['999 AI Request / hari', 'Semua fitur Hustler +', 'Canvas & Kolektif', 'Prediksi Ujian + Kisi-kisi', 'Si Bawel + Memory', 'Receipt Scanner', 'Makan Apa: Fridge & Menu Scan', 'To-Do: Calendar, Timeline, AI Parse', 'Skripsweet Full Suite', 'Dashboard AI Insight'],
+    pricingProCta: 'Upgrade ke Full Power',
     pricingProBadge: 'Populer',
 
     // Footer
@@ -287,7 +293,7 @@ const T = {
     faqTitle1: 'Frequently Asked',
     faqTitle2: 'Questions',
     faqs: [
-      { q: 'Is Synapse really free?', a: 'Yes! You can use all core features for free forever — classes, forums, duit tracker, to-do list, virtual pet, and 10 AI requests/month. Upgrade to Pro for unlimited features.' },
+      { q: 'Is Synapse really free?', a: 'Yes! The Newbie plan is free for 7 days — classes, forums, duit tracker, to-do list, virtual pet, and 20 AI requests/day. Upgrade to Hustler (Rp 24,900) or Full Power (Rp 39,900) for full features & higher limits.' },
       { q: 'What AI model does it use?', a: 'Synapse uses Google Gemini AI (gemini-2.0-flash) optimized for academic and financial content in Indonesian and English.' },
       { q: 'What financial features are included?', a: 'Super comprehensive — income/expense tracking, bills, debts, budgets, saving tree, wishlist, financial challenges, split bill, receipt scanner, and Si Bawel (AI coach with memory).' },
       { q: 'Can it be used for any major?', a: 'Synapse is designed for all majors. Academic features (AI summarizer, quizzes, predictions) work across all fields. Lifestyle features (finances, food, to-do) work for everyone.' },
@@ -307,18 +313,24 @@ const T = {
     pricingTitle1: 'Choose the Plan',
     pricingTitle2: 'That Fits You',
     pricingSub: 'Start free, upgrade anytime as you need.',
-    pricingFree: 'Free',
+    pricingFree: 'Newbie',
     pricingFreePrice: 'Rp 0',
-    pricingFreePeriod: 'forever',
+    pricingFreePeriod: '7-day trial',
     pricingFreeDesc: 'All essential features for effective learning.',
-    pricingFreeFeatures: ['Class & Discussion Forum', 'Duit Tracker (bills & debts)', 'To-Do List + Categories', 'Q&A Forum', '10 AI Requests / month', 'Virtual Pet & Streak', 'Gamification & Finance Quiz'],
+    pricingFreeFeatures: ['Class & Discussion Forum', 'Duit Tracker (bills & debts)', 'To-Do List + Categories', 'Q&A Forum', '20 AI Requests / day', 'Virtual Pet & Streak', 'Gamification & Finance Quiz'],
     pricingFreeCta: 'Start Free',
-    pricingPro: 'Pro',
-    pricingProPrice: 'Rp 49,000',
+    pricingMid: 'Hustler',
+    pricingMidPrice: 'Rp 24,900',
+    pricingMidPeriod: '/month',
+    pricingMidDesc: 'Full features for serious learners.',
+    pricingMidFeatures: ['250 AI Requests / day', 'Quiz & Adaptive Quiz', 'Exam Prediction', 'AI Insight & Daily Briefing', 'Si Bawel + Split Bill', 'Food Recommend + Meal Plan AI', 'Skripsweet AI Chat', 'Leaderboard & Profile Card'],
+    pricingMidCta: 'Upgrade to Hustler',
+    pricingPro: 'Full Power',
+    pricingProPrice: 'Rp 39,900',
     pricingProPeriod: '/month',
-    pricingProDesc: 'Unlimited features for serious learners.',
-    pricingProFeatures: ['200 AI Requests / month', 'Unlimited Quiz & Adaptive Quiz', 'Exam Prediction + Study Guide', 'AI Insight & Daily Briefing', 'Si Bawel + Split Bill', 'Food Recommend (AI)', 'Receipt Scanner', 'To-Do: Calendar, Timeline, Recurring', 'Q&A Voting + AI Answer', 'Leaderboard & Pro Gamification', 'Profile Card & Command Palette'],
-    pricingProCta: 'Upgrade to Pro',
+    pricingProDesc: 'All features unlocked for those who go all-out.',
+    pricingProFeatures: ['999 AI Requests / day', 'All Hustler features +', 'Canvas & Kolektif', 'Exam Prediction + Study Guide', 'Si Bawel + Memory', 'Receipt Scanner', 'Food: Fridge & Menu Scan', 'To-Do: Calendar, Timeline, AI Parse', 'Skripsweet Full Suite', 'Dashboard AI Insight'],
+    pricingProCta: 'Upgrade to Full Power',
     pricingProBadge: 'Popular',
 
     footerProduct: 'Product',
@@ -1432,8 +1444,8 @@ export default function LandingPage() {
             <p style={{ fontSize: '1rem', color: c.textMuted, maxWidth: 500, margin: '0 auto' }}>{t.pricingSub}</p>
           </div>
 
-          <div className="landing-pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', maxWidth: 760, margin: '0 auto' }}>
-            {/* FREE plan */}
+          <div className="landing-pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.5rem', maxWidth: 1000, margin: '0 auto' }}>
+            {/* NEWBIE plan */}
             <div style={{
               padding: '2rem', borderRadius: 22,
               background: c.cardBg, border: `1px solid ${c.cardBorder}`,
@@ -1464,7 +1476,38 @@ export default function LandingPage() {
               </Link>
             </div>
 
-            {/* PRO plan */}
+            {/* HUSTLER plan */}
+            <div style={{
+              padding: '2rem', borderRadius: 22,
+              background: c.cardBg, border: `1px solid ${c.cardBorder}`,
+              display: 'flex', flexDirection: 'column',
+              transition: 'all 0.3s ease',
+            }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '0.5rem' }}>{t.pricingMid}</h3>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
+                  <span style={{ fontSize: '2.2rem', fontWeight: 800, background: 'linear-gradient(135deg, #a18cd1, #fbc2eb)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{t.pricingMidPrice}</span>
+                  <span style={{ fontSize: '0.85rem', color: c.textMuted }}>{t.pricingMidPeriod}</span>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: c.textMuted, marginTop: '0.5rem' }}>{t.pricingMidDesc}</p>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, flex: 1, display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '1.5rem' }}>
+                {t.pricingMidFeatures.map((feat, i) => (
+                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: c.textSub }}>
+                    <CheckCircle2 size={14} style={{ color: '#a18cd1', flexShrink: 0 }} /> {feat}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/billing" style={{
+                padding: '0.75rem', borderRadius: 12, textAlign: 'center', fontWeight: 600,
+                fontSize: '0.9rem', textDecoration: 'none', transition: 'all 0.2s',
+                color: c.ctaSecColor, background: c.ctaSecBg, border: `1px solid ${c.ctaSecBorder}`,
+              }}>
+                {t.pricingMidCta}
+              </Link>
+            </div>
+
+            {/* FULL_POWER plan */}
             <div className="landing-pricing-card-pro landing-card-shine" style={{
               padding: '2rem', borderRadius: 22, position: 'relative',
               background: isDark ? 'rgba(0,212,255,0.03)' : 'rgba(0,180,220,0.03)',

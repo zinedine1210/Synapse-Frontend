@@ -446,7 +446,7 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
             )}
 
             {/* AI Answer */}
-            {question.aiAnswer && (
+            {question.aiAnswer && hasFeature('qna_ai_answer') && (
               <div style={{ padding: '18px 22px', borderRadius: 16, marginBottom: 32, background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.04), rgba(139, 92, 246, 0.03))', border: '1px solid rgba(var(--color-primary), 0.12)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'rgb(var(--color-primary))' }}>Jawaban AI</span>

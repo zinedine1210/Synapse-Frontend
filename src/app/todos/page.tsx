@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/AuthContext';
 import { useFeatureAccess } from '@/lib/feature-access';
+import { FeatureLock } from '@/components/ui/FeatureLock';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
@@ -149,11 +150,11 @@ export default function TodosPage() {
   // Auto-sync class tasks on mount
   const syncedRef = React.useRef(false);
   useEffect(() => {
-    if (!syncedRef.current && user) {
+    if (!syncedRef.current && user && hasFeature('todo_sync_class')) {
       syncedRef.current = true;
       todoService.syncClassTasks().catch(() => {});
     }
-  }, [user]);
+  }, [user, hasFeature]);
 
   // Templates (localStorage)
   const [templates, setTemplates] = useState<{ name: string; form: TodoFormState; subtasks: DraftSubtask[] }[]>(() => {
@@ -737,6 +738,7 @@ export default function TodosPage() {
 
   // ─── Share handlers ───────────────────────────────────────────────
   const openShareModal = async (todo: PersonalTodo) => {
+    if (!hasFeature('todo_shared')) { showToast('Fitur ini belum tersedia di paket kamu. Upgrade yuk! 🔓', 'error'); return; }
     setShareModal(todo);
     setShareEmail('');
     setShareRole('viewer');
@@ -1049,6 +1051,7 @@ export default function TodosPage() {
                               >
                                 <CheckSquare size={15} style={{ color: 'rgb(var(--color-primary))' }} /> Tambah Task
                               </button>
+                              {hasFeature('todo_events') && (
                               <button
                                 onClick={() => { setShowAddMenu(false); openAdd({ type: 'event' }); }}
                                 style={{
@@ -1060,7 +1063,9 @@ export default function TodosPage() {
                               >
                                 <CalendarPlus size={15} style={{ color: '#6366f1' }} /> Tambah Jadwal
                               </button>
+                              )}
                               <div style={{ height: 1, background: 'var(--border-default)', margin: '4px 8px' }} />
+                              {hasFeature('todo_ai_parse') && (<>
                               <button
                                 onClick={() => { setShowAddMenu(false); fileInputRef.current?.click(); }}
                                 style={{
@@ -1083,6 +1088,7 @@ export default function TodosPage() {
                               >
                                 <Camera size={15} style={{ color: '#10b981' }} /> Foto dari Kamera
                               </button>
+                              </>)}
                             </div>
                           </>
                         )}
@@ -1107,6 +1113,14 @@ export default function TodosPage() {
                       ...(hasFeature('todo_calendar') ? ['calendar' as TodoViewMode] : []),
                       ...(hasFeature('todo_timeline') ? ['timeline' as TodoViewMode] : []),
                     ]}
+                    lockedModes={[
+                      ...(!hasFeature('todo_categories') ? ['category' as TodoViewMode] : []),
+                      ...(!hasFeature('todo_calendar') ? ['calendar' as TodoViewMode] : []),
+                      ...(!hasFeature('todo_timeline') ? ['timeline' as TodoViewMode] : []),
+                    ]}
+                    onLockedClick={() => {
+                      showToast('Fitur ini belum tersedia di paket kamu. Upgrade yuk! 🔓', 'warning');
+                    }}
                   />
                 </div>
 
@@ -1120,6 +1134,7 @@ export default function TodosPage() {
                       leftIcon={<Search size={15} />}
                     />
                   </div>
+                  <FeatureLock feature="todo_bulk" inline>
                   <button
                     onClick={() => { setSelectMode(!selectMode); setSelectedIds(new Set()); }}
                     style={{
@@ -1131,6 +1146,7 @@ export default function TodosPage() {
                   >
                     <CheckCheck size={14} /> {selectMode ? 'Batal' : 'Pilih'}
                   </button>
+                  </FeatureLock>
                   <button
                     onClick={() => setShowTemplateModal(true)}
                     title="Template"

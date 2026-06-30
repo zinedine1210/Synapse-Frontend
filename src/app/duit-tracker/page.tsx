@@ -8,7 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, Modal, useToast, useConfirm, CurrencyInput, parseCurrency, DateTimePicker, PullToRefresh, SelectOption, TextInput, TextArea } from '@/components/ui';
+import { Card, Button, Modal, useToast, useConfirm, CurrencyInput, parseCurrency, DateTimePicker, PullToRefresh, SelectOption, TextInput, TextArea, FeatureLock } from '@/components/ui';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { Transaction, CategoryBudget, CustomCategory, RecurringBill, WishlistItem } from '@/services/duitTrackerService';
 import { siBawelService, WeeklyRoast } from '@/services/siBawelService';
@@ -872,16 +872,23 @@ export default function DuitTrackerPage() {
                   { key: 'debts', label: 'Hutang', feature: 'duit_tracker_debts' },
                   { key: 'wishlist', label: 'Wishlist', feature: 'duit_tracker_wishlist' },
                   { key: 'challenges', label: 'Challenge', feature: 'duit_tracker_challenges' },
-                ].filter(t => !t.feature || hasFeature(t.feature)).map(t => (
-                  <button key={t.key} onClick={() => setTab(t.key as any)} style={{
-                    padding: '9px 18px', borderRadius: 10, border: 'none', cursor: 'pointer',
-                    fontWeight: tab === t.key ? 600 : 400, fontSize: 13,
-                    background: tab === t.key ? 'var(--card-bg)' : 'transparent',
-                    color: tab === t.key ? 'rgb(var(--color-primary))' : 'inherit',
-                    boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
-                    whiteSpace: 'nowrap', transition: 'all 0.2s',
-                  }}>{t.label}</button>
-                ))}
+                ].map(t => {
+                  const locked = t.feature && !hasFeature(t.feature);
+                  const tabBtn = (
+                    <button key={t.key} onClick={() => !locked && setTab(t.key as any)} style={{
+                      padding: '9px 18px', borderRadius: 10, border: 'none', cursor: locked ? 'pointer' : 'pointer',
+                      fontWeight: tab === t.key ? 600 : 400, fontSize: 13,
+                      background: tab === t.key ? 'var(--card-bg)' : 'transparent',
+                      color: tab === t.key ? 'rgb(var(--color-primary))' : 'inherit',
+                      boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
+                      whiteSpace: 'nowrap', transition: 'all 0.2s',
+                    }}>{t.label}</button>
+                  );
+                  if (locked) {
+                    return <FeatureLock key={t.key} feature={t.feature!} inline>{tabBtn}</FeatureLock>;
+                  }
+                  return tabBtn;
+                })}
               </div>
 
               {/* Global Period Filter — shown on all tabs */}

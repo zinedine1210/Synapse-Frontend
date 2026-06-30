@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from '@/lib/AuthContext';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
@@ -77,6 +78,7 @@ export default function SplitBillPage() {
   useAuth();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { hasFeature } = useFeatureAccess();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { data: bills = [], loading, revalidate: fetchBills } = useCache<SplitBill[]>('split-bill:list', async () => {
     const res = await splitBillService.getAll();
@@ -541,6 +543,7 @@ export default function SplitBillPage() {
                     className={`sb-scan ${scanning ? 'is-scanning' : ''}`}
                     onClick={() => {
                       if (scanning) return;
+                      if (!hasFeature('split_bill_scan')) { showToast('Fitur scan struk belum tersedia di paket kamu. Upgrade yuk! 🔓', 'error'); return; }
                       const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
                       if (isMobile) setShowScanChoice(true);
                       else scanGalleryRef.current?.click();

@@ -33,6 +33,8 @@ import { PhotoDropzone } from '@/components/food/PhotoDropzone';
 import { RecipeCard } from '@/components/food/RecipeCard';
 import { PreferenceForm } from '@/components/food/PreferenceForm';
 import { MealPlanTab } from '@/components/food/MealPlanTab';
+import { FeatureLock } from '@/components/ui/FeatureLock';
+import { useFeatureAccess } from '@/lib/feature-access';
 
 const FILTER_OPTIONS = [
   { label: 'Hemat', value: 'hemat' },
@@ -81,6 +83,7 @@ const TABS = [
 export default function MakanApaPage() {
   useAuth();
   const { showToast } = useToast();
+  const { hasFeature } = useFeatureAccess();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mode, setMode] = useSessionStorage<TabMode>('makan_mode', 'fridge');
   const [pref, setPref] = useState<FoodPreference | null>(null);
@@ -769,6 +772,7 @@ export default function MakanApaPage() {
                   )}
 
                   {/* Inviting upload dropzone */}
+                  <FeatureLock feature={mode === 'fridge' ? 'food_fridge_scan' : 'food_menu_scan'}>
                   <PhotoDropzone
                     loading={loading}
                     title={mode === 'fridge' ? 'Foto isi kulkasmu' : 'Foto menu restoran'}
@@ -777,6 +781,7 @@ export default function MakanApaPage() {
                       : 'AI pilihkan menu terbaik sesuai budget & seleramu. Tarik foto ke sini atau klik untuk memilih.'}
                     onFile={handleImageUpload}
                   />
+                  </FeatureLock>
 
                   {/* Processing / Loading Info Banner */}
                   {loading && (
@@ -1104,7 +1109,9 @@ export default function MakanApaPage() {
 
               {/* Meal Plan Tab */}
               {mode === 'meal-plan' && (
-                <MealPlanTab loading={loading} />
+                <FeatureLock feature="food_meal_plan">
+                  <MealPlanTab loading={loading} />
+                </FeatureLock>
               )}
             </div>
 

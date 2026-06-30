@@ -1137,15 +1137,6 @@ body.hide-bottom-nav .quick-action-fab {
   transform: scale(1.005);
 }
 
-.chat-bubble:hover .chat-action-btn {
-  opacity: 0.7 !important;
-}
-
-.chat-bubble:hover .chat-action-btn:hover {
-  opacity: 1 !important;
-  color: rgb(var(--color-primary)) !important;
-}
-
 /* ─── Fun Hover Effects for Youth ────────────────────────────────────── */
 .hover-lift {
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;

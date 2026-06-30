@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
+import { useFeatureAccess } from '@/lib/feature-access';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
@@ -40,6 +41,7 @@ export default function ChapterEditorPage() {
   const thesisId = params.get('thesisId') || '';
   const chapterId = params.get('chapterId') || '';
   const { showToast } = useToast();
+  const { hasFeature } = useFeatureAccess();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [chapter, setChapter] = useState<ThesisChapter | null>(null);
@@ -360,16 +362,16 @@ export default function ChapterEditorPage() {
                           </button>
                         </div>
                       )}
-                      <Button onClick={() => setShowAiPanel(!showAiPanel)} variant="secondary" size="sm" style={{ background: showAiPanel ? 'rgba(99, 102, 241, 0.1)' : undefined, color: showAiPanel ? '#6366f1' : undefined, border: showAiPanel ? '1.5px solid rgba(99, 102, 241, 0.3)' : undefined }}>
+                      <Button onClick={() => setShowAiPanel(!showAiPanel)} variant="secondary" size="sm" disabled={!hasFeature('skripsweet_write_assist')} style={{ background: showAiPanel ? 'rgba(99, 102, 241, 0.1)' : undefined, color: showAiPanel ? '#6366f1' : undefined, border: showAiPanel ? '1.5px solid rgba(99, 102, 241, 0.3)' : undefined, opacity: hasFeature('skripsweet_write_assist') ? 1 : 0.5 }}>
                         <Wand2 size={14} /> AI Assist
                       </Button>
-                      <Button onClick={handleGetFeedback} variant="secondary" size="sm" disabled={feedbackLoading || wordCount < 20} style={{ background: 'rgba(168, 85, 247, 0.06)', color: '#a855f7', border: '1px solid rgba(168, 85, 247, 0.2)' }}>
+                      <Button onClick={handleGetFeedback} variant="secondary" size="sm" disabled={feedbackLoading || wordCount < 20 || !hasFeature('skripsweet_feedback')} style={{ background: 'rgba(168, 85, 247, 0.06)', color: '#a855f7', border: '1px solid rgba(168, 85, 247, 0.2)', opacity: hasFeature('skripsweet_feedback') ? 1 : 0.5 }}>
                         {feedbackLoading ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />} Review
                       </Button>
-                      <Button onClick={loadVersions} variant="secondary" size="sm" disabled={versionsLoading}>
+                      <Button onClick={loadVersions} variant="secondary" size="sm" disabled={versionsLoading || !hasFeature('skripsweet_versions')} style={{ opacity: hasFeature('skripsweet_versions') ? 1 : 0.5 }}>
                         {versionsLoading ? <Loader2 size={14} className="spin" /> : <History size={14} />} Riwayat
                       </Button>
-                      <Button onClick={handleExportDocx} variant="secondary" size="sm">
+                      <Button onClick={handleExportDocx} variant="secondary" size="sm" disabled={!hasFeature('skripsweet_docx_export')} style={{ opacity: hasFeature('skripsweet_docx_export') ? 1 : 0.5 }}>
                         <Download size={14} /> .doc
                       </Button>
                       <Button onClick={handleSave} disabled={saving} size="sm">

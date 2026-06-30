@@ -14,7 +14,7 @@ import { Appbar } from '@/components/layout/Appbar';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { useCache } from '@/lib/cache';
 import { useAiJob } from '@/lib/useAiJob';
-import { Card, Button, Alert, Modal, useToast, PullToRefresh, AnimatedNumber, TextInput, TextArea, AIPhotoInput } from '@/components/ui';
+import { Card, Button, Alert, Modal, useToast, PullToRefresh, AnimatedNumber, TextInput, TextArea, AIPhotoInput, FeatureLock } from '@/components/ui';
 import { TodaysBriefing, BriefingData } from '@/components/dashboard/TodaysBriefing';
 import { AiBriefingCard, AiBriefingSkeleton } from '@/components/dashboard/AiBriefingCard';
 import { ContextualBubbles } from '@/components/dashboard/ContextualBubbles';
@@ -400,13 +400,19 @@ export default function DashboardPage() {
                   { label: 'Split Bill', icon: '🧾', href: '/split-bill', feature: 'split_bill' },
                   { label: 'Makan', icon: '🍜', href: '/makan', feature: 'food_recommend' },
                   { label: 'Insight', icon: '💡', href: '/insight', feature: 'ai_insight' },
-                ].filter(a => hasFeature(a.feature)).map(action => (
-                  <Link key={action.label} href={action.href} style={{ textDecoration: 'none' }}>
-                    <div className="quick-action-chip" style={{ padding: '10px 18px', borderRadius: 12, background: 'var(--card-bg)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap', fontSize: 14, fontWeight: 500 }}>
-                      <span style={{ fontSize: 16 }}>{action.icon}</span> {action.label}
-                    </div>
-                  </Link>
-                ))}
+                ].map(action => {
+                  const content = (
+                    <Link key={action.label} href={action.href} style={{ textDecoration: 'none' }}>
+                      <div className="quick-action-chip" style={{ padding: '10px 18px', borderRadius: 12, background: 'var(--card-bg)', border: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap', fontSize: 14, fontWeight: 500 }}>
+                        <span style={{ fontSize: 16 }}>{action.icon}</span> {action.label}
+                      </div>
+                    </Link>
+                  );
+                  if (!hasFeature(action.feature)) {
+                    return <FeatureLock key={action.label} feature={action.feature} inline>{content}</FeatureLock>;
+                  }
+                  return <React.Fragment key={action.label}>{content}</React.Fragment>;
+                })}
               </div>
 
               {/* ═══════ SECTION 5: KEUANGAN SNAPSHOT ═══════ */}

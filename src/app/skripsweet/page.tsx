@@ -783,20 +783,26 @@ export default function SkripsweetPage() {
                   {/* Tabs */}
                   <div style={{ display: 'flex', gap: 4, marginBottom: 24, padding: 4, borderRadius: 14, background: 'var(--input-bg)', overflowX: 'auto' }}>
                     {([
-                      { key: 'dashboard', label: 'Dashboard' }, { key: 'chapters', label: 'Bab' },
-                      { key: 'journals', label: 'Jurnal' }, { key: 'bimbingan', label: 'Bimbingan' },
-                      { key: 'bibliography', label: 'Pustaka' }, { key: 'chat', label: 'Chat AI' },
-                      { key: 'explore', label: 'Komunitas' },
-                    ] as { key: Tab; label: string }[]).map(t => (
-                      <button key={t.key} onClick={() => setTab(t.key)} style={{
+                      { key: 'dashboard', label: 'Dashboard', feature: null },
+                      { key: 'chapters', label: 'Bab', feature: null },
+                      { key: 'journals', label: 'Jurnal', feature: 'skripsweet_journal' },
+                      { key: 'bimbingan', label: 'Bimbingan', feature: 'skripsweet_feedback' },
+                      { key: 'bibliography', label: 'Pustaka', feature: 'skripsweet_bibliography' },
+                      { key: 'chat', label: 'Chat AI', feature: 'skripsweet_ai_chat' },
+                      { key: 'explore', label: 'Komunitas', feature: 'skripsweet_community' },
+                    ] as { key: Tab; label: string; feature: string | null }[]).map(t => {
+                      const locked = t.feature && !hasFeature(t.feature);
+                      return (
+                      <button key={t.key} onClick={() => { if (locked) { showToast('Fitur ini belum tersedia di paket kamu. Upgrade yuk! 🔓', 'error'); return; } setTab(t.key); }} style={{
                         padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
                         fontWeight: tab === t.key ? 600 : 400, fontSize: 13,
                         background: tab === t.key ? 'var(--card-bg)' : 'transparent',
-                        color: tab === t.key ? 'rgb(var(--color-primary))' : 'inherit',
+                        color: locked ? 'rgb(var(--text-muted))' : tab === t.key ? 'rgb(var(--color-primary))' : 'inherit',
                         boxShadow: tab === t.key ? '0 1px 4px rgba(0,0,0,0.06)' : 'none',
-                        whiteSpace: 'nowrap', transition: 'all 0.2s',
-                      }}>{t.label}</button>
-                    ))}
+                        whiteSpace: 'nowrap', transition: 'all 0.2s', opacity: locked ? 0.55 : 1,
+                      }}>{t.label}{locked ? ' 🔒' : ''}</button>
+                      );
+                    })}
                   </div>
 
                   {/* ═══════ DASHBOARD ═══════ */}

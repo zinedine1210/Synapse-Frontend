@@ -131,10 +131,10 @@ export function CommandPalette() {
 
   // Ctrl+K / Cmd+K
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setOpen(prev => !prev); } };
+    const handler = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); if (hasFeature('command_palette')) setOpen(prev => !prev); } };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [hasFeature]);
 
   // External open event
   useEffect(() => {

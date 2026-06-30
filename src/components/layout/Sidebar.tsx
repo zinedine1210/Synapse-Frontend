@@ -298,6 +298,7 @@ export function Sidebar({ userRole = 'USER', collapsed: controlledCollapsed, onT
             <Link
               href={settingsNavItem.path}
               title={collapsed ? settingsNavItem.label : undefined}
+              data-tour="settings"
               style={{
                 display: 'flex',
                 alignItems: 'center',

@@ -8,16 +8,20 @@ import { BottomNav } from './BottomNav';
 import { MobileNavSheet } from './MobileNavSheet';
 import { CommandPalette } from './CommandPalette';
 import { OnboardingFlow } from './OnboardingFlow';
+import { PostTourPrompt } from './PostTourPrompt';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { TourGuide, type TourStep } from './TourGuide';
 import { SplashScreen } from './SplashScreen';
 
 const TOUR_STEPS: TourStep[] = [
-  { targetSelector: '[data-tour="dashboard"]', title: 'Dashboard', description: 'Pusat kendali kuliahmu. Lihat kelas, jadwal, dan ringkasan AI di satu tempat.', position: 'bottom' },
-  { targetSelector: '[data-tour="duit-tracker"]', title: 'Duit Tracker', description: 'Catat pengeluaran, atur budget, dan tanam pohon tabungan virtual.', position: 'right' },
-  { targetSelector: '[data-tour="todos"]', title: 'To-Do List', description: 'Kelola tugas dengan drag & drop, kategori, dan kalender.', position: 'right' },
-  { targetSelector: '[data-tour="qna"]', title: 'Ruang Tanya', description: 'Tanya, jawab, dan bangun reputasi bersama pengguna lain.', position: 'right' },
-  { targetSelector: '[data-tour="search"]', title: 'Pencarian Cepat', description: 'Tekan Ctrl+K untuk mencari tugas, todo, transaksi, dan lainnya.', position: 'bottom', allowInteraction: true },
+  { targetSelector: '[data-tour="dashboard"]', title: '🏠 Dashboard', description: 'Pusat kendali kuliahmu. Lihat kelas aktif, jadwal hari ini, dan ringkasan AI di satu tempat.', position: 'bottom' },
+  { targetSelector: '[data-tour="classes"]', title: '🎓 Kelas', description: 'Gabung atau buat kelas. Diskusi forum, materi, tugas, dan quiz semuanya di sini.', position: 'right' },
+  { targetSelector: '[data-tour="duit-tracker"]', title: '💰 Duit Tracker', description: 'Catat pengeluaran harian, atur budget per kategori, dan lihat AI roast keuanganmu tiap minggu.', position: 'right' },
+  { targetSelector: '[data-tour="todos"]', title: '✅ To-Do & Jadwal', description: 'Kelola tugas dan jadwal kuliah. Drag & drop prioritas, kalender, dan Pomodoro timer bawaan.', position: 'right' },
+  { targetSelector: '[data-tour="qna"]', title: '❓ Ruang Tanya', description: 'Tanya apapun, jawab pertanyaan orang lain, dan kumpulkan poin reputasi.', position: 'right' },
+  { targetSelector: '[data-tour="skripsweet"]', title: '🎓 Skripsweet', description: 'Tracker skripsi lengkap. Pantau progress, bimbingan, dan deadline siding.', position: 'right' },
+  { targetSelector: '[data-tour="search"]', title: '🔍 Pencarian Cepat', description: 'Tekan Ctrl+K (atau ⌘K di Mac) untuk cari tugas, transaksi, kelas, dan navigasi cepat.', position: 'bottom', allowInteraction: true },
+  { targetSelector: '[data-tour="settings"]', title: '⚙️ Pengaturan', description: 'Atur profil, tema gelap/terang, preferensi notifikasi, dan kelola akun di sini.', position: 'top' },
 ];
 
 interface AuthGuardProps {
@@ -33,6 +37,7 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
   const pathname = usePathname();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTour, setShowTour] = useState(false);
+  const [showPostTour, setShowPostTour] = useState(false);
   const [navSheetOpen, setNavSheetOpen] = useState(false);
   // Track if we've ever been authed so we can keep DOM alive during
   // brief loading flickers (e.g. returning from native camera)
@@ -67,6 +72,11 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
     if (!user) return;
     localStorage.setItem(`synapse_tour_${user.id}`, 'done');
     setShowTour(false);
+    // Show post-tour prompts if not already dismissed
+    const postTourKey = `synapse_post_tour_${user.id}`;
+    if (!localStorage.getItem(postTourKey)) {
+      setTimeout(() => setShowPostTour(true), 400);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -103,6 +113,14 @@ export function AuthGuard({ children, requiredRole, requiredFeature }: AuthGuard
       )}
       {showOnboarding && <OnboardingFlow onComplete={finishOnboarding} />}
       {showTour && <TourGuide steps={TOUR_STEPS} onComplete={finishTour} onSkip={finishTour} />}
+      {showPostTour && (
+        <PostTourPrompt
+          onDismiss={() => {
+            if (user) localStorage.setItem(`synapse_post_tour_${user.id}`, 'done');
+            setShowPostTour(false);
+          }}
+        />
+      )}
       {children}
       <BottomNav onMoreTap={() => setNavSheetOpen(true)} />
       <MobileNavSheet open={navSheetOpen} onClose={() => setNavSheetOpen(false)} />

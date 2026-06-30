@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { useFeatureAccess } from '@/lib/feature-access';
-import { useInfiniteScroll } from '@/lib/useInfiniteScroll';
+import { useQueryClient } from '@tanstack/react-query';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
@@ -17,7 +18,18 @@ import { TransactionSheet } from '@/components/duit-tracker/TransactionSheet';
 import { SmartInputModal, ScannedItem, AiParseResult } from '@/components/duit-tracker/SmartInputModal';
 import { PieChartSvg, LineChartSvg, SpendingHeatmap, ForecastCard, ComparisonCard, ChallengeSection, CustomCategoryManager, CsvImportModal, ExportButton, ReminderBanner } from '@/components/duit-tracker/DuitTrackerAdvanced';
 import { WhatIfCalculator } from '@/components/duit-tracker/WhatIfCalculator';
-import { useCache } from '@/lib/cache';
+import {
+  useTransactions, useSummary, useTrees, useBudgets, useOverview,
+  useBills, useBillHistory, useDebts, useWishlist, useChallenges,
+  useCustomCategories, useForecast, useComparison, useReminders, useBawelSetting,
+  useCreateTransaction, useUpdateTransaction, useDeleteTransaction,
+  useCreateBill, useMarkBillPaid, useUpdateBill, useDeleteBill,
+  useCreateDebt, useMarkDebtPaid, useDeleteDebt,
+  useCreateWishlistItem, useMarkWishlistPurchased, useDeleteWishlistItem,
+  useSetBudget, useDeleteBudget,
+  useCreateTree, useAddTreeTransaction, useDeleteTree,
+  useUpdateBawelSetting, dtKeys,
+} from '@/lib/hooks/useDuitTracker';
 import { useAiJob } from '@/lib/useAiJob';
 import { Plus, Trash2, Loader2, Wallet, TreePine, Sparkles, Edit2, Target, Settings, X, ExternalLink, Check, CalendarClock, ToggleLeft, ToggleRight, TrendingDown, TrendingUp, Upload, BarChart3, Users, PieChart, Calendar, ArrowRight } from 'lucide-react';
 
@@ -223,6 +235,7 @@ export default function DuitTrackerPage() {
   const { hasFeature } = useFeatureAccess();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const queryClient = useQueryClient();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tab, setTab] = useState<'transactions' | 'summary' | 'trees' | 'budget' | 'debts' | 'wishlist' | 'bills' | 'challenges'>('transactions');
   const now = new Date();
@@ -251,37 +264,54 @@ export default function DuitTrackerPage() {
     return params;
   }, [periodPreset, appliedRange, month, year, typeFilter, categoryFilter]);
 
-  // Infinite scroll for transactions — cached for instant back-navigation
-  const txCacheKey = `dt:transactions:${JSON.stringify(txQueryParams)}`;
-  const txFetcher = useCallback(async (page: number) => {
-    return duitTrackerService.getTransactions({ ...txQueryParams, page, limit: 30 });
-  }, [txQueryParams]);
+  // ─── TanStack Query: Transactions (Infinite) ─────────────
+  const txQuery = useTransactions(txQueryParams);
+  const transactions = useMemo(() => txQuery.data?.pages.flatMap(p => p.data) ?? [], [txQuery.data]);
+  const txLoading = txQuery.isLoading;
+  const txSentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const {
-    items: transactions,
-    loading: txLoading,
-    sentinelRef: txSentinelRef,
-    refresh: refreshTx,
-    removeItem: removeTx,
-    updateItem: updateTx,
-    setItems: setTransactions,
-  } = useInfiniteScroll<Transaction>({ fetcher: txFetcher, cacheKey: txCacheKey });
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    if (!txSentinelRef.current || !txQuery.hasNextPage || txQuery.isFetchingNextPage) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0]?.isIntersecting) txQuery.fetchNextPage(); },
+      { rootMargin: '200px' }
+    );
+    observer.observe(txSentinelRef.current);
+    return () => observer.disconnect();
+  }, [txQuery.hasNextPage, txQuery.isFetchingNextPage, txQuery.fetchNextPage]);
 
-  // Cached side data — instant on navigation back
-  const summaryFetcher = useCallback(() => duitTrackerService.getSummary(month, year), [month, year]);
-  const treesFetcher = useCallback(() => duitTrackerService.getTrees(), []);
-  const budgetsFetcher = useCallback(() => duitTrackerService.getBudgets(month, year), [month, year]);
+  // ─── TanStack Query: Side data ───────────────────────────
+  const summaryQuery = useSummary(month, year);
+  const summary = summaryQuery.data;
+  const loading = summaryQuery.isLoading;
 
-  const { data: summary, loading, revalidate: refetchSummary } = useCache<Summary>(`dt:summary:${month}:${year}`, summaryFetcher);
-  const { data: trees = [], revalidate: refetchTrees } = useCache<SavingTree[]>('dt:trees', treesFetcher);
-  const { data: budgets = [], revalidate: refetchBudgets, mutate: mutateBudgets } = useCache<CategoryBudget[]>(`dt:budgets:${month}:${year}`, budgetsFetcher);
+  const treesQuery = useTrees();
+  const trees = treesQuery.data ?? [];
 
-  // Financial overview (debts + bills summary for hero card)
-  const [overview, setOverview] = useState<FinancialOverview | null>(null);
-  const refetchOverview = useCallback(() => {
-    duitTrackerService.getFinancialOverview().then(setOverview).catch(() => {});
-  }, []);
-  useEffect(() => { refetchOverview(); }, [refetchOverview]);
+  const budgetsQuery = useBudgets(month, year);
+  const budgets = budgetsQuery.data ?? [];
+
+  const overviewQuery = useOverview();
+  const overview = overviewQuery.data ?? null;
+
+  const challengesQuery = useChallenges();
+  const challenges = challengesQuery.data ?? [];
+
+  const customCategoriesQuery = useCustomCategories();
+  const customCategories = customCategoriesQuery.data ?? [];
+
+  const forecastQuery = useForecast();
+  const forecast = forecastQuery.data ?? null;
+
+  const comparisonQuery = useComparison();
+  const comparison = comparisonQuery.data ?? null;
+
+  const remindersQuery = useReminders();
+  const reminders = remindersQuery.data ?? null;
+
+  const bawelSettingQuery = useBawelSetting();
+  const bawelSetting = bawelSettingQuery.data ?? null;
 
   // Period label for hero card
   const periodLabel = useMemo(() => {
@@ -289,13 +319,31 @@ export default function DuitTrackerPage() {
     return found ? `Saldo ${found.label.toLowerCase()}` : 'Saldo';
   }, [periodPreset]);
 
+  // Refresh all data (pull-to-refresh)
   const fetchData = useCallback(async () => {
-    refreshTx();
-    refetchSummary();
-    refetchTrees();
-    refetchBudgets();
-    refetchOverview();
-  }, [refreshTx, refetchSummary, refetchTrees, refetchBudgets, refetchOverview]);
+    queryClient.invalidateQueries({ queryKey: dtKeys.all });
+  }, [queryClient]);
+
+  // ─── Mutations ────────────────────────────────────────────
+  const createTxMutation = useCreateTransaction();
+  const updateTxMutation = useUpdateTransaction();
+  const deleteTxMutation = useDeleteTransaction();
+  const createBillMutation = useCreateBill();
+  const markBillPaidMutation = useMarkBillPaid();
+  const updateBillMutation = useUpdateBill();
+  const deleteBillMutation = useDeleteBill();
+  const createDebtMutation = useCreateDebt();
+  const markDebtPaidMutation = useMarkDebtPaid();
+  const deleteDebtMutation = useDeleteDebt();
+  const createWishlistMutation = useCreateWishlistItem();
+  const markWishlistPurchasedMutation = useMarkWishlistPurchased();
+  const deleteWishlistMutation = useDeleteWishlistItem();
+  const setBudgetMutation = useSetBudget();
+  const deleteBudgetMutation = useDeleteBudget();
+  const createTreeMutation = useCreateTree();
+  const addTreeTxMutation = useAddTreeTransaction();
+  const deleteTreeMutation = useDeleteTree();
+  const updateBawelMutation = useUpdateBawelSetting();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSmartInput, setShowSmartInput] = useState(false);
   const [showTreeModal, setShowTreeModal] = useState(false);
@@ -308,32 +356,20 @@ export default function DuitTrackerPage() {
   const [depositTreeId, setDepositTreeId] = useState<string | null>(null);
   const [depositAmount, setDepositAmount] = useState('');
   const [depositType, setDepositType] = useState<'deposit' | 'withdrawal'>('deposit');
-  const [bawelSetting, setBawelSetting] = useState<BawelSetting | null>(null);
   const [showBawelSettings, setShowBawelSettings] = useState(false);
 
 
   // Recurring Bills / Tagihan
-  const [bills, setBills] = useState<RecurringBill[]>([]);
-  const [billsLoading, setBillsLoading] = useState(false);
-  const [billsLoaded, setBillsLoaded] = useState(false);
+  const billsQuery = useBills(tab === 'bills');
+  const bills = billsQuery.data ?? [];
+  const billsLoading = billsQuery.isLoading;
   const [showBillModal, setShowBillModal] = useState(false);
   const [billForm, setBillForm] = useState({ name: '', amount: '', dueDay: '1', category: 'tagihan', notes: '' });
   const [billFilter, setBillFilter] = useState<'all' | 'active' | 'inactive'>('active');
   const [billHistoryId, setBillHistoryId] = useState<string | null>(null);
-  const [billHistory, setBillHistory] = useState<{ id: string; amount: number; date: string }[]>([]);
-  const [billHistoryLoading, setBillHistoryLoading] = useState(false);
-
-  const fetchBills = useCallback(async () => {
-    if (!billsLoaded) setBillsLoading(true);
-    try {
-      const data = await duitTrackerService.getBills();
-      setBills(data);
-      setBillsLoaded(true);
-    } catch { }
-    finally { setBillsLoading(false); }
-  }, [billsLoaded]);
-
-  useEffect(() => { if (tab === 'bills') fetchBills(); }, [tab, fetchBills]);
+  const billHistoryQuery = useBillHistory(billHistoryId);
+  const billHistory = billHistoryQuery.data?.payments ?? [];
+  const billHistoryLoading = billHistoryQuery.isLoading;
 
   const filteredBills = useMemo(() => {
     if (billFilter === 'all') return bills;
@@ -355,78 +391,49 @@ export default function DuitTrackerPage() {
     if (!billForm.name || !amount) return;
     setSubmitting(true);
     try {
-      const created = await duitTrackerService.createBill({
+      await createBillMutation.mutateAsync({
         name: billForm.name,
         amount,
         dueDay: parseInt(billForm.dueDay) || 1,
         category: billForm.category || 'tagihan',
         notes: billForm.notes || undefined,
       });
-      setBills(prev => [created, ...prev]);
-      showToast('Tagihan ditambahkan! \ud83d\udcdd', 'success');
+      showToast('Tagihan ditambahkan! 📝', 'success');
       setShowBillModal(false);
       setBillForm({ name: '', amount: '', dueDay: '1', category: 'tagihan', notes: '' });
-      refetchOverview();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
 
   const handleMarkBillPaid = async (id: string) => {
     try {
-      await duitTrackerService.markBillPaid(id);
-      setBills(prev => prev.map(b => b.id === id ? { ...b, isPaidThisMonth: true, isDueSoon: false, lastPaidAt: new Date().toISOString() } : b));
-      showToast('Tagihan dibayar bulan ini! \u2705', 'success');
-      refetchOverview();
-      refreshTx();
+      await markBillPaidMutation.mutateAsync(id);
+      showToast('Tagihan dibayar bulan ini! ✅', 'success');
     } catch (e: any) { showToast(e.message, 'error'); }
   };
 
   const handleToggleBillActive = async (bill: RecurringBill) => {
-    setBills(prev => prev.map(b => b.id === bill.id ? { ...b, isActive: !b.isActive } : b));
     try {
-      await duitTrackerService.updateBill(bill.id, { isActive: !bill.isActive });
+      await updateBillMutation.mutateAsync({ id: bill.id, data: { isActive: !bill.isActive } });
       showToast(bill.isActive ? 'Tagihan dinonaktifkan' : 'Tagihan diaktifkan kembali', 'success');
-      refetchOverview();
-    } catch (e: any) {
-      setBills(prev => prev.map(b => b.id === bill.id ? { ...b, isActive: bill.isActive } : b));
-      showToast(e.message, 'error');
-    }
+    } catch (e: any) { showToast(e.message, 'error'); }
   };
 
   const handleDeleteBill = async (id: string) => {
     if (!await confirm({ message: 'Yakin hapus tagihan ini?', variant: 'danger' })) return;
-    const prev = bills;
-    setBills(p => p.filter(b => b.id !== id));
     try {
-      await duitTrackerService.deleteBill(id);
+      await deleteBillMutation.mutateAsync(id);
       showToast('Tagihan dihapus', 'success');
-      refetchOverview();
-    } catch (e: any) {
-      setBills(prev);
-      showToast(e.message, 'error');
-    }
+    } catch (e: any) { showToast(e.message, 'error'); }
   };
 
   // Debts
-  const [debts, setDebts] = useState<any[]>([]);
-  const [debtsLoading, setDebtsLoading] = useState(false);
-  const [debtsLoaded, setDebtsLoaded] = useState(false);
+  const [debtFilter, setDebtFilter] = useState<'all' | 'active' | 'paid'>('active');
+  const debtsQuery = useDebts(debtFilter, tab === 'debts');
+  const debts = debtsQuery.data ?? [];
+  const debtsLoading = debtsQuery.isLoading;
   const [showDebtModal, setShowDebtModal] = useState(false);
   const [debtForm, setDebtForm] = useState({ description: '', amount: '', debtType: 'owed_by_me', personName: '', dueDate: '' });
-  const [debtFilter, setDebtFilter] = useState<'all' | 'active' | 'paid'>('active');
-
-  const fetchDebts = useCallback(async () => {
-    if (!debtsLoaded) setDebtsLoading(true);
-    try {
-      const isPaid = debtFilter === 'all' ? undefined : debtFilter === 'paid';
-      const data = await duitTrackerService.getDebts(isPaid);
-      setDebts(data);
-      setDebtsLoaded(true);
-    } catch { }
-    finally { setDebtsLoading(false); }
-  }, [debtFilter, debtsLoaded]);
-
-  useEffect(() => { if (tab === 'debts') fetchDebts(); }, [tab, fetchDebts]);
 
   const handleDebtSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -434,68 +441,41 @@ export default function DuitTrackerPage() {
     if (!debtForm.description || !amount || !debtForm.personName) return;
     setSubmitting(true);
     try {
-      const created = await duitTrackerService.createDebt({
+      await createDebtMutation.mutateAsync({
         description: debtForm.description,
         amount,
         debtType: debtForm.debtType,
         personName: debtForm.personName,
         dueDate: debtForm.dueDate || undefined,
       });
-      setDebts(prev => [created, ...prev]);
       showToast('Hutang dicatat! 📝', 'success');
       setShowDebtModal(false);
       setDebtForm({ description: '', amount: '', debtType: 'owed_by_me', personName: '', dueDate: '' });
-      refetchOverview();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
 
   const handleMarkDebtPaid = async (debtId: string) => {
-    setDebts(prev => prev.map(d => d.id === debtId ? { ...d, isPaid: true, paidAt: new Date().toISOString() } : d));
     try {
-      await duitTrackerService.markDebtPaid(debtId);
+      await markDebtPaidMutation.mutateAsync(debtId);
       showToast('Hutang lunas! Transaksi tercatat otomatis 🎉', 'success');
-      refetchOverview();
-      refreshTx();
-      refetchSummary();
-    } catch (e: any) {
-      fetchDebts();
-      showToast(e.message, 'error');
-    }
+    } catch (e: any) { showToast(e.message, 'error'); }
   };
 
   const handleDeleteDebt = async (debtId: string) => {
-    const prev = debts;
-    setDebts(p => p.filter(d => d.id !== debtId));
     try {
-      await duitTrackerService.deleteDebt(debtId);
+      await deleteDebtMutation.mutateAsync(debtId);
       showToast('Hutang dihapus', 'success');
-      refetchOverview();
-    } catch (e: any) {
-      setDebts(prev);
-      showToast(e.message, 'error');
-    }
+    } catch (e: any) { showToast(e.message, 'error'); }
   };
 
   // Wishlist / Rencana Belanja
-  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
-  const [wishlistLoading, setWishlistLoading] = useState(false);
-  const [wishlistLoaded, setWishlistLoaded] = useState(false);
+  const wishlistQuery = useWishlist(tab === 'wishlist' || tab === 'summary');
+  const wishlist = wishlistQuery.data ?? [];
+  const wishlistLoading = wishlistQuery.isLoading;
   const [showWishlistModal, setShowWishlistModal] = useState(false);
   const [wishlistForm, setWishlistForm] = useState({ name: '', estimatedPrice: '', priority: 'medium', category: '', targetDate: '', notes: '', url: '' });
   const [wishlistFilter, setWishlistFilter] = useState<'pending' | 'purchased' | 'all'>('pending');
-
-  const fetchWishlist = useCallback(async () => {
-    if (!wishlistLoaded) setWishlistLoading(true);
-    try {
-      const data = await duitTrackerService.getWishlist();
-      setWishlist(data);
-      setWishlistLoaded(true);
-    } catch { }
-    finally { setWishlistLoading(false); }
-  }, [wishlistLoaded]);
-
-  useEffect(() => { if (tab === 'wishlist' || tab === 'summary') fetchWishlist(); }, [tab, fetchWishlist]);
 
   const filteredWishlist = useMemo(() => {
     if (wishlistFilter === 'all') return wishlist;
@@ -566,7 +546,7 @@ export default function DuitTrackerPage() {
     if (!wishlistForm.name || !estimatedPrice) return;
     setSubmitting(true);
     try {
-      await duitTrackerService.createWishlistItem({
+      await createWishlistMutation.mutateAsync({
         name: wishlistForm.name,
         estimatedPrice,
         priority: wishlistForm.priority,
@@ -578,7 +558,6 @@ export default function DuitTrackerPage() {
       showToast('Wishlist ditambahkan! 🛒', 'success');
       setShowWishlistModal(false);
       setWishlistForm({ name: '', estimatedPrice: '', priority: 'medium', category: '', targetDate: '', notes: '', url: '' });
-      fetchWishlist();
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
@@ -591,28 +570,17 @@ export default function DuitTrackerPage() {
       message: `"${item.name}" (${fmt(item.estimatedPrice)}) akan ditandai sebagai dibeli dan otomatis dicatat sebagai pengeluaran.`,
     });
     if (!confirmed) return;
-    setWishlist(prev => prev.map(w => w.id === id ? { ...w, isPurchased: true, purchasedAt: new Date().toISOString() } as WishlistItem : w));
     try {
-      await duitTrackerService.markWishlistPurchased(id);
+      await markWishlistPurchasedMutation.mutateAsync(id);
       showToast('Item dibeli! Transaksi pengeluaran tercatat otomatis', 'success');
-      refreshTx();
-      refetchSummary();
-    } catch (e: any) {
-      fetchWishlist();
-      showToast(e.message, 'error');
-    }
+    } catch (e: any) { showToast(e.message, 'error'); }
   };
 
   const handleDeleteWishlistItem = async (id: string) => {
-    const prev = wishlist;
-    setWishlist(p => p.filter(w => w.id !== id));
     try {
-      await duitTrackerService.deleteWishlistItem(id);
+      await deleteWishlistMutation.mutateAsync(id);
       showToast('Item dihapus dari wishlist', 'success');
-    } catch (e: any) {
-      setWishlist(prev);
-      showToast(e.message, 'error');
-    }
+    } catch (e: any) { showToast(e.message, 'error'); }
   };
 
   // AI Job tracking for weekly roast
@@ -624,26 +592,7 @@ export default function DuitTrackerPage() {
   const roastLoading = weeklyRoastJob.isProcessing || weeklyRoastJob.isInitializing;
 
   // ── New Features State ──
-  const [challenges, setChallenges] = useState<BudgetChallenge[]>([]);
-  const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
-  const [forecast, setForecast] = useState<FinancialForecast | null>(null);
-  const [comparison, setComparison] = useState<SpendingComparison | null>(null);
-  const [reminders, setReminders] = useState<SmartReminders | null>(null);
   const [showCsvImport, setShowCsvImport] = useState(false);
-
-  const fetchChallenges = useCallback(() => { duitTrackerService.getChallenges().then(setChallenges).catch(() => {}); }, []);
-  const fetchCustomCategories = useCallback(() => { duitTrackerService.getCustomCategories().then(setCustomCategories).catch(() => {}); }, []);
-  const fetchForecast = useCallback(() => { duitTrackerService.getFinancialForecast().then(setForecast).catch(() => {}); }, []);
-  const fetchComparison = useCallback(() => { duitTrackerService.getSpendingComparison().then(setComparison).catch(() => {}); }, []);
-  const fetchReminders = useCallback(() => { duitTrackerService.getReminders().then(setReminders).catch(() => {}); }, []);
-
-  useEffect(() => {
-    fetchChallenges();
-    fetchCustomCategories();
-    fetchForecast();
-    fetchComparison();
-    fetchReminders();
-  }, [fetchChallenges, fetchCustomCategories, fetchForecast, fetchComparison, fetchReminders]);
 
   // Merged categories (built-in + custom)
   const allExpenseCategories = useMemo(() => {
@@ -657,6 +606,22 @@ export default function DuitTrackerPage() {
   }, [customCategories]);
 
   const allCategories = useMemo(() => [...allExpenseCategories, ...allIncomeCategories], [allExpenseCategories, allIncomeCategories]);
+
+  // ── FAB deep-link: auto-open modals from ?fab= query param ──
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const fab = searchParams.get('fab');
+    if (!fab) return;
+    // Clear the query param so it doesn't re-trigger
+    window.history.replaceState({}, '', '/duit-tracker');
+    switch (fab) {
+      case 'ai': setShowSmartInput(true); break;
+      case 'transaksi': setShowAddModal(true); break;
+      case 'hutang': setTab('debts'); setTimeout(() => setShowDebtModal(true), 100); break;
+      case 'tagihan': setTab('bills'); setTimeout(() => setShowBillModal(true), 100); break;
+      case 'wishlist': setTab('wishlist'); setTimeout(() => setShowWishlistModal(true), 100); break;
+    }
+  }, [searchParams]);
 
   // Pie chart data for summary
   const pieChartData = useMemo(() => {
@@ -694,14 +659,11 @@ export default function DuitTrackerPage() {
     }
   };
 
-  useEffect(() => {
-    siBawelService.getSetting().then(setBawelSetting).catch(() => {});
-  }, []);
+
 
   const handleBawelToggle = async (field: string, value: any) => {
     try {
-      const updated = await siBawelService.updateSetting({ [field]: value } as any);
-      setBawelSetting(updated);
+      await updateBawelMutation.mutateAsync({ [field]: value } as any);
       showToast('Setting Si Bawel udah di-update!', 'success');
     } catch { showToast('Gagal update setting nih.', 'error'); }
   };
@@ -711,45 +673,18 @@ export default function DuitTrackerPage() {
     const amt = parseCurrency(form.amount);
     if (!amt || !form.label) return;
     setSubmitting(true);
-    const now = new Date().toISOString();
     try {
       if (editingTx) {
-        // Optimistic update
-        const optimistic: Transaction = { ...editingTx, amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || editingTx.date };
-        updateTx(tx => tx.id === editingTx.id, () => optimistic);
-        setShowAddModal(false); setEditingTx(null);
-        setForm({ amount: '', type: 'expense', category: 'lainnya', label: '', note: '', date: '' });
-        try {
-          const updated = await duitTrackerService.updateTransaction(editingTx.id, { amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || undefined });
-          updateTx(tx => tx.id === editingTx.id, () => updated);
-          showToast('Transaksi udah di-update! ✅', 'success');
-          refetchOverview();
-        } catch (e: any) {
-          updateTx(tx => tx.id === editingTx.id, () => editingTx);
-          showToast(e.message || 'Gagal update transaksi.', 'error');
-        }
+        await updateTxMutation.mutateAsync({ id: editingTx.id, data: { amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || undefined } });
+        showToast('Transaksi udah di-update! ✅', 'success');
       } else {
-        // Optimistic create
-        const tempId = `temp-${Date.now()}`;
-        const tempTx: Transaction = { id: tempId, amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || now, createdAt: now, updatedAt: now, bawelComment: undefined, bawelLevel: undefined } as any;
-        setTransactions(prev => [tempTx, ...prev]);
-        // Optimistically update summary balance
-        refetchSummary();
-        setShowAddModal(false); setEditingTx(null);
-        setForm({ amount: '', type: 'expense', category: 'lainnya', label: '', note: '', date: '' });
-        try {
-          const created = await duitTrackerService.createTransaction({ amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || undefined });
-          // Replace temp with real
-          updateTx(tx => tx.id === tempId, () => created);
-          showToast('Transaksi udah ditambahin! ✅', 'success');
-          refetchSummary();
-          refetchOverview();
-        } catch (e: any) {
-          removeTx(tx => tx.id === tempId);
-          showToast(e.message || 'Gagal tambah transaksi.', 'error');
-        }
+        await createTxMutation.mutateAsync({ amount: amt, type: form.type as any, category: form.category, label: form.label, note: form.note || undefined, date: form.date || undefined });
+        showToast('Transaksi udah ditambahin! ✅', 'success');
       }
-    } finally { setSubmitting(false); }
+      setShowAddModal(false); setEditingTx(null);
+      setForm({ amount: '', type: 'expense', category: 'lainnya', label: '', note: '', date: '' });
+    } catch (e: any) { showToast(e.message || 'Gagal menyimpan transaksi.', 'error'); }
+    finally { setSubmitting(false); }
   };
 
   const handleBulkCreate = async (items: ScannedItem[]) => {
@@ -771,7 +706,7 @@ export default function DuitTrackerPage() {
     }
     if (failed > 0) showToast(`${success} transaksi berhasil, ${failed} gagal`, 'error');
     else showToast(`${success} transaksi dari struk berhasil disimpan`, 'success');
-    fetchData();
+    queryClient.invalidateQueries({ queryKey: dtKeys.all });
   };
 
   const openEdit = (tx: Transaction) => {
@@ -795,17 +730,10 @@ export default function DuitTrackerPage() {
     });
     if (!confirmed) return;
 
-    removeTx(t => t.id === id);
-    refetchSummary();
     try {
-      await duitTrackerService.deleteTransaction(id);
+      await deleteTxMutation.mutateAsync(id);
       showToast('Transaksi udah dihapus! 🗑️', 'success');
-      refetchSummary();
-      refetchOverview();
-    } catch (e: any) {
-      showToast(e.message, 'error');
-      refreshTx();
-    }
+    } catch (e: any) { showToast(e.message, 'error'); }
   };
 
   const handleSmartParsed = (p: AiParseResult, rawText: string) => {
@@ -834,9 +762,9 @@ export default function DuitTrackerPage() {
     if (!treeForm.name || !target) return;
     setSubmitting(true);
     try {
-      await duitTrackerService.createTree({ name: treeForm.name, targetAmount: target, deadline: treeForm.deadline || undefined });
+      await createTreeMutation.mutateAsync({ name: treeForm.name, targetAmount: target, deadline: treeForm.deadline || undefined });
       showToast('Pohon tabungan udah ditanem! 🌱', 'success');
-      setShowTreeModal(false); setTreeForm({ name: '', targetAmount: '', deadline: '' }); fetchData();
+      setShowTreeModal(false); setTreeForm({ name: '', targetAmount: '', deadline: '' });
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
@@ -847,16 +775,16 @@ export default function DuitTrackerPage() {
     if (!amt) return;
     setSubmitting(true);
     try {
-      await duitTrackerService.addTreeTransaction(depositTreeId, { amount: amt, type: depositType });
+      await addTreeTxMutation.mutateAsync({ treeId: depositTreeId, data: { amount: amt, type: depositType } });
       showToast(depositType === 'deposit' ? 'Tabungan nambah! 🌳' : 'Udah ditarik ya.', 'success');
-      setDepositTreeId(null); setDepositAmount(''); fetchData();
+      setDepositTreeId(null); setDepositAmount('');
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
 
   const handleDeleteTree = async (id: string) => {
     if (!await confirm({ message: 'Yakin nih mau hapus pohon tabungan ini?', variant: 'danger' })) return;
-    try { await duitTrackerService.deleteTree(id); showToast('Udah dihapus!', 'success'); fetchData(); }
+    try { await deleteTreeMutation.mutateAsync(id); showToast('Udah dihapus!', 'success'); }
     catch (e: any) { showToast(e.message, 'error'); }
   };
 
@@ -865,18 +793,10 @@ export default function DuitTrackerPage() {
     const catLabel = catInfo?.label || budget.category;
     if (!await confirm({ message: `Yakin hapus budget ${catLabel} bulan ini?`, variant: 'danger' })) return;
 
-    // Optimistic removal
-    const prevBudgets = budgets;
-    mutateBudgets(prev => (prev || []).filter(b => b.id !== budget.id));
-
     try {
-      await duitTrackerService.deleteBudget(budget.id);
+      await deleteBudgetMutation.mutateAsync(budget.id);
       showToast('Budget udah dihapus!', 'success');
-    } catch (e: any) {
-      // Revert optimistic update on error
-      mutateBudgets(prevBudgets);
-      showToast(e.message || 'Gagal hapus budget nih.', 'error');
-    }
+    } catch (e: any) { showToast(e.message || 'Gagal hapus budget nih.', 'error'); }
   };
 
   const handleSetBudget = async (e: React.FormEvent) => {
@@ -885,9 +805,9 @@ export default function DuitTrackerPage() {
     if (!amt) return;
     setSubmitting(true);
     try {
-      await duitTrackerService.setBudget({ category: budgetForm.category, amount: amt, month, year });
+      await setBudgetMutation.mutateAsync({ category: budgetForm.category, amount: amt, month, year });
       showToast('Budget udah di-set! 💰', 'success');
-      setShowBudgetModal(false); setBudgetForm({ category: 'makanan', amount: '' }); fetchData();
+      setShowBudgetModal(false); setBudgetForm({ category: 'makanan', amount: '' });
     } catch (e: any) { showToast(e.message, 'error'); }
     finally { setSubmitting(false); }
   };
@@ -895,12 +815,12 @@ export default function DuitTrackerPage() {
   const fmt = (n: number) => `Rp ${n.toLocaleString('id-ID')}`;
 
   // Group transactions by date
-  const txByDate = transactions.reduce((acc, tx) => {
+  const txByDate: Record<string, Transaction[]> = {};
+  transactions.forEach(tx => {
     const key = new Date(tx.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(tx);
-    return acc;
-  }, {} as Record<string, Transaction[]>);
+    if (!txByDate[key]) txByDate[key] = [];
+    txByDate[key].push(tx);
+  });
 
   return (
     <AuthGuard requiredFeature="duit_tracker">
@@ -1394,7 +1314,7 @@ export default function DuitTrackerPage() {
                   )}
 
                   {/* Custom Categories Manager */}
-                  <CustomCategoryManager categories={customCategories} onRefresh={fetchCustomCategories} />
+                  <CustomCategoryManager categories={customCategories} onRefresh={() => queryClient.invalidateQueries({ queryKey: dtKeys.customCategories() })} />
 
                   {/* Split Bill Link */}
                   <a href="/split-bill" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderRadius: 14, background: 'var(--card-bg)', border: '1px solid var(--dt-card-border)', textDecoration: 'none', color: 'inherit' }}>
@@ -1660,15 +1580,8 @@ export default function DuitTrackerPage() {
                             </div>
                             {/* Payment History Toggle */}
                             <button
-                              onClick={async () => {
-                                if (billHistoryId === bill.id) { setBillHistoryId(null); return; }
-                                setBillHistoryId(bill.id);
-                                setBillHistoryLoading(true);
-                                try {
-                                  const data = await duitTrackerService.getBillHistory(bill.id);
-                                  setBillHistory(data.payments);
-                                } catch { setBillHistory([]); }
-                                finally { setBillHistoryLoading(false); }
+                              onClick={() => {
+                                setBillHistoryId(billHistoryId === bill.id ? null : bill.id);
                               }}
                               style={{ width: '100%', background: 'none', border: 'none', borderTop: '1px solid var(--border-default)', marginTop: 10, paddingTop: 8, cursor: 'pointer', fontSize: 11, color: 'rgb(var(--color-primary))', fontWeight: 600, textAlign: 'center' }}
                             >
@@ -1860,7 +1773,7 @@ export default function DuitTrackerPage() {
             {/* ─── Challenge Tab ─── */}
             {tab === 'challenges' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <ChallengeSection challenges={challenges} onRefresh={fetchChallenges} />
+                <ChallengeSection challenges={challenges} onRefresh={() => queryClient.invalidateQueries({ queryKey: dtKeys.challenges() })} />
               </div>
             )}
 

@@ -6,7 +6,7 @@ import {
   Timer, Tag, Share2, AlertTriangle, ListChecks,
   Loader2, Save, Bell, Users,
 } from 'lucide-react';
-import { PersonalTodo, todoService } from '@/services/todoService';
+import { PersonalTodo } from '@/services/todoService';
 import { Button, TextInput, TextArea, SelectOption, DateTimePicker, CategoryPicker } from '@/components/ui';
 import { SubtaskList } from '@/components/todo/SubtaskList';
 import { RecurrenceSelector } from '@/components/todo/RecurrenceSelector';
@@ -371,11 +371,16 @@ export function TodoDetailModal({
                 ))}
               </div>
               <div style={{ display: 'flex', gap: 6 }}>
-                <TextInput
+                <input
                   value={tagInput}
-                  onChange={setTagInput}
+                  onChange={e => setTagInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
                   placeholder="Tambah tag..."
-                  onKeyDown={(e: any) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
+                  style={{
+                    flex: 1, padding: '8px 12px', borderRadius: 10,
+                    border: '1px solid var(--border-default)', background: 'var(--input-bg)',
+                    fontSize: 13, color: 'rgb(var(--text-primary))', outline: 'none',
+                  }}
                 />
                 <Button onClick={addTag} variant="ghost" style={{ borderRadius: 10, flexShrink: 0, padding: '8px 12px' }}>
                   <Tag size={14} />
@@ -409,14 +414,18 @@ export function TodoDetailModal({
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'rgb(var(--text-muted))' }}>Bagikan</span>
               </div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
-                <div style={{ flex: 1 }}>
-                  <TextInput
-                    value={shareEmail}
-                    onChange={setShareEmail}
-                    placeholder="Email teman..."
-                    onKeyDown={(e: any) => { if (e.key === 'Enter') handleShareSubmit(); }}
-                  />
-                </div>
+                <input
+                  value={shareEmail}
+                  onChange={e => setShareEmail(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleShareSubmit(); }}
+                  placeholder="Email teman..."
+                  type="email"
+                  style={{
+                    flex: 1, padding: '8px 12px', borderRadius: 10,
+                    border: '1px solid var(--border-default)', background: 'var(--input-bg)',
+                    fontSize: 13, color: 'rgb(var(--text-primary))', outline: 'none',
+                  }}
+                />
                 <SelectOption
                   value={shareRole}
                   onChange={setShareRole}

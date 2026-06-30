@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/AuthContext';
 import { useFeatureAccess } from '@/lib/feature-access';
@@ -9,7 +10,13 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
 import { Card, Button, useToast, useConfirm, BottomSheet, PullToRefresh, TextInput, SelectOption } from '@/components/ui';
 import { todoService, PersonalTodo, TodoStats } from '@/services/todoService';
-import { useCache } from '@/lib/cache';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  useTodos, useTodoStats, useTodoCounts, useSharedWithMe,
+  useCreateTodo, useUpdateTodo, useToggleTodo, useDeleteTodo,
+  useReorderTodos, useBulkDeleteTodos, useBulkToggleTodos,
+  useBulkCreateTodos, todoKeys,
+} from '@/lib/hooks/useTodo';
 import { Plus, Loader2, CheckSquare, Sparkles, ChevronLeft, ChevronRight, Flame, Search, CheckCheck, Trash2, X, BookmarkPlus, CalendarPlus, Camera, Share2, Users } from 'lucide-react';
 import { useCelebration } from '@/components/shared/CelebrationOverlay';
 import { CustomCategoryCreator, CustomCategory } from '@/components/todo/CustomCategoryCreator';
@@ -80,22 +87,41 @@ export default function TodosPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
 
-  // Cache key changes when filters change
-  const todoCacheKey = `todos:list:${statusFilter}:${categoryFilter}`;
-  const todoFetcher = useCallback(async () => {
-    const params: any = { limit: 200 };
-    if (statusFilter) params.status = statusFilter;
-    if (categoryFilter) params.category = categoryFilter;
-    const res = await todoService.getAll(params);
-    return res.data;
-  }, [statusFilter, categoryFilter]);
+  const queryClient = useQueryClient();
 
-  const { data: todos = [], loading, revalidate: refetchTodos, mutate: mutateTodos } = useCache<PersonalTodo[]>(todoCacheKey, todoFetcher);
-  const { data: stats, revalidate: refetchStats } = useCache<TodoStats>('todos:stats', () => todoService.getStats());
+  // ─── TanStack Query: Todo list + stats ────────────────────
+  const todosQuery = useTodos({ status: statusFilter || undefined, category: categoryFilter || undefined });
+  const todos = todosQuery.data ?? [];
+  const loading = todosQuery.isLoading;
+
+  const statsQuery = useTodoStats();
+  const stats = statsQuery.data;
+
+  const countsQuery = useTodoCounts(statusFilter);
+  const allTodosForCount = countsQuery.data ?? [];
+
+  const sharedQuery = useSharedWithMe();
+  const pendingInvites = (sharedQuery.data ?? []).filter((s: any) => !s.accepted);
+
+  // Mutations
+  const createTodoMut = useCreateTodo();
+  const updateTodoMut = useUpdateTodo();
+  const toggleTodoMut = useToggleTodo();
+  const deleteTodoMut = useDeleteTodo();
+  const reorderMut = useReorderTodos();
+  const bulkDeleteMut = useBulkDeleteTodos();
+  const bulkToggleMut = useBulkToggleTodos();
+  const bulkCreateMut = useBulkCreateTodos();
+
+  // Optimistic mutate helper (local cache update)
+  const mutateTodos = (updater: (prev: PersonalTodo[]) => PersonalTodo[]) => {
+    const params = { limit: 200, status: statusFilter || undefined, category: categoryFilter || undefined };
+    queryClient.setQueryData(todoKeys.list(params), (prev: PersonalTodo[] | undefined) => updater(prev ?? []));
+  };
 
   const fetchData = useCallback(async () => {
-    await Promise.all([refetchTodos(), refetchStats()]);
-  }, [refetchTodos, refetchStats]);
+    queryClient.invalidateQueries({ queryKey: todoKeys.all });
+  }, [queryClient]);
   const [viewMode, setViewMode] = useState<TodoViewMode>('time');
   const [showSheet, setShowSheet] = useState(false);
   const [editingTodo, setEditingTodo] = useState<PersonalTodo | null>(null);
@@ -153,15 +179,6 @@ export default function TodosPage() {
   }, [templates]);
 
   const allCategories = useMemo(() => [...DEFAULT_CATEGORIES, ...customCategories], [customCategories]);
-
-  // Separate cache for category counts (always unfiltered by category)
-  const countFetcher = useCallback(async () => {
-    const params: any = { limit: 200 };
-    if (statusFilter) params.status = statusFilter;
-    const res = await todoService.getAll(params);
-    return res.data;
-  }, [statusFilter]);
-  const { data: allTodosForCount = [] } = useCache<PersonalTodo[]>(`todos:counts:${statusFilter}`, countFetcher);
 
   const categoryCounts = useMemo(() => {
     const byCategory: Record<string, number> = {};
@@ -560,6 +577,23 @@ export default function TodosPage() {
     setShowSheet(true);
   };
 
+  // ── FAB deep-link: auto-open form from ?fab= query param ──
+  const fabParams = useSearchParams();
+  useEffect(() => {
+    const fab = fabParams.get('fab');
+    if (!fab) return;
+    window.history.replaceState({}, '', '/todos');
+    if (fab === 'manual') {
+      openAdd();
+    } else if (fab === 'ai') {
+      // Focus the quick-add AI input
+      setTimeout(() => {
+        const input = document.querySelector<HTMLInputElement>('form input[placeholder*="Ketik cepat"]');
+        input?.focus();
+      }, 200);
+    }
+  }, [fabParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const closeSheet = () => { setShowSheet(false); setEditingTodo(null); setForm(EMPTY_FORM); setFormSubtasks([]); };
 
   const handleToggle = async (id: string) => {
@@ -744,28 +778,24 @@ export default function TodosPage() {
   };
 
   // ─── Subtask handlers (inline card expansion) ─────────────────────
+  const updateTodoSubtasks = (todoId: string, updater: (subs: any[]) => any[]) => {
+    mutateTodos(prev => (prev || []).map(t => t.id !== todoId ? t : { ...t, subtasks: updater(t.subtasks || []) }));
+    setDetailTodo(prev => prev && prev.id === todoId ? { ...prev, subtasks: updater(prev.subtasks || []) } : prev);
+  };
+
   const handleAddSubtask = async (todoId: string, title: string) => {
     const newSub = await todoService.createSubtask(todoId, title);
-    mutateTodos(prev => (prev || []).map(t => {
-      if (t.id !== todoId) return t;
-      return { ...t, subtasks: [...(t.subtasks || []), newSub] };
-    }));
+    updateTodoSubtasks(todoId, subs => [...subs, newSub]);
   };
 
   const handleToggleSubtask = async (todoId: string, subId: string, isDone: boolean) => {
-    mutateTodos(prev => (prev || []).map(t => {
-      if (t.id !== todoId) return t;
-      return { ...t, subtasks: (t.subtasks || []).map(s => s.id === subId ? { ...s, isDone } : s) };
-    }));
+    updateTodoSubtasks(todoId, subs => subs.map(s => s.id === subId ? { ...s, isDone } : s));
     try { await todoService.updateSubtask(todoId, subId, { isDone }); }
     catch { fetchData(); }
   };
 
   const handleDeleteSubtask = async (todoId: string, subId: string) => {
-    mutateTodos(prev => (prev || []).map(t => {
-      if (t.id !== todoId) return t;
-      return { ...t, subtasks: (t.subtasks || []).filter(s => s.id !== subId) };
-    }));
+    updateTodoSubtasks(todoId, subs => subs.filter(s => s.id !== subId));
     try { await todoService.deleteSubtask(todoId, subId); }
     catch { fetchData(); }
   };
@@ -788,9 +818,11 @@ export default function TodosPage() {
   const handleDetailSave = async (updates: Partial<PersonalTodo>) => {
     if (!detailTodo) return;
     try {
-      await todoService.update(detailTodo.id, updates as any);
-      if ((updates as any).recurrence !== undefined && (updates as any).recurrence !== (detailTodo.recurrence || null)) {
-        await todoService.setRecurrence(detailTodo.id, (updates as any).recurrence || null);
+      // Separate recurrence from update payload (handled via dedicated endpoint)
+      const { recurrence: newRecurrence, ...updateData } = updates as any;
+      await todoService.update(detailTodo.id, updateData);
+      if (newRecurrence !== undefined && newRecurrence !== (detailTodo.recurrence || null)) {
+        await todoService.setRecurrence(detailTodo.id, newRecurrence || null);
       }
       showToast('Berhasil disimpan! ✏️', 'success');
       fetchData();
@@ -803,10 +835,14 @@ export default function TodosPage() {
 
   const handleDetailShare = async (email: string, role: string) => {
     if (!detailTodo) return;
-    const result = await todoService.shareTodo(detailTodo.id, email, role);
-    showToast(`Berhasil share ke ${result.targetUser.fullName} 🎉`, 'success');
-    const users = await todoService.getSharedUsers(detailTodo.id);
-    setDetailSharedUsers(users);
+    try {
+      const result = await todoService.shareTodo(detailTodo.id, email, role);
+      showToast(`Undangan terkirim ke ${result.targetUser.fullName} 📩`, 'success');
+      const users = await todoService.getSharedUsers(detailTodo.id);
+      setDetailSharedUsers(users);
+    } catch (e: any) {
+      showToast(e.message || 'Gagal share', 'error');
+    }
   };
 
   const handleDetailUnshare = async (targetUserId: string) => {
@@ -814,6 +850,18 @@ export default function TodosPage() {
     await todoService.unshareTodo(detailTodo.id, targetUserId);
     setDetailSharedUsers(prev => prev.filter((s: any) => (s.user?.id || s.userId) !== targetUserId));
     showToast('Sharing dihapus', 'success');
+  };
+
+  // ─── Respond to share invitation ──────────────────────────────────
+  const handleRespondInvite = async (shareId: string, accept: boolean) => {
+    try {
+      await todoService.respondToShare(shareId, accept);
+      setPendingInvites(prev => prev.filter(s => s.id !== shareId));
+      showToast(accept ? 'Berhasil bergabung! 🎉' : 'Undangan ditolak.', accept ? 'success' : 'info');
+      if (accept) fetchData();
+    } catch (e: any) {
+      showToast(e.message || 'Gagal merespons undangan', 'error');
+    }
   };
 
   // ─── Render a single todo (with DnD wrapper) ──────────────────────
@@ -910,6 +958,61 @@ export default function TodosPage() {
                     )}
                   </div>
                 </Card>
+
+                {/* ─── Pending share invitations ─── */}
+                {pendingInvites.length > 0 && (
+                  <Card style={{ padding: 14, marginBottom: 16, border: '1px solid rgba(var(--color-warning), 0.25)', background: 'rgba(var(--color-warning), 0.04)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                      <Share2 size={14} style={{ color: 'rgb(var(--color-warning))' }} />
+                      <span style={{ fontSize: 13, fontWeight: 700, color: 'rgb(var(--color-warning))' }}>
+                        Undangan Masuk ({pendingInvites.length})
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {pendingInvites.map((inv: any) => (
+                        <div key={inv.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+                          borderRadius: 12, background: 'rgb(var(--bg-surface))',
+                          border: '1px solid var(--border-default)',
+                        }}>
+                          <div style={{
+                            width: 32, height: 32, borderRadius: '50%',
+                            background: 'rgba(var(--color-primary), 0.12)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 13, fontWeight: 700, color: 'rgb(var(--color-primary))',
+                            flexShrink: 0,
+                          }}>
+                            {(inv.sharer?.fullName || '?')[0].toUpperCase()}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600 }}>
+                              {inv.todo?.title || 'Todo'}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'rgb(var(--text-muted))' }}>
+                              dari {inv.sharer?.fullName || 'Seseorang'} · {inv.role === 'editor' ? '✏️ Editor' : '👁 Viewer'}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                            <Button
+                              onClick={() => handleRespondInvite(inv.id, true)}
+                              variant="primary"
+                              style={{ borderRadius: 10, padding: '6px 14px', fontSize: 12 }}
+                            >
+                              Terima
+                            </Button>
+                            <Button
+                              onClick={() => handleRespondInvite(inv.id, false)}
+                              variant="ghost"
+                              style={{ borderRadius: 10, padding: '6px 14px', fontSize: 12 }}
+                            >
+                              Tolak
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
 
                 {/* ─── Quick add bar ─── */}
                 <form onSubmit={handleQuickAdd} style={{ marginBottom: 16 }}>

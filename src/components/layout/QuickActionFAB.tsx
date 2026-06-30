@@ -2,17 +2,14 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Modal, useToast, TextInput } from '@/components/ui';
-import { duitTrackerService } from '@/services/duitTrackerService';
+import { useToast } from '@/components/ui';
 import { foodService } from '@/services/foodService';
+import { todoService } from '@/services/todoService';
 import { useFeatureAccess } from '@/lib/feature-access';
-import { Plus, X, Loader2, Wallet, CheckSquare, UtensilsCrossed, Sparkles, ArrowLeft, Camera, ImageIcon, CreditCard, Receipt, ShoppingBag, HandCoins } from 'lucide-react';
-import { SmartInputModal, ScannedItem, AiParseResult } from '@/components/duit-tracker/SmartInputModal';
+import { Plus, X, Loader2, ArrowLeft, Camera, ImageIcon } from 'lucide-react';
 
 type MainMenu = 'duit' | 'todo' | 'makan';
-type DuitSub = 'ai' | 'transaksi' | 'hutang' | 'tagihan' | 'wishlist';
-type TodoSub = 'ai' | 'manual';
-type MakanSub = 'kulkas' | 'menu';
+type PhotoTarget = 'makan_kulkas' | 'makan_menu' | 'todo_scan';
 
 export function QuickActionFAB() {
   const router = useRouter();
@@ -21,129 +18,47 @@ export function QuickActionFAB() {
   const [expanded, setExpanded] = useState(false);
   const [subMenu, setSubMenu] = useState<MainMenu | null>(null);
 
-  // Duit tracker states
-  const [showSmartInput, setShowSmartInput] = useState(false);
+  // Photo handling (shared for makan + todo)
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [photoTarget, setPhotoTarget] = useState<PhotoTarget | null>(null);
+  const [showPhotoChoice, setShowPhotoChoice] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
-  // Todo states
-  const [todoInput, setTodoInput] = useState('');
-  const [todoMode, setTodoMode] = useState<TodoSub | null>(null);
-  const [todoSubmitting, setTodoSubmitting] = useState(false);
-
-  // Makan states
-  const makanCameraRef = useRef<HTMLInputElement>(null);
-  const makanFileRef = useRef<HTMLInputElement>(null);
-  const [makanTarget, setMakanTarget] = useState<MakanSub | null>(null);
-  const [makanProcessing, setMakanProcessing] = useState(false);
-
-  const FAB_MAIN = [
-    { key: 'duit' as MainMenu, label: '💰 Duit Tracker', color: 'var(--color-primary)', feature: 'duit_tracker' },
-    { key: 'todo' as MainMenu, label: '✅ Todo List', color: 'var(--color-success)', feature: 'todo_list' },
-    { key: 'makan' as MainMenu, label: '🍽️ Makan Apa', color: 'var(--color-warning)', feature: 'food_recommend' },
-  ].filter(i => hasFeature(i.feature));
+  const FAB_MAIN: { key: MainMenu; label: string; emoji: string; gradient: string; feature: string }[] = [
+    { key: 'duit', label: 'Duit Tracker', emoji: '💰', gradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)', feature: 'duit_tracker' },
+    { key: 'todo', label: 'Todo List', emoji: '✅', gradient: 'linear-gradient(135deg, #10b981, #06d6a0)', feature: 'todo_list' },
+    { key: 'makan', label: 'Makan Apa', emoji: '🍽️', gradient: 'linear-gradient(135deg, #f59e0b, #f97316)', feature: 'food_recommend' },
+  ];
+  const filteredMain = FAB_MAIN.filter(i => hasFeature(i.feature));
 
   const closeAll = () => {
     setExpanded(false);
     setSubMenu(null);
+    setShowPhotoChoice(false);
   };
 
-  // ── Duit Tracker handlers ──
-  const handleDuitSub = (sub: DuitSub) => {
+  const goTo = (path: string) => {
     closeAll();
-    if (sub === 'ai') {
-      setShowSmartInput(true);
-    } else {
-      // Navigate to duit-tracker page with the correct tab/modal
-      router.push(`/duit-tracker?action=${sub}`);
-    }
+    router.push(path);
   };
 
-  const handleSmartParsed = (p: AiParseResult, rawText: string) => {
-    // Route to duit-tracker with prefilled data
-    if (p.isDebt) {
-      router.push(`/duit-tracker?action=hutang&prefill=${encodeURIComponent(JSON.stringify(p))}`);
-    } else if (p.isBill) {
-      router.push(`/duit-tracker?action=tagihan&prefill=${encodeURIComponent(JSON.stringify(p))}`);
-    } else if (p.isWishlist) {
-      router.push(`/duit-tracker?action=wishlist&prefill=${encodeURIComponent(JSON.stringify(p))}`);
-    } else {
-      router.push(`/duit-tracker?action=transaksi&prefill=${encodeURIComponent(JSON.stringify(p))}`);
-    }
-  };
-
-  const handleBulkCreate = async (items: ScannedItem[]) => {
-    const batchId = crypto.randomUUID();
-    for (const item of items) {
-      await duitTrackerService.createTransaction({
-        amount: item.amount,
-        type: item.type as 'expense' | 'income',
-        category: item.category,
-        label: item.label,
-        inputMethod: 'receipt_scan',
-        receiptBatchId: batchId,
-      });
-    }
-    showToast(`${items.length} transaksi dari struk berhasil disimpan!`, 'success');
-  };
-
-  // ── Todo handlers ──
-  const handleTodoSub = (sub: TodoSub) => {
-    closeAll();
-    if (sub === 'manual') {
-      router.push('/todos?action=add');
-    } else {
-      setTodoMode(sub);
-      setTodoInput('');
-    }
-  };
-
-  const handleTodoAiSubmit = async () => {
-    if (!todoInput.trim() || todoSubmitting) return;
-    setTodoSubmitting(true);
-    try {
-      const { apiFetch } = await import('@/lib/api');
-      const parsed: any = await apiFetch('/todos/parse', { method: 'POST', body: JSON.stringify({ text: todoInput }) });
-      await apiFetch('/todos', {
-        method: 'POST',
-        body: JSON.stringify({
-          title: parsed.title || todoInput,
-          dueDate: parsed.dueDate,
-          dueTime: parsed.dueTime,
-          priority: parsed.priority || 'medium',
-          category: parsed.category,
-          type: parsed.type || 'todo',
-          startTime: parsed.startTime,
-          endTime: parsed.endTime,
-          location: parsed.location,
-          eventType: parsed.eventType,
-        }),
-      });
-      showToast('Todo masuk bos! ✅', 'success');
-      setTodoMode(null);
-    } catch (e: any) {
-      showToast(e.message || 'Gagal menambahkan todo', 'error');
-    } finally {
-      setTodoSubmitting(false);
-    }
-  };
-
-  // ── Makan handlers ──
-  const handleMakanSub = (sub: MakanSub) => {
-    setMakanTarget(sub);
+  // ── Photo choice (shared for makan + todo) ──
+  const openPhotoChoice = (target: PhotoTarget) => {
+    setPhotoTarget(target);
+    setShowPhotoChoice(true);
     setSubMenu(null);
-    // Don't close expanded — show file choice inline
   };
 
-  const handleMakanFile = async (file: File) => {
+  const handlePhotoFile = async (file: File) => {
     if (!file || !file.type.startsWith('image/')) {
-      showToast('Upload gambar ya! 📷', 'error');
-      return;
+      showToast('Upload gambar ya! 📷', 'error'); return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      showToast('Maks 5MB ya fotonya! 📏', 'error');
-      return;
+      showToast('Maks 5MB ya fotonya! 📏', 'error'); return;
     }
-    setMakanProcessing(true);
-    setExpanded(false);
+    setProcessing(true);
+    closeAll();
     try {
       const base64 = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
@@ -151,142 +66,162 @@ export function QuickActionFAB() {
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      if (makanTarget === 'kulkas') {
+
+      if (photoTarget === 'makan_kulkas') {
         await foodService.fromFridge(base64, file.type);
         showToast('AI sedang analisis isi kulkasmu! 🧠', 'success');
         router.push('/makan?tab=fridge');
-      } else {
+      } else if (photoTarget === 'makan_menu') {
         await foodService.fromMenu(base64, file.type);
         showToast('AI sedang baca menu-nya! 🧠', 'success');
         router.push('/makan?tab=menu');
+      } else if (photoTarget === 'todo_scan') {
+        const parsed = await todoService.parseImage(base64, file.type);
+        if (parsed && (parsed as any).title) {
+          await todoService.create({
+            title: (parsed as any).title,
+            dueDate: (parsed as any).dueDate,
+            dueTime: (parsed as any).dueTime,
+            priority: (parsed as any).priority || 'medium',
+            category: (parsed as any).category,
+            type: (parsed as any).type || 'todo',
+          } as any);
+          showToast('Todo dari foto berhasil ditambahkan! 📸✅', 'success');
+          router.push('/todos');
+        } else {
+          showToast('Hmm nggak nemu todo dari foto ini', 'error');
+        }
       }
     } catch (e: any) {
       showToast(e.message || 'Gagal memproses foto', 'error');
     } finally {
-      setMakanProcessing(false);
-      setMakanTarget(null);
+      setProcessing(false);
+      setPhotoTarget(null);
     }
   };
 
+  // Sub-menu items config
+  const DUIT_ITEMS = [
+    { label: 'Input Cerdas AI', emoji: '✨', gradient: 'linear-gradient(135deg, #6366f1, #a855f7)', path: '/duit-tracker?fab=ai' },
+    { label: 'Transaksi', emoji: '💸', gradient: 'linear-gradient(135deg, #3b82f6, #6366f1)', path: '/duit-tracker?fab=transaksi' },
+    { label: 'Hutang', emoji: '🤝', gradient: 'linear-gradient(135deg, #ef4444, #f97316)', path: '/duit-tracker?fab=hutang' },
+    { label: 'Tagihan', emoji: '💳', gradient: 'linear-gradient(135deg, #f59e0b, #eab308)', path: '/duit-tracker?fab=tagihan' },
+    { label: 'Wishlist', emoji: '🛒', gradient: 'linear-gradient(135deg, #ec4899, #f43f5e)', path: '/duit-tracker?fab=wishlist' },
+  ];
+
+  const TODO_ITEMS = [
+    { label: 'Input AI', emoji: '✨', gradient: 'linear-gradient(135deg, #6366f1, #a855f7)', path: '/todos?fab=ai' },
+    { label: 'Input Manual', emoji: '✏️', gradient: 'linear-gradient(135deg, #10b981, #06d6a0)', path: '/todos?fab=manual' },
+    { label: 'Scan Foto', emoji: '📸', gradient: 'linear-gradient(135deg, #0ea5e9, #06b6d4)', action: 'todo_scan' as PhotoTarget },
+  ];
+
+  const MAKAN_ITEMS = [
+    { label: 'Foto Kulkas', emoji: '🧊', gradient: 'linear-gradient(135deg, #06b6d4, #10b981)', action: 'makan_kulkas' as PhotoTarget },
+    { label: 'Foto Menu', emoji: '📋', gradient: 'linear-gradient(135deg, #f59e0b, #f97316)', action: 'makan_menu' as PhotoTarget },
+  ];
+
   return (
     <>
-      {/* SmartInputModal for Duit Tracker AI */}
-      <SmartInputModal
-        isOpen={showSmartInput}
-        onClose={() => setShowSmartInput(false)}
-        onParsed={handleSmartParsed}
-        onBulkCreate={handleBulkCreate}
-      />
-
-      {/* Hidden file inputs for Makan Apa */}
-      <input ref={makanCameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
-        onChange={e => { const f = e.target.files?.[0]; if (f) handleMakanFile(f); e.target.value = ''; }} />
-      <input ref={makanFileRef} type="file" accept="image/*" style={{ display: 'none' }}
-        onChange={e => { const f = e.target.files?.[0]; if (f) handleMakanFile(f); e.target.value = ''; }} />
+      {/* Hidden file inputs */}
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoFile(f); e.target.value = ''; }} />
+      <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+        onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoFile(f); e.target.value = ''; }} />
 
       {/* Overlay */}
       {expanded && <div className="fab-overlay" onClick={closeAll} />}
 
       {/* Processing overlay */}
-      {makanProcessing && (
+      {processing && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-          <Loader2 className="spin" size={40} style={{ color: 'rgb(var(--color-primary))' }} />
+          <Loader2 className="spin" size={40} style={{ color: '#fff' }} />
           <p style={{ color: '#fff', fontSize: 15, fontWeight: 600 }}>AI sedang memproses foto...</p>
         </div>
       )}
 
       <div className="fab-container" data-expanded={expanded}>
-        {/* Menu items */}
         <div className={`fab-menu ${expanded ? 'fab-menu--open' : ''}`}>
-          {/* Main menu */}
-          {!subMenu && !makanTarget && FAB_MAIN.map((item, i) => (
+
+          {/* ═══ Main menu ═══ */}
+          {!subMenu && !showPhotoChoice && filteredMain.map((item, i) => (
             <button
               key={item.key}
               onClick={() => setSubMenu(item.key)}
-              className="fab-menu-item"
-              style={{ transitionDelay: expanded ? `${i * 40}ms` : '0ms' }}
+              className="fab-menu-item fab-menu-item--color"
+              style={{ transitionDelay: expanded ? `${i * 50}ms` : '0ms' }}
             >
-              <span className="fab-menu-dot" style={{ background: item.color }} />
-              {item.label}
+              <span className="fab-item-icon" style={{ background: item.gradient }}>{item.emoji}</span>
+              <span className="fab-item-label">{item.label}</span>
             </button>
           ))}
 
-          {/* Sub-menu: Duit Tracker */}
-          {subMenu === 'duit' && (
+          {/* ═══ Sub-menu: Duit Tracker ═══ */}
+          {subMenu === 'duit' && !showPhotoChoice && (
             <>
-              <button onClick={() => setSubMenu(null)} className="fab-menu-item" style={{ opacity: 0.6 }}>
-                <ArrowLeft size={12} /> Kembali
+              <button onClick={() => setSubMenu(null)} className="fab-menu-item fab-menu-item--back">
+                <ArrowLeft size={14} /> Kembali
               </button>
-              <button onClick={() => handleDuitSub('ai')} className="fab-menu-item">
-                <span className="fab-menu-dot" style={{ background: 'var(--color-primary)' }} />
-                ✨ Input Cerdas AI
-              </button>
-              <button onClick={() => handleDuitSub('transaksi')} className="fab-menu-item">
-                <span className="fab-menu-dot" style={{ background: 'var(--color-primary)' }} />
-                💸 Transaksi
-              </button>
-              <button onClick={() => handleDuitSub('hutang')} className="fab-menu-item">
-                <span className="fab-menu-dot" style={{ background: 'var(--color-error)' }} />
-                🤝 Hutang
-              </button>
-              <button onClick={() => handleDuitSub('tagihan')} className="fab-menu-item">
-                <span className="fab-menu-dot" style={{ background: 'var(--color-warning)' }} />
-                💳 Tagihan
-              </button>
-              <button onClick={() => handleDuitSub('wishlist')} className="fab-menu-item">
-                <span className="fab-menu-dot" style={{ background: 'var(--color-secondary)' }} />
-                🛒 Wishlist
-              </button>
+              {DUIT_ITEMS.map((item, i) => (
+                <button key={item.label} onClick={() => goTo(item.path)} className="fab-menu-item fab-menu-item--color"
+                  style={{ transitionDelay: `${(i + 1) * 40}ms` }}>
+                  <span className="fab-item-icon" style={{ background: item.gradient }}>{item.emoji}</span>
+                  <span className="fab-item-label">{item.label}</span>
+                </button>
+              ))}
             </>
           )}
 
-          {/* Sub-menu: Todo List */}
-          {subMenu === 'todo' && (
+          {/* ═══ Sub-menu: Todo List ═══ */}
+          {subMenu === 'todo' && !showPhotoChoice && (
             <>
-              <button onClick={() => setSubMenu(null)} className="fab-menu-item" style={{ opacity: 0.6 }}>
-                <ArrowLeft size={12} /> Kembali
+              <button onClick={() => setSubMenu(null)} className="fab-menu-item fab-menu-item--back">
+                <ArrowLeft size={14} /> Kembali
               </button>
-              <button onClick={() => handleTodoSub('ai')} className="fab-menu-item">
-                <span className="fab-menu-dot" style={{ background: 'var(--color-primary)' }} />
-                ✨ Input AI
-              </button>
-              <button onClick={() => handleTodoSub('manual')} className="fab-menu-item">
-                <span className="fab-menu-dot" style={{ background: 'var(--color-success)' }} />
-                ✏️ Input Manual
-              </button>
+              {TODO_ITEMS.map((item, i) => (
+                <button key={item.label}
+                  onClick={() => item.action ? openPhotoChoice(item.action) : goTo(item.path!)}
+                  className="fab-menu-item fab-menu-item--color"
+                  style={{ transitionDelay: `${(i + 1) * 40}ms` }}>
+                  <span className="fab-item-icon" style={{ background: item.gradient }}>{item.emoji}</span>
+                  <span className="fab-item-label">{item.label}</span>
+                </button>
+              ))}
             </>
           )}
 
-          {/* Sub-menu: Makan Apa */}
-          {subMenu === 'makan' && !makanTarget && (
+          {/* ═══ Sub-menu: Makan Apa ═══ */}
+          {subMenu === 'makan' && !showPhotoChoice && (
             <>
-              <button onClick={() => setSubMenu(null)} className="fab-menu-item" style={{ opacity: 0.6 }}>
-                <ArrowLeft size={12} /> Kembali
+              <button onClick={() => setSubMenu(null)} className="fab-menu-item fab-menu-item--back">
+                <ArrowLeft size={14} /> Kembali
               </button>
-              <button onClick={() => handleMakanSub('kulkas')} className="fab-menu-item">
-                <span className="fab-menu-dot" style={{ background: 'var(--color-success)' }} />
-                🧊 Foto Kulkas
-              </button>
-              <button onClick={() => handleMakanSub('menu')} className="fab-menu-item">
-                <span className="fab-menu-dot" style={{ background: 'var(--color-warning)' }} />
-                📋 Foto Menu
-              </button>
+              {MAKAN_ITEMS.map((item, i) => (
+                <button key={item.label} onClick={() => openPhotoChoice(item.action)} className="fab-menu-item fab-menu-item--color"
+                  style={{ transitionDelay: `${(i + 1) * 40}ms` }}>
+                  <span className="fab-item-icon" style={{ background: item.gradient }}>{item.emoji}</span>
+                  <span className="fab-item-label">{item.label}</span>
+                </button>
+              ))}
             </>
           )}
 
-          {/* Sub-sub: Makan — Camera/Gallery choice */}
-          {makanTarget && (
+          {/* ═══ Photo choice: Camera vs Gallery ═══ */}
+          {showPhotoChoice && (
             <>
-              <button onClick={() => { setMakanTarget(null); setSubMenu('makan'); }} className="fab-menu-item" style={{ opacity: 0.6 }}>
-                <ArrowLeft size={12} /> Kembali
+              <button onClick={() => { setShowPhotoChoice(false); setSubMenu(photoTarget?.startsWith('makan') ? 'makan' : 'todo'); }} className="fab-menu-item fab-menu-item--back">
+                <ArrowLeft size={14} /> Kembali
               </button>
-              <button onClick={() => { closeAll(); makanCameraRef.current?.click(); }} className="fab-menu-item">
-                <span className="fab-menu-dot" style={{ background: 'var(--color-primary)' }} />
-                📸 Buka Kamera
+              <button onClick={() => { closeAll(); cameraRef.current?.click(); }} className="fab-menu-item fab-menu-item--color">
+                <span className="fab-item-icon" style={{ background: 'linear-gradient(135deg, #3b82f6, #6366f1)' }}>
+                  <Camera size={16} color="#fff" />
+                </span>
+                <span className="fab-item-label">Buka Kamera</span>
               </button>
-              <button onClick={() => { closeAll(); makanFileRef.current?.click(); }} className="fab-menu-item">
-                <span className="fab-menu-dot" style={{ background: 'var(--color-secondary)' }} />
-                🖼️ Upload File
+              <button onClick={() => { closeAll(); fileRef.current?.click(); }} className="fab-menu-item fab-menu-item--color">
+                <span className="fab-item-icon" style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)' }}>
+                  <ImageIcon size={16} color="#fff" />
+                </span>
+                <span className="fab-item-label">Upload File</span>
               </button>
             </>
           )}
@@ -301,24 +236,6 @@ export function QuickActionFAB() {
           {expanded ? <X size={14} color="white" strokeWidth={2.5} /> : <Plus size={14} color="white" strokeWidth={2.5} />}
         </button>
       </div>
-
-      {/* Todo AI Modal */}
-      <Modal isOpen={todoMode === 'ai'} onClose={() => setTodoMode(null)} title="✨ Todo Cepat AI" size="sm">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ fontSize: 13, color: 'rgb(var(--text-muted))', margin: 0 }}>
-            Ketik kayak ngobrol: &ldquo;meeting senin jam 10-12&rdquo;, &ldquo;kerjakan PR besok&rdquo;
-          </p>
-          <TextInput
-            placeholder="kerjakan PR besok, rapat jam 2 siang..."
-            value={todoInput}
-            onChange={v => setTodoInput(v)}
-            autoFocus
-          />
-          <Button onClick={handleTodoAiSubmit} disabled={todoSubmitting || !todoInput.trim()} style={{ width: '100%' }}>
-            {todoSubmitting ? <Loader2 size={15} className="spin" /> : 'Gas Simpan 🔥'}
-          </Button>
-        </div>
-      </Modal>
     </>
   );
 }

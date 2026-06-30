@@ -8,6 +8,7 @@ import { NotificationProvider } from '@/lib/NotificationContext';
 import { ToastProvider } from '@/components/ui';
 import { ConfirmProvider } from '@/components/ui';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { QueryProvider } from '@/lib/QueryProvider';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 import { EveningRecapToast } from '@/components/shared/EveningRecapToast';
 import { CelebrationProvider } from '@/components/shared/CelebrationOverlay';
@@ -52,6 +53,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider>
           <ErrorBoundary>
+            <QueryProvider>
             <AuthProvider>
               <NotificationProvider>
               <FeatureAccessProvider>
@@ -67,6 +69,7 @@ export default function RootLayout({
               </FeatureAccessProvider>
               </NotificationProvider>
             </AuthProvider>
+            </QueryProvider>
           </ErrorBoundary>
         </ThemeProvider>
       </body>

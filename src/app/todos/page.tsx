@@ -17,6 +17,7 @@ import { UnifiedTimeline } from '@/components/todo/UnifiedTimeline';
 import { ProgressRing } from '@/components/todo/ProgressRing';
 import { ViewSegmentedControl, TodoViewMode } from '@/components/todo/ViewSegmentedControl';
 import { TodoCard } from '@/components/todo/TodoCard';
+import { TodoDetailModal } from '@/components/todo/TodoDetailModal';
 import { TodoForm, TodoFormState } from '@/components/todo/TodoForm';
 import { DraftSubtask } from '@/components/todo/SubtaskEditor';
 import { PomodoroTimer } from '@/components/todo/PomodoroTimer';
@@ -181,6 +182,10 @@ export default function TodosPage() {
   const [shareRole, setShareRole] = useState('viewer');
   const [sharing, setSharing] = useState(false);
   const [sharedUsers, setSharedUsers] = useState<any[]>([]);
+
+  // Detail modal state
+  const [detailTodo, setDetailTodo] = useState<PersonalTodo | null>(null);
+  const [detailSharedUsers, setDetailSharedUsers] = useState<any[]>([]);
 
   const categoryOptionsForForm = useMemo(
     () => allCategories.map(c => ({ id: c.id, label: c.label.replace(/^.+?\s/, ''), emoji: c.emoji || c.label.split(' ')[0], color: c.color })),
@@ -771,9 +776,50 @@ export default function TodosPage() {
     showToast(`Kategori "${cat.label}" udah dibuat! 🎉`, 'success');
   };
 
+  // ─── Open detail modal ────────────────────────────────────────────
+  const openDetailModal = async (todo: PersonalTodo) => {
+    setDetailTodo(todo);
+    try {
+      const users = await todoService.getSharedUsers(todo.id);
+      setDetailSharedUsers(users);
+    } catch { setDetailSharedUsers([]); }
+  };
+
+  const handleDetailSave = async (updates: Partial<PersonalTodo>) => {
+    if (!detailTodo) return;
+    try {
+      await todoService.update(detailTodo.id, updates as any);
+      if ((updates as any).recurrence !== undefined && (updates as any).recurrence !== (detailTodo.recurrence || null)) {
+        await todoService.setRecurrence(detailTodo.id, (updates as any).recurrence || null);
+      }
+      showToast('Berhasil disimpan! ✏️', 'success');
+      fetchData();
+      // Update local detailTodo
+      setDetailTodo(prev => prev ? { ...prev, ...updates } : null);
+    } catch (e: any) {
+      showToast(e.message || 'Gagal simpan', 'error');
+    }
+  };
+
+  const handleDetailShare = async (email: string, role: string) => {
+    if (!detailTodo) return;
+    const result = await todoService.shareTodo(detailTodo.id, email, role);
+    showToast(`Berhasil share ke ${result.targetUser.fullName} 🎉`, 'success');
+    const users = await todoService.getSharedUsers(detailTodo.id);
+    setDetailSharedUsers(users);
+  };
+
+  const handleDetailUnshare = async (targetUserId: string) => {
+    if (!detailTodo) return;
+    await todoService.unshareTodo(detailTodo.id, targetUserId);
+    setDetailSharedUsers(prev => prev.filter((s: any) => (s.user?.id || s.userId) !== targetUserId));
+    showToast('Sharing dihapus', 'success');
+  };
+
   // ─── Render a single todo (with DnD wrapper) ──────────────────────
   const renderTodoItem = (todo: PersonalTodo) => {
     const catInfo = getCategoryInfo(todo.category || '', customCategories);
+    const cardSharedUsers = (todo.sharedWith || []).map(s => ({ fullName: s.user?.fullName, avatarUrl: s.user?.avatarUrl }));
     return (
       <TodoCard
         key={todo.id}
@@ -786,6 +832,8 @@ export default function TodosPage() {
         onDelete={() => handleDelete(todo.id)}
         onFocus={() => setPomodoroTodo(todo)}
         onShare={() => openShareModal(todo)}
+        onCardClick={() => openDetailModal(todo)}
+        sharedUsers={cardSharedUsers}
         selectMode={selectMode}
         isSelected={selectedIds.has(todo.id)}
         onSelect={() => toggleSelect(todo.id)}
@@ -1106,6 +1154,7 @@ export default function TodosPage() {
                     onDeleteSubtask={handleDeleteSubtask}
                     onAddEvent={(dateKey) => openAdd({ dueDate: dateKey, type: 'event' })}
                     onAddTodo={(dateKey) => openAdd({ dueDate: dateKey, type: 'todo' })}
+                    onDetailClick={openDetailModal}
                   />
                 ) : viewMode === 'timeline' ? (
                   <UnifiedTimeline />
@@ -1120,7 +1169,7 @@ export default function TodosPage() {
                   />
                 ) : viewMode === ('eisenhower' as TodoViewMode) ? (
                   /* ─── Eisenhower Matrix ─── */
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="todo-eisenhower-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     {eisenhowerQuadrants.map((q, i) => (
                       <Card key={i} style={{ padding: 14, borderLeft: `3px solid ${q.color}`, minHeight: 120, overflow: 'hidden' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
@@ -1142,6 +1191,7 @@ export default function TodosPage() {
                               onDelete={() => handleDelete(todo.id)}
                               onFocus={() => setPomodoroTodo(todo)}
                               onShare={() => openShareModal(todo)}
+                              onCardClick={() => openDetailModal(todo)}
                               selectMode={selectMode}
                               isSelected={selectedIds.has(todo.id)}
                               onSelect={() => toggleSelect(todo.id)}
@@ -1257,6 +1307,26 @@ export default function TodosPage() {
                   </Card>
                 </div>
               </div>
+            )}
+
+            {/* ─── Detail modal ─── */}
+            {detailTodo && (
+              <TodoDetailModal
+                todo={detailTodo}
+                categories={categoryOptionsForForm}
+                catInfo={getCategoryInfo(detailTodo.category || '', customCategories)}
+                onClose={() => { setDetailTodo(null); setDetailSharedUsers([]); }}
+                onToggle={() => { handleToggle(detailTodo.id); setDetailTodo(prev => prev ? { ...prev, status: prev.status === 'done' ? 'pending' : 'done' } : null); }}
+                onDelete={() => handleDelete(detailTodo.id)}
+                onFocus={() => setPomodoroTodo(detailTodo)}
+                onSave={handleDetailSave}
+                onAddSubtask={(title) => handleAddSubtask(detailTodo.id, title)}
+                onToggleSubtask={(subId, isDone) => handleToggleSubtask(detailTodo.id, subId, isDone)}
+                onDeleteSubtask={(subId) => handleDeleteSubtask(detailTodo.id, subId)}
+                onShare={handleDetailShare}
+                onUnshare={handleDetailUnshare}
+                sharedUsers={detailSharedUsers}
+              />
             )}
 
             {/* ─── Share modal ─── */}
@@ -1962,6 +2032,7 @@ interface AgendaViewProps {
   onDeleteSubtask: (todoId: string, subId: string) => Promise<void>;
   onAddEvent: (dateKey: string) => void;
   onAddTodo: (dateKey: string) => void;
+  onDetailClick?: (todo: PersonalTodo) => void;
 }
 
 function AgendaView({
@@ -1969,7 +2040,7 @@ function AgendaView({
   onToggle, onEdit, onDelete, onFocus,
   selectMode, selectedIds, onSelect,
   onAddSubtask, onToggleSubtask, onDeleteSubtask,
-  onAddEvent, onAddTodo,
+  onAddEvent, onAddTodo, onDetailClick,
 }: AgendaViewProps) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -2084,7 +2155,7 @@ function AgendaView({
                   return (
                     <div
                       key={item.id}
-                      onClick={() => onEdit(item)}
+                      onClick={() => onDetailClick?.(item)}
                       style={{
                         position: 'relative',
                         padding: '12px 14px 12px 18px',
@@ -2164,6 +2235,7 @@ function AgendaView({
                     onEdit={() => onEdit(item)}
                     onDelete={() => onDelete(item.id)}
                     onFocus={() => onFocus(item)}
+                    onCardClick={() => onDetailClick?.(item)}
                     selectMode={selectMode}
                     isSelected={selectedIds.has(item.id)}
                     onSelect={() => onSelect(item.id)}

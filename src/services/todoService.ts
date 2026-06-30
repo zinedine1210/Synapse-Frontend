@@ -38,6 +38,10 @@ export interface PersonalTodo {
   reminderMinutes: number[];
   sourceType?: string;
   sourceId?: string;
+  // Shared users (from getAll include)
+  sharedWith?: { user: { id: string; fullName?: string; avatarUrl?: string } }[];
+  _sharedBy?: { id: string; fullName?: string; avatarUrl?: string };
+  _shareRole?: string;
 }
 
 export interface TodoStats {

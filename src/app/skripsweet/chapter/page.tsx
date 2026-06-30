@@ -7,11 +7,11 @@ import { useAuth } from '@/lib/AuthContext';
 import { AuthGuard } from '@/components/layout/AuthGuard';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Appbar } from '@/components/layout/Appbar';
-import { Card, Button, useToast, TextInput, TextArea, SelectOption } from '@/components/ui';
+import { Card, Button, useToast, useConfirm, TextInput, TextArea, SelectOption } from '@/components/ui';
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { HtmlRenderer } from '@/components/ui/HtmlRenderer';
-import { skripsweetService, ThesisChapter, ChapterVersionMeta } from '@/services/skripsweetService';
-import { ArrowLeft, Loader2, Save, Sparkles, FileText, BarChart3, Wand2, PenTool, ListOrdered, CornerDownRight, X, ChevronDown, ChevronLeft, ChevronRight, Send, Check, History, RotateCcw, Download } from 'lucide-react';
+import { skripsweetService, ThesisChapter, ChapterVersionMeta, ChapterVersionFull } from '@/services/skripsweetService';
+import { ArrowLeft, Loader2, Save, Sparkles, FileText, BarChart3, Wand2, PenTool, ListOrdered, CornerDownRight, X, ChevronDown, ChevronLeft, ChevronRight, Send, Check, History, RotateCcw, Download, Trash2, Eye, Pencil } from 'lucide-react';
 
 const RichTextEditor = dynamic(() => import('@/components/ui/RichTextEditor').then(m => ({ default: m.RichTextEditor })), { ssr: false });
 
@@ -68,6 +68,15 @@ export default function ChapterEditorPage() {
   const [showVersions, setShowVersions] = useState(false);
   const [versions, setVersions] = useState<ChapterVersionMeta[]>([]);
   const [versionsLoading, setVersionsLoading] = useState(false);
+  const [versionSaving, setVersionSaving] = useState(false);
+  const [versionRestoring, setVersionRestoring] = useState<string | null>(null);
+  const [versionDeleting, setVersionDeleting] = useState<string | null>(null);
+  const [previewVersion, setPreviewVersion] = useState<ChapterVersionFull | null>(null);
+  const [previewLoading, setPreviewLoading] = useState<string | null>(null);
+  const [editingVersionLabel, setEditingVersionLabel] = useState<{ id: string; label: string } | null>(null);
+  const [saveVersionLabel, setSaveVersionLabel] = useState('');
+  const [showSaveVersionInput, setShowSaveVersionInput] = useState(false);
+  const { confirm } = useConfirm();
 
   useEffect(() => {
     if (!thesisId || !chapterId) return;
@@ -203,17 +212,33 @@ export default function ChapterEditorPage() {
     finally { setVersionsLoading(false); }
   };
 
-  const handleSaveVersion = async () => {
+  const handleSaveVersion = async (label?: string) => {
     if (!thesisId || !chapterId) return;
+    setVersionSaving(true);
     try {
-      await skripsweetService.saveChapterVersion(thesisId, chapterId);
+      await skripsweetService.saveChapterVersion(thesisId, chapterId, label);
       showToast('Versi tersimpan!', 'success');
+      setSaveVersionLabel('');
+      setShowSaveVersionInput(false);
       loadVersions();
     } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setVersionSaving(false); }
   };
 
   const handleRestoreVersion = async (versionId: string) => {
     if (!thesisId || !chapterId) return;
+    if (hasUnsaved) {
+      const ok = await confirm({
+        title: 'Perubahan Belum Tersimpan',
+        message: 'Ada perubahan yang belum disimpan. Simpan perubahan dan buat versi saat ini sebelum restore?',
+        confirmText: 'Simpan & Restore',
+        cancelText: 'Batal',
+        variant: 'warning',
+      });
+      if (!ok) return;
+      await handleSave();
+    }
+    setVersionRestoring(versionId);
     try {
       const restored = await skripsweetService.restoreChapterVersion(thesisId, chapterId, versionId);
       setContent(restored.content || '');
@@ -221,6 +246,42 @@ export default function ChapterEditorPage() {
       setLastSaved(new Date());
       showToast('Versi berhasil di-restore!', 'success');
       setShowVersions(false);
+      setPreviewVersion(null);
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setVersionRestoring(null); }
+  };
+
+  const handlePreviewVersion = async (versionId: string) => {
+    if (!thesisId || !chapterId) return;
+    setPreviewLoading(versionId);
+    try {
+      const full = await skripsweetService.getChapterVersion(thesisId, chapterId, versionId);
+      setPreviewVersion(full);
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setPreviewLoading(null); }
+  };
+
+  const handleDeleteVersion = async (versionId: string) => {
+    if (!thesisId || !chapterId) return;
+    const ok = await confirm({ title: 'Hapus Versi', message: 'Yakin ingin menghapus riwayat versi ini? Aksi ini tidak bisa dibatalkan.', confirmText: 'Hapus', variant: 'danger' });
+    if (!ok) return;
+    setVersionDeleting(versionId);
+    try {
+      await skripsweetService.deleteChapterVersion(thesisId, chapterId, versionId);
+      showToast('Versi dihapus', 'success');
+      setVersions(prev => prev.filter(v => v.id !== versionId));
+      if (previewVersion?.id === versionId) setPreviewVersion(null);
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setVersionDeleting(null); }
+  };
+
+  const handleUpdateVersionLabel = async (versionId: string, label: string) => {
+    if (!thesisId || !chapterId) return;
+    try {
+      await skripsweetService.updateChapterVersionLabel(thesisId, chapterId, versionId, label);
+      setVersions(prev => prev.map(v => v.id === versionId ? { ...v, label } : v));
+      setEditingVersionLabel(null);
+      showToast('Label versi diperbarui', 'success');
     } catch (e: any) { showToast(e.message, 'error'); }
   };
 
@@ -447,27 +508,97 @@ export default function ChapterEditorPage() {
                           <History size={16} style={{ color: '#22c55e' }} /> Riwayat Versi
                         </h3>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <Button size="sm" variant="secondary" onClick={handleSaveVersion} style={{ fontSize: 11, borderRadius: 8 }}>
-                            <Save size={12} /> Simpan Versi
-                          </Button>
-                          <button onClick={() => setShowVersions(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, padding: 4 }}><X size={16} /></button>
+                          {showSaveVersionInput ? (
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <input
+                                type="text"
+                                placeholder="Nama versi (opsional)"
+                                value={saveVersionLabel}
+                                onChange={e => setSaveVersionLabel(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') handleSaveVersion(saveVersionLabel || undefined); if (e.key === 'Escape') { setShowSaveVersionInput(false); setSaveVersionLabel(''); } }}
+                                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 8, border: '1px solid var(--border-default)', background: 'var(--input-bg)', width: 150, outline: 'none' }}
+                                autoFocus
+                              />
+                              <Button size="sm" variant="secondary" onClick={() => handleSaveVersion(saveVersionLabel || undefined)} disabled={versionSaving} style={{ fontSize: 11, borderRadius: 8 }}>
+                                {versionSaving ? <Loader2 size={12} className="spin" /> : <Save size={12} />} Simpan
+                              </Button>
+                              <button onClick={() => { setShowSaveVersionInput(false); setSaveVersionLabel(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, padding: 2 }}><X size={14} /></button>
+                            </div>
+                          ) : (
+                            <Button size="sm" variant="secondary" onClick={() => setShowSaveVersionInput(true)} disabled={versionSaving} style={{ fontSize: 11, borderRadius: 8 }}>
+                              {versionSaving ? <Loader2 size={12} className="spin" /> : <Save size={12} />} Simpan Versi
+                            </Button>
+                          )}
+                          <button onClick={() => { setShowVersions(false); setPreviewVersion(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, padding: 4 }}><X size={16} /></button>
                         </div>
                       </div>
                       {versions.length === 0 ? (
                         <p style={{ fontSize: 13, opacity: 0.5, margin: 0 }}>Belum ada riwayat versi. Versi otomatis tersimpan saat ada perubahan signifikan (&gt;50 kata).</p>
                       ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 250, overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
                           {versions.map(v => (
-                            <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: 'var(--input-bg)' }}>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 13, fontWeight: 600 }}>{v.label || new Date(v.createdAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
-                                <div style={{ fontSize: 11, opacity: 0.5 }}>{v.wordCount} kata</div>
+                            <div key={v.id} style={{ padding: '10px 14px', borderRadius: 12, background: previewVersion?.id === v.id ? 'rgba(34, 197, 94, 0.08)' : 'var(--input-bg)', border: previewVersion?.id === v.id ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid transparent' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ flex: 1 }}>
+                                  {editingVersionLabel?.id === v.id ? (
+                                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                      <input
+                                        type="text"
+                                        value={editingVersionLabel.label}
+                                        onChange={e => setEditingVersionLabel({ ...editingVersionLabel, label: e.target.value })}
+                                        onKeyDown={e => { if (e.key === 'Enter') handleUpdateVersionLabel(v.id, editingVersionLabel.label); if (e.key === 'Escape') setEditingVersionLabel(null); }}
+                                        style={{ fontSize: 12, padding: '2px 8px', borderRadius: 6, border: '1px solid var(--border-default)', background: 'var(--input-bg)', width: 140, outline: 'none' }}
+                                        autoFocus
+                                      />
+                                      <button onClick={() => handleUpdateVersionLabel(v.id, editingVersionLabel.label)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2 }}><Check size={12} style={{ color: '#22c55e' }} /></button>
+                                      <button onClick={() => setEditingVersionLabel(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, opacity: 0.4 }}><X size={12} /></button>
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <div style={{ fontSize: 13, fontWeight: 600 }}>{v.label || new Date(v.createdAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>
+                                      <button onClick={() => setEditingVersionLabel({ id: v.id, label: v.label || '' })} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, opacity: 0.3 }} title="Rename"><Pencil size={10} /></button>
+                                    </div>
+                                  )}
+                                  <div style={{ fontSize: 11, opacity: 0.5 }}>
+                                    {v.wordCount} kata
+                                    {v.label && <> &middot; {new Date(v.createdAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</>}
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                  <Button size="sm" variant="secondary" onClick={() => handlePreviewVersion(v.id)} disabled={previewLoading === v.id} style={{ fontSize: 11, borderRadius: 8, padding: '4px 8px' }} title="Preview">
+                                    {previewLoading === v.id ? <Loader2 size={11} className="spin" /> : <Eye size={11} />}
+                                  </Button>
+                                  <Button size="sm" variant="secondary" onClick={() => handleRestoreVersion(v.id)} disabled={versionRestoring === v.id} style={{ fontSize: 11, borderRadius: 8, padding: '4px 8px' }} title="Restore">
+                                    {versionRestoring === v.id ? <Loader2 size={11} className="spin" /> : <RotateCcw size={11} />} Restore
+                                  </Button>
+                                  <button onClick={() => handleDeleteVersion(v.id)} disabled={versionDeleting === v.id} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, opacity: versionDeleting === v.id ? 0.3 : 0.5 }} title="Hapus versi">
+                                    {versionDeleting === v.id ? <Loader2 size={12} className="spin" /> : <Trash2 size={12} style={{ color: '#ef4444' }} />}
+                                  </button>
+                                </div>
                               </div>
-                              <Button size="sm" variant="secondary" onClick={() => handleRestoreVersion(v.id)} style={{ fontSize: 11, borderRadius: 8 }}>
-                                <RotateCcw size={11} /> Restore
-                              </Button>
                             </div>
                           ))}
+                        </div>
+                      )}
+
+                      {/* Version Preview */}
+                      {previewVersion && (
+                        <div style={{ marginTop: 14, padding: '14px 18px', borderRadius: 14, border: '1px solid rgba(34, 197, 94, 0.2)', background: 'rgba(34, 197, 94, 0.03)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <Eye size={13} style={{ color: '#22c55e' }} />
+                              Preview: {previewVersion.label || new Date(previewVersion.createdAt).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <Button size="sm" variant="secondary" onClick={() => handleRestoreVersion(previewVersion.id)} disabled={versionRestoring === previewVersion.id} style={{ fontSize: 11, borderRadius: 8 }}>
+                                {versionRestoring === previewVersion.id ? <Loader2 size={11} className="spin" /> : <RotateCcw size={11} />} Restore ini
+                              </Button>
+                              <button onClick={() => setPreviewVersion(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.4, padding: 2 }}><X size={14} /></button>
+                            </div>
+                          </div>
+                          <div style={{ maxHeight: 300, overflowY: 'auto', fontSize: 13, lineHeight: 1.7, padding: '8px 0' }}>
+                            <HtmlRenderer content={previewVersion.content} />
+                          </div>
                         </div>
                       )}
                     </Card>

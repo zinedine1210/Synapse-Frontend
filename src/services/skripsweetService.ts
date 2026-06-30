@@ -282,6 +282,12 @@ export const skripsweetService = {
   restoreChapterVersion: (thesisId: string, chapterId: string, versionId: string) =>
     apiFetch<ThesisChapter>(`/skripsweet/${thesisId}/chapters/${chapterId}/versions/${versionId}/restore`, { method: 'POST' }),
 
+  deleteChapterVersion: (thesisId: string, chapterId: string, versionId: string) =>
+    apiFetch<{ deleted: boolean }>(`/skripsweet/${thesisId}/chapters/${chapterId}/versions/${versionId}`, { method: 'DELETE' }),
+
+  updateChapterVersionLabel: (thesisId: string, chapterId: string, versionId: string, label: string) =>
+    apiFetch<ChapterVersionFull>(`/skripsweet/${thesisId}/chapters/${chapterId}/versions/${versionId}`, { method: 'PATCH', body: JSON.stringify({ label }) }),
+
   // Journals
   addJournal: (thesisId: string, data: Partial<ThesisJournal>) =>
     apiFetch<ThesisJournal>(`/skripsweet/${thesisId}/journals`, { method: 'POST', body: JSON.stringify(data) }),

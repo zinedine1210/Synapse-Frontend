@@ -1338,6 +1338,54 @@ body.hide-bottom-nav .quick-action-fab {
   text-decoration: line-through;
 }
 
+/* TodoCard v2 hover/active */
+.todo-card-v2:hover {
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transform: translateY(-1px);
+}
+.todo-card-v2:active {
+  transform: scale(0.98);
+  box-shadow: none;
+}
+
+/* TodoDetailModal — responsive */
+.todo-detail-panel {
+  width: 75vw !important;
+  max-width: 1000px;
+}
+.todo-detail-body {
+  display: flex;
+  flex-direction: row;
+}
+.todo-detail-right {
+  width: 340px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .todo-detail-overlay {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+  .todo-detail-panel {
+    width: 100vw !important;
+    max-width: 100% !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    height: 100vh;
+  }
+  .todo-detail-body {
+    flex-direction: column !important;
+  }
+  .todo-detail-left {
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-default);
+  }
+  .todo-detail-right {
+    width: 100% !important;
+  }
+}
+
 /* ─── Celebration System — Undo Toast ────────────────────────────────── */
 @keyframes undo-toast-enter {
   from { opacity: 0; transform: translateY(16px) scale(0.95); }
@@ -1741,6 +1789,16 @@ body.hide-bottom-nav .quick-action-fab {
   .todo-calendar > div:last-child > div > div:last-child > div {
     font-size: 9px !important;
     padding: 1px 3px !important;
+  }
+
+  /* Todo card v2 mobile: bigger touch targets */
+  .todo-card-v2 {
+    padding: 14px 12px 14px 16px !important;
+  }
+
+  /* Eisenhower matrix single column on mobile */
+  .todo-eisenhower-grid {
+    grid-template-columns: 1fr !important;
   }
 
   /* ═══ Class Page (Forum/Chat) ═══ */

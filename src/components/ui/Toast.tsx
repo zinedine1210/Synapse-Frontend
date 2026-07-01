@@ -76,13 +76,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         style={{
           position: 'fixed',
           top: '1.5rem',
-          right: '1.5rem',
+          left: '50%',
+          transform: 'translateX(-50%)',
           zIndex: 9999,
           display: 'flex',
           flexDirection: 'column',
           gap: '0.75rem',
           maxWidth: '360px',
-          width: '100%',
+          width: 'calc(100% - 2rem)',
           pointerEvents: 'none',
         }}
       >
@@ -136,11 +137,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         @keyframes toast-enter {
           from {
             opacity: 0;
-            transform: translateX(100px) scale(0.9);
+            transform: translateY(-12px) scale(0.95);
           }
           to {
             opacity: 1;
-            transform: translateX(0) scale(1);
+            transform: translateY(0) scale(1);
           }
         }
       `}</style>

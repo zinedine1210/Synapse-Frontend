@@ -6,7 +6,7 @@ import { qnaService, QnaQuestion, QnaPaginated, UserReputation, LeaderboardEntry
 // ─── Query Keys ─────────────────────────────────────────────
 export const qnaKeys = {
   all: ['qna'] as const,
-  questions: (params: { tab: string; category: string; search: string }) =>
+  questions: (params: { tab: string; category: string; search: string; sort?: string }) =>
     ['qna', 'questions', params] as const,
   myQuestions: () => ['qna', 'my-questions'] as const,
   bookmarks: () => ['qna', 'bookmarks'] as const,
@@ -34,8 +34,8 @@ export function useQnaLeaderboard() {
   });
 }
 
-export function useQnaQuestions(params: { tab: string; category: string; search: string }) {
-  const { tab, category, search } = params;
+export function useQnaQuestions(params: { tab: string; category: string; search: string; sort?: string }) {
+  const { tab, category, search, sort } = params;
 
   return useInfiniteQuery({
     queryKey: qnaKeys.questions(params),
@@ -68,6 +68,7 @@ export function useQnaQuestions(params: { tab: string; category: string; search:
 
       const fetchParams: any = { search: search || undefined, page: pageParam, limit: 15 };
       if (category !== 'semua') fetchParams.category = category;
+      if (sort && sort !== 'newest') fetchParams.sort = sort;
       return qnaService.getQuestions(fetchParams);
     },
     getNextPageParam: (lastPage) => {
@@ -93,7 +94,7 @@ export function useQnaSimilar(title: string) {
 export function useCreateQuestion() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { title: string; body?: string; category?: string[]; tags?: string[] }) =>
+    mutationFn: (data: { title: string; body?: string; category?: string[]; tags?: string[]; requestAiAnswer?: boolean }) =>
       qnaService.createQuestion(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['qna', 'questions'] });
@@ -132,6 +133,16 @@ export function useDeleteQuestion() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['qna', 'questions'] });
       qc.invalidateQueries({ queryKey: qnaKeys.reputation() });
+    },
+  });
+}
+
+export function useDeleteAnswer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (answerId: string) => qnaService.deleteAnswer(answerId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['qna'] });
     },
   });
 }

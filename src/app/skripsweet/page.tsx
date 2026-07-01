@@ -64,8 +64,25 @@ export default function SkripsweetPage() {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [tab, setTab] = useState<Tab>('dashboard');
+  const [tab, setTabRaw] = useState<Tab>('dashboard');
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // Feature-gated tab map
+  const TAB_FEATURE_MAP: Partial<Record<Tab, string>> = {
+    journals: 'skripsweet_journal',
+    bimbingan: 'skripsweet_feedback',
+    bibliography: 'skripsweet_bibliography',
+    chat: 'skripsweet_ai_chat',
+    explore: 'skripsweet_community',
+  };
+  const setTab = (t: Tab) => {
+    const requiredFeature = TAB_FEATURE_MAP[t];
+    if (requiredFeature && !hasFeature(requiredFeature)) {
+      showToast('Fitur ini belum tersedia di paket kamu. Upgrade yuk! 🔓', 'error');
+      return;
+    }
+    setTabRaw(t);
+  };
 
   // State
   const [activeThesisId, setActiveThesisId] = useState<string | null>(null);
@@ -652,14 +669,14 @@ export default function SkripsweetPage() {
             <div style={{ maxWidth: 1000, margin: '0 auto', paddingBottom: 'calc(var(--bottom-nav-height, 60px) + 16px)' }}>
 
               {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ minWidth: 0 }}>
                   <h1 style={{ fontSize: 26, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{ background: 'linear-gradient(135deg, #6366f1, #a855f7)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Skripsweet</span>
                   </h1>
                   <p style={{ fontSize: 13, color: 'var(--dt-text-secondary)', marginTop: 2 }}>Asisten skripsi AI — dari draft sampai sidang</p>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 }}>
                   {activeThesis && (
                     <>
                       <Button onClick={handleExportThesis} variant="secondary" size="sm" disabled={exporting}>
@@ -781,7 +798,7 @@ export default function SkripsweetPage() {
                   )}
 
                   {/* Tabs */}
-                  <div style={{ display: 'flex', gap: 4, marginBottom: 24, padding: 4, borderRadius: 14, background: 'var(--input-bg)', overflowX: 'auto' }}>
+                  <div style={{ display: 'flex', gap: 4, marginBottom: 24, padding: 4, borderRadius: 14, background: 'var(--input-bg)', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
                     {([
                       { key: 'dashboard', label: 'Dashboard', feature: null },
                       { key: 'chapters', label: 'Bab', feature: null },
@@ -793,7 +810,7 @@ export default function SkripsweetPage() {
                     ] as { key: Tab; label: string; feature: string | null }[]).map(t => {
                       const locked = t.feature && !hasFeature(t.feature);
                       return (
-                      <button key={t.key} onClick={() => { if (locked) { showToast('Fitur ini belum tersedia di paket kamu. Upgrade yuk! 🔓', 'error'); return; } setTab(t.key); }} style={{
+                      <button key={t.key} onClick={() => setTab(t.key)} style={{
                         padding: '9px 16px', borderRadius: 10, border: 'none', cursor: 'pointer',
                         fontWeight: tab === t.key ? 600 : 400, fontSize: 13,
                         background: tab === t.key ? 'var(--card-bg)' : 'transparent',
@@ -917,15 +934,15 @@ export default function SkripsweetPage() {
                             const paraPct = ch.targetParagraphs ? Math.min(Math.round((ch.paragraphCount / ch.targetParagraphs) * 100), 100) : 0;
                             return (
                               <Card key={ch.id} style={{ padding: 0, borderRadius: 18, overflow: 'hidden', border: '1px solid var(--border-default)' }}>
-                                <div style={{ borderLeft: `4px solid ${st.color}`, padding: '18px 20px' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                                    <div style={{ flex: 1 }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                                        <span style={{ fontWeight: 700, fontSize: 15 }}>{ch.title}</span>
+                                <div style={{ borderLeft: `4px solid ${st.color}`, padding: '16px' }}>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                                    <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                                        <span style={{ fontWeight: 700, fontSize: 14 }}>{ch.title}</span>
                                         <span style={{ fontSize: 10, padding: '3px 10px', borderRadius: 20, background: `${st.color}12`, color: st.color, fontWeight: 700 }}>{st.label}</span>
                                       </div>
                                       {/* Stats row */}
-                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 10 }}>
+                                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', gap: 6, marginBottom: 10 }}>
                                         <div style={{ padding: '8px 10px', borderRadius: 10, background: 'var(--input-bg)', fontSize: 11 }}>
                                           <div style={{ opacity: 0.5 }}>Kata</div>
                                           <div style={{ fontWeight: 700, fontSize: 14 }}>{ch.wordCount.toLocaleString()}{ch.targetWords ? <span style={{ opacity: 0.4, fontWeight: 400 }}>/{ch.targetWords}</span> : ''}</div>
@@ -943,7 +960,7 @@ export default function SkripsweetPage() {
                                         </div>
                                       </div>
                                     </div>
-                                    <div style={{ width: 110, flexShrink: 0 }}>
+                                    <div style={{ flexShrink: 0, minWidth: 100 }}>
                                       <SelectOption value={ch.status} onChange={(v) => handleUpdateChapterStatus(ch.id, v)} options={Object.entries(CHAPTER_STATUS).map(([k, v]) => ({ value: k, label: v.label }))} placeholder="Status" />
                                     </div>
                                   </div>
@@ -1012,14 +1029,14 @@ export default function SkripsweetPage() {
                   {/* ═══════ JOURNALS (Inline search) ═══════ */}
                   {tab === 'journals' && (
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8 }}>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button onClick={() => setJournalSearchMode('list')} style={{ padding: '6px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: journalSearchMode === 'list' ? 700 : 400, background: journalSearchMode === 'list' ? 'var(--card-bg)' : 'transparent', boxShadow: journalSearchMode === 'list' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none' }}>Koleksi ({journals.length})</button>
                           <button onClick={() => setJournalSearchMode('search')} style={{ padding: '6px 14px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: journalSearchMode === 'search' ? 700 : 400, background: journalSearchMode === 'search' ? 'var(--card-bg)' : 'transparent', boxShadow: journalSearchMode === 'search' ? '0 1px 4px rgba(0,0,0,0.06)' : 'none' }}>Cari Jurnal</button>
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <Button onClick={handleGetMatrix} variant="secondary" size="sm" disabled={matrixLoading || journals.length === 0}>
-                            {matrixLoading ? <Loader2 size={13} className="spin" /> : <BarChart3 size={13} />} Matrix
+                            {matrixLoading ? <Loader2 size={13} className="spin" /> : <BarChart3 size={13} />} <span className="hide-mobile">Matrix</span>
                           </Button>
                           <Button onClick={() => setShowJournalModal(true)} size="sm"><Plus size={14} /> Manual</Button>
                         </div>
@@ -1071,10 +1088,10 @@ export default function SkripsweetPage() {
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {journals.map((j, idx) => (
-                              <Card key={j.id} style={{ padding: '16px 20px', borderRadius: 16 }}>
-                                <div style={{ display: 'flex', gap: 14 }}>
-                                  <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: j.isFromSearch ? 'rgba(99, 102, 241, 0.08)' : 'rgba(245, 158, 11, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>
-                                    {j.isFromSearch ? <Search size={14} /> : <FileText size={14} />}
+                              <Card key={j.id} style={{ padding: '14px 16px', borderRadius: 16 }}>
+                                <div style={{ display: 'flex', gap: 10 }}>
+                                  <div style={{ width: 32, height: 32, borderRadius: 10, flexShrink: 0, background: j.isFromSearch ? 'rgba(99, 102, 241, 0.08)' : 'rgba(245, 158, 11, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>
+                                    {j.isFromSearch ? <Search size={13} /> : <FileText size={13} />}
                                   </div>
                                   <div style={{ flex: 1, minWidth: 0 }}>
                                     <h4 style={{ fontSize: 13, fontWeight: 700, marginBottom: 4, lineHeight: 1.4 }}>[{idx + 1}] {j.title}</h4>
@@ -1125,9 +1142,9 @@ export default function SkripsweetPage() {
                               return (
                                 <div key={b.id} style={{ position: 'relative' }}>
                                   <div style={{ position: 'absolute', left: -20, top: 8, width: 12, height: 12, borderRadius: '50%', background: b.status === 'done' ? '#22c55e' : '#f59e0b', border: '2px solid var(--card-bg)' }} />
-                                  <Card style={{ padding: '16px 20px', borderRadius: 16 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                      <div style={{ flex: 1 }}>
+                                  <Card style={{ padding: '14px 16px', borderRadius: 16 }}>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                      <div style={{ flex: '1 1 0', minWidth: 0 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                                           <span style={{ fontWeight: 700, fontSize: 14 }}>{b.topic}</span>
                                           {b.status === 'done' && <span style={{ fontSize: 10, background: '#22c55e22', color: '#22c55e', padding: '2px 8px', borderRadius: 20, fontWeight: 700 }}>SELESAI</span>}
@@ -1178,8 +1195,8 @@ export default function SkripsweetPage() {
                   {/* ═══════ BIBLIOGRAPHY ═══════ */}
                   {tab === 'bibliography' && (
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-                        <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 8, marginBottom: 16, alignItems: 'center' }}>
+                        <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 12, opacity: 0.5, fontWeight: 500 }}>Format:</span>
                           <SelectOption value={bibStyle} onChange={setBibStyle} options={[
                             { value: 'apa7', label: 'APA 7th' },
@@ -1189,7 +1206,7 @@ export default function SkripsweetPage() {
                             { value: 'harvard', label: 'Harvard' },
                           ]} />
                         </div>
-                        {bibliographies.length > 0 && <Button onClick={copyBibliography} variant="secondary" size="sm"><Copy size={13} /> Copy All</Button>}
+                        {bibliographies.length > 0 && <Button onClick={copyBibliography} variant="secondary" size="sm"><Copy size={13} /> Copy</Button>}
                         <Button onClick={handleGenerateBibliography} variant="secondary" size="sm" disabled={submitting || journals.length === 0}>
                           {submitting ? <Loader2 size={14} className="spin" /> : <RefreshCw size={14} />} Generate
                         </Button>
@@ -1214,8 +1231,8 @@ export default function SkripsweetPage() {
                           </div>
                         </div>
                       ) : (
-                        <Card style={{ padding: '24px 28px', borderRadius: 18 }}>
-                          <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>Daftar Pustaka ({activeThesis?.formatTemplate?.citationStyle?.toUpperCase() || 'APA7'})</h3>
+                        <Card style={{ padding: '16px', borderRadius: 18 }}>
+                          <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Daftar Pustaka ({activeThesis?.formatTemplate?.citationStyle?.toUpperCase() || 'APA7'})</h3>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {bibliographies.map((bib, i) => (
                               <div key={bib.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderRadius: 10, background: i % 2 === 0 ? 'var(--input-bg)' : 'transparent' }}>
@@ -1308,7 +1325,7 @@ export default function SkripsweetPage() {
                       ) : !exploreData?.items.length ? (
                         <div style={{ textAlign: 'center', padding: 48 }}><Globe size={48} style={{ opacity: 0.15, marginBottom: 12 }} /><p style={{ opacity: 0.6, fontSize: 15 }}>Belum ada skripsi yang dipublikasikan</p></div>
                       ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 14 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 14 }}>
                           {exploreData.items.map(thesis => (
                             <Card key={thesis.id} style={{ padding: 0, borderRadius: 18, overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s' }} onClick={() => handleViewPublic(thesis.id)}>
                               <div style={{ height: 4, background: 'linear-gradient(90deg, #6366f1, #a855f7, #ec4899)' }} />

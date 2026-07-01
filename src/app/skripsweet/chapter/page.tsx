@@ -319,17 +319,17 @@ export default function ChapterEditorPage() {
               ) : (
                 <>
                   {/* Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <button onClick={() => router.push('/skripsweet')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8, borderRadius: 10, display: 'flex' }}><ArrowLeft size={20} /></button>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <h1 style={{ fontSize: 20, fontWeight: 800 }}>{chapter.title}</h1>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '1 1 auto' }}>
+                      <button onClick={() => router.push('/skripsweet')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, borderRadius: 10, display: 'flex', flexShrink: 0 }}><ArrowLeft size={20} /></button>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <h1 style={{ fontSize: 18, fontWeight: 800, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60vw' }}>{chapter.title}</h1>
                           {allChapters.length > 1 && (
                             <span style={{ fontSize: 11, opacity: 0.4, fontWeight: 500 }}>({currentIndex + 1}/{allChapters.length})</span>
                           )}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
                           <span style={{ fontSize: 10, padding: '3px 10px', borderRadius: 20, background: `${st.color}15`, color: st.color, fontWeight: 700 }}>{st.label}</span>
                           {hasUnsaved && <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>● Belum disimpan</span>}
                           {!hasUnsaved && lastSaved && (
@@ -340,10 +340,10 @@ export default function ChapterEditorPage() {
                         </div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
                       {/* Prev/Next chapter navigation */}
                       {allChapters.length > 1 && (
-                        <div style={{ display: 'flex', gap: 2, marginRight: 4 }}>
+                        <div style={{ display: 'flex', gap: 2, marginRight: 2 }}>
                           <button
                             onClick={() => prevChapter && navigateToChapter(prevChapter)}
                             disabled={!prevChapter}
@@ -362,20 +362,20 @@ export default function ChapterEditorPage() {
                           </button>
                         </div>
                       )}
-                      <Button onClick={() => setShowAiPanel(!showAiPanel)} variant="secondary" size="sm" disabled={!hasFeature('skripsweet_write_assist')} style={{ background: showAiPanel ? 'rgba(99, 102, 241, 0.1)' : undefined, color: showAiPanel ? '#6366f1' : undefined, border: showAiPanel ? '1.5px solid rgba(99, 102, 241, 0.3)' : undefined, opacity: hasFeature('skripsweet_write_assist') ? 1 : 0.5 }}>
-                        <Wand2 size={14} /> AI Assist
+                      <Button onClick={() => setShowAiPanel(!showAiPanel)} variant="secondary" size="sm" disabled={!hasFeature('skripsweet_write_assist')} style={{ background: showAiPanel ? 'rgba(99, 102, 241, 0.1)' : undefined, color: showAiPanel ? '#6366f1' : undefined, border: showAiPanel ? '1.5px solid rgba(99, 102, 241, 0.3)' : undefined, opacity: hasFeature('skripsweet_write_assist') ? 1 : 0.5, fontSize: 12, padding: '6px 10px' }}>
+                        <Wand2 size={13} /> <span className="hide-mobile">AI</span>
                       </Button>
-                      <Button onClick={handleGetFeedback} variant="secondary" size="sm" disabled={feedbackLoading || wordCount < 20 || !hasFeature('skripsweet_feedback')} style={{ background: 'rgba(168, 85, 247, 0.06)', color: '#a855f7', border: '1px solid rgba(168, 85, 247, 0.2)', opacity: hasFeature('skripsweet_feedback') ? 1 : 0.5 }}>
-                        {feedbackLoading ? <Loader2 size={14} className="spin" /> : <Sparkles size={14} />} Review
+                      <Button onClick={handleGetFeedback} variant="secondary" size="sm" disabled={feedbackLoading || wordCount < 20 || !hasFeature('skripsweet_feedback')} style={{ background: 'rgba(168, 85, 247, 0.06)', color: '#a855f7', border: '1px solid rgba(168, 85, 247, 0.2)', opacity: hasFeature('skripsweet_feedback') ? 1 : 0.5, fontSize: 12, padding: '6px 10px' }}>
+                        {feedbackLoading ? <Loader2 size={13} className="spin" /> : <Sparkles size={13} />} <span className="hide-mobile">Review</span>
                       </Button>
-                      <Button onClick={loadVersions} variant="secondary" size="sm" disabled={versionsLoading || !hasFeature('skripsweet_versions')} style={{ opacity: hasFeature('skripsweet_versions') ? 1 : 0.5 }}>
-                        {versionsLoading ? <Loader2 size={14} className="spin" /> : <History size={14} />} Riwayat
+                      <Button onClick={loadVersions} variant="secondary" size="sm" disabled={versionsLoading || !hasFeature('skripsweet_versions')} style={{ opacity: hasFeature('skripsweet_versions') ? 1 : 0.5, fontSize: 12, padding: '6px 10px' }}>
+                        {versionsLoading ? <Loader2 size={13} className="spin" /> : <History size={13} />} <span className="hide-mobile">Riwayat</span>
                       </Button>
-                      <Button onClick={handleExportDocx} variant="secondary" size="sm" disabled={!hasFeature('skripsweet_docx_export')} style={{ opacity: hasFeature('skripsweet_docx_export') ? 1 : 0.5 }}>
-                        <Download size={14} /> .doc
+                      <Button onClick={handleExportDocx} variant="secondary" size="sm" disabled={!hasFeature('skripsweet_docx_export')} style={{ opacity: hasFeature('skripsweet_docx_export') ? 1 : 0.5, fontSize: 12, padding: '6px 10px' }}>
+                        <Download size={13} />
                       </Button>
-                      <Button onClick={handleSave} disabled={saving} size="sm">
-                        {saving ? <Loader2 size={14} className="spin" /> : <Save size={14} />} Simpan
+                      <Button onClick={handleSave} disabled={saving} size="sm" style={{ fontSize: 12, padding: '6px 12px' }}>
+                        {saving ? <Loader2 size={13} className="spin" /> : <Save size={13} />} Simpan
                       </Button>
                     </div>
                   </div>
@@ -425,7 +425,7 @@ export default function ChapterEditorPage() {
                   </div>
 
                   {/* Target settings row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 20 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10, marginBottom: 20 }}>
                     <TextInput label="Target Kata" value={targetWords} onChange={v => setTargetWords(v.replace(/\D/g, ''))} placeholder="e.g. 3000" />
                     <TextInput label="Target Halaman" value={targetPages} onChange={v => setTargetPages(v.replace(/\D/g, ''))} placeholder="e.g. 12" />
                     <TextInput label="Target Paragraf" value={targetParagraphs} onChange={v => setTargetParagraphs(v.replace(/\D/g, ''))} placeholder="e.g. 30" />
@@ -433,7 +433,7 @@ export default function ChapterEditorPage() {
 
                   {/* AI Writing Panel */}
                   {showAiPanel && (
-                    <Card style={{ padding: '20px 24px', borderRadius: 18, marginBottom: 20, border: '1.5px solid rgba(99, 102, 241, 0.15)', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.03), rgba(168, 85, 247, 0.02))' }}>
+                    <Card style={{ padding: '16px', borderRadius: 18, marginBottom: 20, border: '1.5px solid rgba(99, 102, 241, 0.15)', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.03), rgba(168, 85, 247, 0.02))' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                         <h3 style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
                           <Wand2 size={16} style={{ color: '#6366f1' }} /> AI Writing Assistant
@@ -442,7 +442,7 @@ export default function ChapterEditorPage() {
                       </div>
 
                       {/* Action buttons */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8, marginBottom: 16 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8, marginBottom: 16 }}>
                         {AI_ACTIONS.map(a => (
                           <button key={a.key} onClick={() => handleAiAssist(a.key)} disabled={aiLoading}
                             style={{ padding: '12px 14px', borderRadius: 12, border: '1px solid var(--border-default)', background: aiAction === a.key ? 'rgba(99, 102, 241, 0.08)' : 'var(--card-bg)', cursor: aiLoading ? 'not-allowed' : 'pointer', textAlign: 'left', transition: 'all 0.2s', opacity: aiLoading && aiAction !== a.key ? 0.5 : 1 }}>
@@ -455,14 +455,14 @@ export default function ChapterEditorPage() {
                       </div>
 
                       {/* Selected text / custom prompt */}
-                      <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
-                        <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+                        <div>
                           <TextArea value={selectedText} onChange={setSelectedText} placeholder="Paste teks yang ingin di-expand/rewrite di sini (untuk aksi Kembangkan/Tulis Ulang)..." rows={2} />
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: 8 }} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey && customPrompt.trim()) { e.preventDefault(); handleAiAssist('custom'); } }}>
-                        <div style={{ flex: 1 }}>
-                          <TextInput value={customPrompt} onChange={setCustomPrompt} placeholder="Atau tulis instruksi custom ke AI... (Enter untuk submit)" />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <TextInput value={customPrompt} onChange={setCustomPrompt} placeholder="Instruksi custom ke AI... (Enter)" />
                         </div>
                         <Button onClick={() => handleAiAssist('custom')} disabled={aiLoading || !customPrompt.trim()} size="sm">
                           {aiLoading && aiAction === 'custom' ? <Loader2 size={14} className="spin" /> : <Send size={14} />}
@@ -480,9 +480,9 @@ export default function ChapterEditorPage() {
                       {/* AI Result */}
                       {aiResult && (
                         <div style={{ marginTop: 16, borderRadius: 14, border: '1px solid rgba(99, 102, 241, 0.15)', overflow: 'hidden' }}>
-                          <div style={{ padding: '10px 16px', background: 'rgba(99, 102, 241, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(99, 102, 241, 0.1)' }}>
+                          <div style={{ padding: '10px 14px', background: 'rgba(99, 102, 241, 0.05)', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(99, 102, 241, 0.1)', gap: 6 }}>
                             <span style={{ fontSize: 12, fontWeight: 700, color: '#6366f1' }}>Hasil AI</span>
-                            <div style={{ display: 'flex', gap: 6 }}>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                               {(aiAction === 'expand' || aiAction === 'rewrite') && selectedText && (
                                 <Button size="sm" onClick={handleReplaceWithAi} style={{ fontSize: 11, borderRadius: 8, padding: '4px 10px', background: '#f59e0b', border: 'none', color: '#fff' }}>
                                   Ganti Teks
@@ -504,12 +504,12 @@ export default function ChapterEditorPage() {
 
                   {/* Version History Panel */}
                   {showVersions && (
-                    <Card style={{ padding: '18px 22px', borderRadius: 18, marginBottom: 20, border: '1.5px solid rgba(34, 197, 94, 0.15)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <Card style={{ padding: '16px', borderRadius: 18, marginBottom: 20, border: '1.5px solid rgba(34, 197, 94, 0.15)' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 8 }}>
                         <h3 style={{ fontSize: 15, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
                           <History size={16} style={{ color: '#22c55e' }} /> Riwayat Versi
                         </h3>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                           {showSaveVersionInput ? (
                             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                               <input
@@ -608,20 +608,20 @@ export default function ChapterEditorPage() {
 
                   {/* Editor */}
                   <Card style={{ padding: 0, borderRadius: 18, overflow: 'hidden', marginBottom: 20 }}>
-                    <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--input-bg)' }}>
+                    <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border-default)', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--input-bg)', flexWrap: 'wrap' }}>
                       <FileText size={14} style={{ opacity: 0.5 }} />
                       <span style={{ fontSize: 13, fontWeight: 600 }}>Editor Konten</span>
                       {!showAiPanel && (
-                        <button onClick={() => setShowAiPanel(true)} style={{ marginLeft: 8, padding: '3px 10px', borderRadius: 8, border: '1px solid rgba(99, 102, 241, 0.2)', background: 'rgba(99, 102, 241, 0.04)', cursor: 'pointer', fontSize: 11, color: '#6366f1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <Wand2 size={11} /> AI Assist
+                        <button onClick={() => setShowAiPanel(true)} style={{ marginLeft: 4, padding: '3px 10px', borderRadius: 8, border: '1px solid rgba(99, 102, 241, 0.2)', background: 'rgba(99, 102, 241, 0.04)', cursor: 'pointer', fontSize: 11, color: '#6366f1', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Wand2 size={11} /> AI
                         </button>
                       )}
-                      <span style={{ marginLeft: 'auto', fontSize: 11, opacity: 0.4 }}>
-                        {saving ? 'Menyimpan...' : hasUnsaved ? 'Auto-save dalam 30 detik' : lastSaved ? `Tersimpan ${lastSaved.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : 'Auto-save aktif'}
+                      <span style={{ marginLeft: 'auto', fontSize: 11, opacity: 0.4, whiteSpace: 'nowrap' }}>
+                        {saving ? 'Menyimpan...' : hasUnsaved ? 'Auto-save 30s' : lastSaved ? `Tersimpan ${lastSaved.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}` : 'Auto-save aktif'}
                       </span>
                     </div>
-                    <div style={{ padding: '16px 20px' }}>
-                      <RichTextEditor content={content} onChange={handleContentChange} placeholder="Mulai menulis konten bab..." minHeight={500} enableAI />
+                    <div style={{ padding: '12px' }}>
+                      <RichTextEditor content={content} onChange={handleContentChange} placeholder="Mulai menulis konten bab..." minHeight={400} enableAI />
                     </div>
                   </Card>
 
@@ -648,23 +648,23 @@ export default function ChapterEditorPage() {
 
                   {/* Chapter Navigation Footer */}
                   {allChapters.length > 1 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderTop: '1px solid var(--border-default)', marginTop: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', borderTop: '1px solid var(--border-default)', marginTop: 8, gap: 8 }}>
                       {prevChapter ? (
-                        <button onClick={() => navigateToChapter(prevChapter)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 12, border: '1px solid var(--border-default)', background: 'var(--card-bg)', cursor: 'pointer', fontSize: 13 }}>
-                          <ChevronLeft size={16} />
-                          <div style={{ textAlign: 'left' }}>
+                        <button onClick={() => navigateToChapter(prevChapter)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-default)', background: 'var(--card-bg)', cursor: 'pointer', fontSize: 12, minWidth: 0, flex: '0 1 auto', maxWidth: '45%' }}>
+                          <ChevronLeft size={14} style={{ flexShrink: 0 }} />
+                          <div style={{ textAlign: 'left', minWidth: 0 }}>
                             <div style={{ fontSize: 10, opacity: 0.4, fontWeight: 500 }}>Sebelumnya</div>
-                            <div style={{ fontWeight: 600 }}>{prevChapter.title}</div>
+                            <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{prevChapter.title}</div>
                           </div>
                         </button>
                       ) : <div />}
                       {nextChapter ? (
-                        <button onClick={() => navigateToChapter(nextChapter)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 12, border: '1px solid var(--border-default)', background: 'var(--card-bg)', cursor: 'pointer', fontSize: 13 }}>
-                          <div style={{ textAlign: 'right' }}>
+                        <button onClick={() => navigateToChapter(nextChapter)} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 12px', borderRadius: 12, border: '1px solid var(--border-default)', background: 'var(--card-bg)', cursor: 'pointer', fontSize: 12, minWidth: 0, flex: '0 1 auto', maxWidth: '45%' }}>
+                          <div style={{ textAlign: 'right', minWidth: 0 }}>
                             <div style={{ fontSize: 10, opacity: 0.4, fontWeight: 500 }}>Selanjutnya</div>
-                            <div style={{ fontWeight: 600 }}>{nextChapter.title}</div>
+                            <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nextChapter.title}</div>
                           </div>
-                          <ChevronRight size={16} />
+                          <ChevronRight size={14} style={{ flexShrink: 0 }} />
                         </button>
                       ) : <div />}
                     </div>

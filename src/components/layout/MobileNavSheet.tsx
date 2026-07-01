@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Sun, Moon, LogOut, X } from 'lucide-react';
+import { Sun, Moon, LogOut, X, CreditCard } from 'lucide-react';
 import {
   primaryNavItems,
   secondaryNavItems,
@@ -141,6 +141,7 @@ export function MobileNavSheet({ open, onClose }: MobileNavSheetProps) {
             <ul className="mobile-nav-sheet__list">
               {navItems.map(renderItem)}
               {!isSuperadmin && renderItem(settingsNavItem)}
+              {!isSuperadmin && renderItem({ label: 'Billing', path: '/billing', icon: CreditCard })}
             </ul>
           </nav>
 

@@ -9,6 +9,7 @@ interface FeatureAccessContextType {
   features: string[];
   userRole: UserRole;
   hasFeature: (featureKey: string) => boolean;
+  maxFileSizeMb: number;
 }
 
 const FeatureAccessContext = createContext<FeatureAccessContextType | undefined>(undefined);
@@ -19,6 +20,7 @@ export function FeatureAccessProvider({ children }: { children: React.ReactNode 
   const value = useMemo<FeatureAccessContextType>(() => {
     const features = user?.pricingPlan?.features ?? [];
     const userRole: UserRole = user?.role ?? 'USER';
+    const maxFileSizeMb = user?.pricingPlan?.maxFileSizeMb ?? 5;
 
     const hasFeature = (featureKey: string): boolean => {
       // SUPERADMIN bypasses all feature restrictions
@@ -26,8 +28,8 @@ export function FeatureAccessProvider({ children }: { children: React.ReactNode 
       return features.includes(featureKey);
     };
 
-    return { features, userRole, hasFeature };
-  }, [user?.pricingPlan?.features, user?.role]);
+    return { features, userRole, hasFeature, maxFileSizeMb };
+  }, [user?.pricingPlan?.features, user?.pricingPlan?.maxFileSizeMb, user?.role]);
 
   return (
     <FeatureAccessContext.Provider value={value}>

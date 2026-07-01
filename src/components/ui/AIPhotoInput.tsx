@@ -22,15 +22,9 @@ export function AIPhotoInput({ onExtracted, mode, className = '' }: AIPhotoInput
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate is image
+    // Validate is image — no size limit for AI processing (not stored)
     if (!file.type.startsWith('image/')) {
       showToast('Format berkas harus berupa gambar.', 'error');
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('Ukuran gambar maksimal 5MB.', 'error');
       return;
     }
 

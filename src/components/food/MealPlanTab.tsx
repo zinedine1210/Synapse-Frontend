@@ -552,17 +552,18 @@ export function MealPlanTab({ loading: externalLoading }: MealPlanTabProps) {
       )}
 
       {/* Add/Edit Meal Modal */}
-      <Modal isOpen={showAddMealModal || !!editingMeal} onClose={() => { setShowAddMealModal(false); setEditingMeal(null); resetMealForm(); }} title={editingMeal ? 'Edit Makanan' : 'Tambah Makanan'}>
+      <Modal isOpen={showAddMealModal || !!editingMeal} onClose={() => { setShowAddMealModal(false); setEditingMeal(null); resetMealForm(); }} title={editingMeal ? 'Edit Item' : 'Tambah Item'}>
         <form onSubmit={editingMeal ? handleUpdateMeal : handleAddMeal} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <TextInput label="Nama Makanan" value={newMealName} onChange={setNewMealName} placeholder="Nasi Padang, Mie Ayam, dll." required autoFocus />
+          <TextInput label="Nama Makanan/Minuman" value={newMealName} onChange={setNewMealName} placeholder="Nasi Padang, Es Teh, Kopi Susu, dll." required autoFocus />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <SelectOption label="Waktu Makan" value={newMealType} onChange={setNewMealType} options={[
               { value: 'breakfast', label: '☀️ Sarapan' },
               { value: 'lunch', label: '🌤️ Makan Siang' },
               { value: 'dinner', label: '🌙 Makan Malam' },
               { value: 'snack', label: '🍿 Camilan' },
+              { value: 'drink', label: '🥤 Minuman' },
             ]} />
-            <TextInput label="Harga (Rp)" value={newMealPrice} onChange={setNewMealPrice} placeholder="20000" required />
+            <TextInput label="Harga" value={newMealPrice} onChange={(v) => setNewMealPrice(v.replace(/[^0-9]/g, ''))} placeholder="20000" required leftIcon={<span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgb(var(--text-muted))' }}>Rp</span>} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
             <TextInput label="Kalori (opsional)" value={newMealCalories} onChange={setNewMealCalories} placeholder="500" />

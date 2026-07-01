@@ -1329,8 +1329,8 @@ export function ForumTab({ classId, userId, memberRole, permissions, sessions, t
                 </div>
               )}
               {/* Date Jump Dropdown — only visible when scrolling */}
-              {groupedPosts.length > 1 && (showDateJump || dateJumpOpen) && (
-                <div style={{ position: 'sticky', top: 0, zIndex: 15, display: 'flex', justifyContent: 'center', paddingBottom: '0.25rem', opacity: showDateJump || dateJumpOpen ? 1 : 0, transition: 'opacity 0.3s ease' }}>
+              {groupedPosts.length > 1 && (
+                <div style={{ position: 'sticky', top: 0, zIndex: 15, display: 'flex', justifyContent: 'center', paddingBottom: '0.25rem', opacity: (showDateJump || dateJumpOpen) ? 1 : 0, pointerEvents: (showDateJump || dateJumpOpen) ? 'auto' : 'none', transition: 'opacity 0.3s ease' }}>
                   <div style={{ position: 'relative' }}>
                     <button onClick={() => setDateJumpOpen(p => !p)} className="btn-bounce" style={{
                       display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.25rem 0.65rem',

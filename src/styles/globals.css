@@ -549,6 +549,10 @@ a:hover { opacity: 0.8; }
   .appbar-search-trigger kbd {
     display: none !important;
   }
+
+  .hide-mobile {
+    display: none !important;
+  }
 }
 
 @media (max-width: 480px) {

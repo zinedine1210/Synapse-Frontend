@@ -102,20 +102,23 @@ export function LineChartSvg({ data, width = 320, height = 140, color = '#10b981
 // ═══════════════════════════════════════════
 // COMPONENT: Heatmap Calendar
 // ═══════════════════════════════════════════
-export function SpendingHeatmap({ transactions, month, year }: { transactions: Transaction[]; month: number; year: number }) {
-  const daysInMonth = new Date(year, month, 0).getDate();
+export function SpendingHeatmap({ transactions, month: initialMonth, year: initialYear }: { transactions: Transaction[]; month: number; year: number }) {
+  const [viewMonth, setViewMonth] = useState(initialMonth);
+  const [viewYear, setViewYear] = useState(initialYear);
+
+  const daysInMonth = new Date(viewYear, viewMonth, 0).getDate();
   const expenses = transactions.filter(t => t.type === 'expense');
 
   const dailyTotals = useMemo(() => {
     const totals = new Array(daysInMonth).fill(0);
     expenses.forEach(t => {
       const d = new Date(t.date);
-      if (d.getMonth() + 1 === month && d.getFullYear() === year) {
+      if (d.getMonth() + 1 === viewMonth && d.getFullYear() === viewYear) {
         totals[d.getDate() - 1] += t.amount;
       }
     });
     return totals;
-  }, [expenses, month, year, daysInMonth]);
+  }, [expenses, viewMonth, viewYear, daysInMonth]);
 
   const maxVal = Math.max(...dailyTotals, 1);
 
@@ -128,25 +131,41 @@ export function SpendingHeatmap({ transactions, month, year }: { transactions: T
     return '#86efac';
   };
 
-  const firstDayOfWeek = new Date(year, month - 1, 1).getDay();
+  const firstDayOfWeek = new Date(viewYear, viewMonth - 1, 1).getDay();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+
+  const handlePrevMonth = () => {
+    if (viewMonth === 1) { setViewMonth(12); setViewYear(y => y - 1); }
+    else setViewMonth(m => m - 1);
+  };
+  const handleNextMonth = () => {
+    if (viewMonth === 12) { setViewMonth(1); setViewYear(y => y + 1); }
+    else setViewMonth(m => m + 1);
+  };
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 6 }}>
+      {/* Month navigation */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
+        <button onClick={handlePrevMonth} style={{ background: 'none', border: '1px solid var(--dt-card-border)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 14, color: 'var(--dt-text-secondary)', fontFamily: 'inherit' }}>‹</button>
+        <span style={{ fontSize: 14, fontWeight: 700, minWidth: 100, textAlign: 'center' }}>{monthNames[viewMonth - 1]} {viewYear}</span>
+        <button onClick={handleNextMonth} disabled={viewMonth === initialMonth && viewYear === initialYear} style={{ background: 'none', border: '1px solid var(--dt-card-border)', borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontSize: 14, color: 'var(--dt-text-secondary)', fontFamily: 'inherit', opacity: viewMonth === initialMonth && viewYear === initialYear ? 0.3 : 1 }}>›</button>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 6 }}>
         {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => (
-          <div key={d} style={{ fontSize: 9, textAlign: 'center', color: 'var(--dt-text-secondary)', fontWeight: 600 }}>{d}</div>
+          <div key={d} style={{ fontSize: 10, textAlign: 'center', color: 'var(--dt-text-secondary)', fontWeight: 600 }}>{d}</div>
         ))}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
         {Array.from({ length: firstDayOfWeek }).map((_, i) => <div key={`e${i}`} />)}
         {dailyTotals.map((val, i) => (
           <div
             key={i}
             title={`Tgl ${i + 1}: ${fmt(val)}`}
             style={{
-              aspectRatio: '1', borderRadius: 4, background: getColor(val),
+              aspectRatio: '1', borderRadius: 5, background: getColor(val),
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 8, color: val > maxVal * 0.5 ? '#fff' : 'var(--dt-text-secondary)',
+              fontSize: 10, color: val > maxVal * 0.5 ? '#fff' : 'var(--dt-text-secondary)',
               fontWeight: 600, cursor: 'default',
             }}
           >

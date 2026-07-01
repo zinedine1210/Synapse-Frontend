@@ -143,12 +143,7 @@ export default function MakanApaPage() {
   const handleImageUpload = async (file: File) => {
     if (loading) return; // prevent double upload
 
-    // Validate file size (max 5MB) and format
-    const MAX_SIZE = 5 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      showToast('Ukuran foto maksimal 5MB. Coba kompres dulu ya.', 'error');
-      return;
-    }
+    // Validate format only — no size limit for AI processing (not stored)
     const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
     if (!ALLOWED_TYPES.includes(file.type)) {
       showToast('Format foto harus JPG, PNG, atau WebP.', 'error');

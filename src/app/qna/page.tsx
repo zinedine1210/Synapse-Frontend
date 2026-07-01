@@ -55,6 +55,7 @@ export default function QnaPage() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tab, setTab] = useState<'terbaru' | 'trending' | 'mine' | 'bookmarks'>('terbaru');
   const [selectedCategory, setSelectedCategory] = useState('semua');
+  const [sortBy, setSortBy] = useState<string>('newest');
 
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 350);
@@ -63,7 +64,7 @@ export default function QnaPage() {
   const { data: reputation } = useQnaReputation();
   const { data: leaderboard } = useQnaLeaderboard();
 
-  const questionsQuery = useQnaQuestions({ tab, category: selectedCategory, search: debouncedSearch });
+  const questionsQuery = useQnaQuestions({ tab, category: selectedCategory, search: debouncedSearch, sort: sortBy });
   const questions = useMemo(
     () => questionsQuery.data?.pages.flatMap(p => p.questions) ?? [],
     [questionsQuery.data],
@@ -80,6 +81,7 @@ export default function QnaPage() {
   const [askForm, setAskForm] = useState({ title: '', body: '', category: '' });
   const [askTags, setAskTags] = useState<string[]>([]);
   const [askBodyError, setAskBodyError] = useState('');
+  const [requestAiAnswer, setRequestAiAnswer] = useState(true);
   const debouncedTitle = useDebounce(askForm.title, 500);
 
   // Duplicate detection via TanStack Query
@@ -121,6 +123,7 @@ export default function QnaPage() {
         body: askForm.body || undefined,
         tags: askTags.length ? askTags : undefined,
         category: askForm.category ? [askForm.category] : undefined,
+        requestAiAnswer,
       });
       showToast('Pertanyaan udah dipost! 🎉', 'success');
       // XP notification for creating a question
@@ -267,7 +270,7 @@ export default function QnaPage() {
                 </div>
 
                 {/* Tab Pills */}
-                <div style={{ display: 'flex', gap: 4, marginBottom: 20, padding: 4, borderRadius: 12, background: 'var(--input-bg)', width: 'fit-content' }}>
+                <div style={{ display: 'flex', gap: 4, marginBottom: 12, padding: 4, borderRadius: 12, background: 'var(--input-bg)', width: 'fit-content' }}>
                   {[
                     { key: 'terbaru', label: 'Terbaru' },
                     { key: 'trending', label: 'Trending' },
@@ -284,6 +287,25 @@ export default function QnaPage() {
                     }}>{t.label}</button>
                   ))}
                 </div>
+
+                {/* Sort Options */}
+                {tab === 'terbaru' && (
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+                    {[
+                      { key: 'newest', label: '🕐 Terbaru' },
+                      { key: 'views', label: '👁 Paling Dilihat' },
+                      { key: 'upvotes', label: '👍 Paling Disukai' },
+                      { key: 'unanswered', label: '❓ Belum Terjawab' },
+                    ].map(s => (
+                      <button key={s.key} onClick={() => setSortBy(s.key)} style={{
+                        padding: '5px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: sortBy === s.key ? 700 : 400,
+                        background: sortBy === s.key ? 'rgba(var(--color-primary), 0.1)' : 'var(--input-bg)',
+                        color: sortBy === s.key ? 'rgb(var(--color-primary))' : 'inherit',
+                        transition: 'all 0.2s',
+                      }}>{s.label}</button>
+                    ))}
+                  </div>
+                )}
 
                 {/* Mobile category filter — visible only on mobile where sidebar is hidden */}
                 <div className="qna-mobile-cat-filter" style={{ display: 'none', marginBottom: 14 }}>
@@ -568,6 +590,10 @@ export default function QnaPage() {
                     }}
                     placeholder="Jelaskan konteksnya: apa yang sudah kamu coba, error yang muncul, dll..."
                     minHeight={140}
+                    onImageUpload={async (file) => {
+                      const res = await qnaService.uploadFile(file);
+                      return res.fileUrl;
+                    }}
                   />
                   {askBodyError && <p style={{ color: '#ef4444', fontSize: 11, marginTop: 4 }}>{askBodyError}</p>}
                   {/* Character count hint */}
@@ -603,6 +629,17 @@ export default function QnaPage() {
                 <div>
                   <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: 'block', opacity: 0.6 }}>Tags <span style={{ opacity: 0.6, fontWeight: 400 }}>(opsional)</span></label>
                   <TagInput value={askTags} onChange={setAskTags} placeholder="cth: algoritma, java, database — Enter untuk tambah" maxTags={5} />
+                </div>
+
+                {/* AI Answer Toggle */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 12, background: requestAiAnswer ? 'rgba(var(--color-primary), 0.06)' : 'var(--input-bg)', border: `1px solid ${requestAiAnswer ? 'rgba(var(--color-primary), 0.15)' : 'var(--border-default)'}`, cursor: 'pointer', transition: 'all 0.2s' }} onClick={() => setRequestAiAnswer(!requestAiAnswer)}>
+                  <div style={{ width: 36, height: 20, borderRadius: 10, background: requestAiAnswer ? 'rgb(var(--color-primary))' : 'rgba(0,0,0,0.15)', transition: 'all 0.2s', position: 'relative', flexShrink: 0 }}>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: 'white', position: 'absolute', top: 2, left: requestAiAnswer ? 18 : 2, transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.15)' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600 }}>🤖 Jawaban AI Otomatis</div>
+                    <div style={{ fontSize: 11, opacity: 0.5 }}>AI akan langsung menjawab pertanyaanmu sebagai referensi awal</div>
+                  </div>
                 </div>
 
                 <Button type="submit" disabled={submitting || !askForm.title.trim()} style={{ borderRadius: 12, padding: '13px 0', marginTop: 4, justifyContent: 'center', fontSize: 14 }}>

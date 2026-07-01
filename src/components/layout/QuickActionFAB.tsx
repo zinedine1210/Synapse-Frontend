@@ -54,9 +54,7 @@ export function QuickActionFAB() {
     if (!file || !file.type.startsWith('image/')) {
       showToast('Upload gambar ya! 📷', 'error'); return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('Maks 5MB ya fotonya! 📏', 'error'); return;
-    }
+    // No size limit — AI processing only (not stored)
     setProcessing(true);
     closeAll();
     try {

@@ -86,9 +86,15 @@ export default function ClassDetailPage({ params }: ClassDetailPageProps) {
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-  // URL-based feature tab
+  // URL-based feature tab — validate against user's plan features
   const urlTab = searchParams.get('tab') as FeatureType | null;
-  const activeFeature: FeatureType = urlTab && validFeatures.includes(urlTab) ? urlTab : 'forum';
+  const activeFeature: FeatureType = (() => {
+    if (urlTab && validFeatures.includes(urlTab)) {
+      const feat = FEATURES.find(f => f.id === urlTab);
+      if (!feat?.featureKey || hasFeature(feat.featureKey)) return urlTab;
+    }
+    return 'forum';
+  })();
 
   const setActiveFeature = useCallback((feat: FeatureType) => {
     const p = new URLSearchParams(searchParams.toString());

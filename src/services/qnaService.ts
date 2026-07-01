@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/api';
+import { apiFetch, apiUpload } from '@/lib/api';
 
 export interface QnaQuestion {
   id: string;
@@ -20,6 +20,7 @@ export interface QnaQuestion {
   _count?: { answers: number };
   isBookmarked?: boolean;
   hasVoted?: boolean;
+  hasVotedQuestion?: boolean;
 }
 
 export interface QnaAnswer {
@@ -66,14 +67,15 @@ export interface LeaderboardEntry {
 }
 
 export const qnaService = {
-  createQuestion: (data: { title: string; body?: string; category?: string[]; tags?: string[]; isPublic?: boolean }) =>
+  createQuestion: (data: { title: string; body?: string; category?: string[]; tags?: string[]; isPublic?: boolean; requestAiAnswer?: boolean }) =>
     apiFetch<QnaQuestion>('/qna/questions', { method: 'POST', body: JSON.stringify(data) }),
 
-  getQuestions: (params?: { category?: string; status?: string; search?: string; page?: number; limit?: number }) => {
+  getQuestions: (params?: { category?: string; status?: string; search?: string; sort?: string; page?: number; limit?: number }) => {
     const q = new URLSearchParams();
     if (params?.category) q.set('category', params.category);
     if (params?.status) q.set('status', params.status);
     if (params?.search) q.set('search', params.search);
+    if (params?.sort) q.set('sort', params.sort);
     if (params?.page) q.set('page', String(params.page));
     if (params?.limit) q.set('limit', String(params.limit));
     return apiFetch<QnaPaginated>(`/qna/questions?${q.toString()}`);
@@ -97,6 +99,9 @@ export const qnaService = {
 
   deleteQuestion: (id: string) =>
     apiFetch(`/qna/questions/${id}`, { method: 'DELETE' }),
+
+  deleteAnswer: (answerId: string) =>
+    apiFetch(`/qna/answers/${answerId}`, { method: 'DELETE' }),
 
   editQuestion: (id: string, data: { title?: string; body?: string; category?: string[]; tags?: string[] }) =>
     apiFetch<QnaQuestion>(`/qna/questions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
@@ -143,4 +148,11 @@ export const qnaService = {
   // Weekly leaderboard
   getWeeklyLeaderboard: (limit = 10) =>
     apiFetch<LeaderboardEntry[]>(`/qna/leaderboard/weekly?limit=${limit}`),
+
+  // File upload for rich text editor
+  uploadFile: async (file: File): Promise<{ fileUrl: string; fileName: string; fileType: string; fileSizeBytes: number }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiUpload('/qna/upload', formData);
+  },
 };

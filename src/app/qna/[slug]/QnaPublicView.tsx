@@ -8,7 +8,7 @@ import { HtmlRenderer, Button, useToast, useConfirm, UserAvatar } from '@/compon
 import { MarkdownRenderer } from '@/components/ui/MarkdownRenderer';
 import { useFeatureAccess } from '@/lib/feature-access';
 import { qnaService } from '@/services/qnaService';
-import { ThumbsUp, CheckCircle, MessageSquare, Eye, Clock, ArrowLeft, LogIn, Flag, Loader2, Share2, Hash, HelpCircle, Award, Bookmark, BookmarkCheck, Pencil } from 'lucide-react';
+import { ThumbsUp, CheckCircle, MessageSquare, Eye, Clock, ArrowLeft, LogIn, Flag, Loader2, Share2, Hash, HelpCircle, Award, Bookmark, BookmarkCheck, Pencil, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { brand } from '@/config/brand';
 
 // Lazy-load Tiptap editor (heavy, no SSR needed)
@@ -40,6 +40,8 @@ interface Question {
   createdAt: string;
   user: { id: string; fullName: string; avatarUrl?: string };
   answers?: Answer[];
+  isBookmarked?: boolean;
+  hasVotedQuestion?: boolean;
 }
 
 const QNA_CATEGORIES: Record<string, { emoji: string; label: string; color: string }> = {
@@ -89,12 +91,18 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
   const [answerHtml, setAnswerHtml] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [relatedQuestions] = useState<RelatedQuestion[]>(ssrRelatedQuestions);
-  const [upvotedAnswers, setUpvotedAnswers] = useState<Set<string>>(new Set());
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [hasVotedQuestion, setHasVotedQuestion] = useState(false);
+  const [upvotedAnswers, setUpvotedAnswers] = useState<Set<string>>(() => {
+    // Initialize from server data
+    const set = new Set<string>();
+    initialQuestion.answers?.forEach(a => { if (a.hasUpvoted) set.add(a.id); });
+    return set;
+  });
+  const [isBookmarked, setIsBookmarked] = useState(initialQuestion.isBookmarked ?? false);
+  const [hasVotedQuestion, setHasVotedQuestion] = useState(initialQuestion.hasVotedQuestion ?? false);
   const [editingAnswerId, setEditingAnswerId] = useState<string | null>(null);
   const [editAnswerHtml, setEditAnswerHtml] = useState('');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [aiAnswerCollapsed, setAiAnswerCollapsed] = useState(false);
   const viewCountedRef = useRef(false);
 
   // Increment view count on mount (ref guard prevents double-call in StrictMode)
@@ -291,6 +299,45 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
     finally { setActionLoading(null); }
   };
 
+  // ─── Delete question (owner only) ──────────────────────────────
+  const handleDeleteQuestion = async () => {
+    if (!user || question.userId !== user.id) return;
+    const confirmed = await confirm({
+      title: 'Hapus Pertanyaan',
+      message: 'Apakah kamu yakin ingin menghapus pertanyaan ini? Semua jawaban juga akan ikut terhapus.',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    setActionLoading('delete-question');
+    try {
+      await qnaService.deleteQuestion(question.id);
+      showToast('Pertanyaan berhasil dihapus.', 'success');
+      window.location.href = '/qna';
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setActionLoading(null); }
+  };
+
+  // ─── Delete answer (owner only) ────────────────────────────────
+  const handleDeleteAnswer = async (answerId: string) => {
+    const confirmed = await confirm({
+      title: 'Hapus Jawaban',
+      message: 'Apakah kamu yakin ingin menghapus jawaban ini?',
+      confirmText: 'Ya, Hapus',
+      cancelText: 'Batal',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    setActionLoading(`delete-${answerId}`);
+    try {
+      await qnaService.deleteAnswer(answerId);
+      showToast('Jawaban berhasil dihapus.', 'success');
+      await refreshQuestion();
+    } catch (e: any) { showToast(e.message, 'error'); }
+    finally { setActionLoading(null); }
+  };
+
   // ─── Login CTA component for unauthenticated users ─────────────
   const LoginCTA = ({ action }: { action: string }) => (
     <Link href="/auth" style={{ textDecoration: 'none' }}>
@@ -393,6 +440,16 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
             <button onClick={handleShare} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', background: 'var(--input-bg)', fontSize: 12, fontWeight: 500, width: '100%', textAlign: 'left', transition: 'all 0.2s', color: 'inherit' }}>
               <Share2 size={13} /> Bagikan
             </button>
+            {/* Delete question — owner only */}
+            {user && question.userId === user.id && (
+              <button
+                disabled={actionLoading === 'delete-question'}
+                onClick={handleDeleteQuestion}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, border: 'none', cursor: actionLoading === 'delete-question' ? 'wait' : 'pointer', background: 'rgba(239, 68, 68, 0.08)', fontSize: 12, fontWeight: 500, width: '100%', textAlign: 'left', transition: 'all 0.2s', color: '#ef4444', opacity: actionLoading === 'delete-question' ? 0.6 : 1 }}
+              >
+                <Trash2 size={13} /> {actionLoading === 'delete-question' ? 'Menghapus...' : 'Hapus Pertanyaan'}
+              </button>
+            )}
           </div>
         </aside>
 
@@ -448,16 +505,26 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
             {/* AI Answer */}
             {question.aiAnswer && hasFeature('qna_ai_answer') && (
               <div style={{ padding: '18px 22px', borderRadius: 16, marginBottom: 32, background: 'linear-gradient(135deg, rgba(var(--color-primary), 0.04), rgba(139, 92, 246, 0.03))', border: '1px solid rgba(var(--color-primary), 0.12)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'rgb(var(--color-primary))' }}>Jawaban AI</span>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: aiAnswerCollapsed ? 0 : 12, cursor: 'pointer', userSelect: 'none' }}
+                  onClick={() => setAiAnswerCollapsed(!aiAnswerCollapsed)}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'rgb(var(--color-primary))' }}>🤖 Jawaban AI</span>
                   <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 12, background: 'rgba(var(--color-primary), 0.1)', color: 'rgb(var(--color-primary))', fontWeight: 600 }}>Auto-generated</span>
+                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'rgb(var(--text-muted))' }}>
+                    {aiAnswerCollapsed ? <><ChevronDown size={14} /> Tampilkan</> : <><ChevronUp size={14} /> Sembunyikan</>}
+                  </div>
                 </div>
-                <div style={{ lineHeight: 1.8, fontSize: 14 }}>
-                  <MarkdownRenderer content={question.aiAnswer} />
-                </div>
-                <p style={{ fontSize: 11, opacity: 0.4, marginTop: 12, fontStyle: 'italic' }}>
-                  Jawaban ini dihasilkan AI dan mungkin tidak 100% akurat. Tunggu jawaban dari komunitas untuk verifikasi.
-                </p>
+                {!aiAnswerCollapsed && (
+                  <>
+                    <div style={{ lineHeight: 1.8, fontSize: 14 }}>
+                      <MarkdownRenderer content={question.aiAnswer} />
+                    </div>
+                    <p style={{ fontSize: 11, opacity: 0.4, marginTop: 12, fontStyle: 'italic' }}>
+                      Jawaban ini dihasilkan AI dan mungkin tidak 100% akurat. Tunggu jawaban dari komunitas untuk verifikasi.
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </article>
@@ -513,7 +580,7 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
                       <div style={{ lineHeight: 1.8, marginBottom: 14, fontSize: 15 }}>
                         {editingAnswerId === answer.id ? (
                           <div>
-                            <RichTextEditor content={editAnswerHtml} onChange={setEditAnswerHtml} placeholder="Edit jawaban..." minHeight={120} />
+                            <RichTextEditor content={editAnswerHtml} onChange={setEditAnswerHtml} placeholder="Edit jawaban..." minHeight={120} onImageUpload={async (file) => { const res = await qnaService.uploadFile(file); return res.fileUrl; }} />
                             <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                               <Button disabled={!!actionLoading} onClick={() => handleEditAnswer(answer.id)} size="sm" style={{ borderRadius: 8 }}>{actionLoading === `edit-${answer.id}` ? 'Menyimpan...' : 'Simpan'}</Button>
                               <Button disabled={!!actionLoading} onClick={() => { setEditingAnswerId(null); setEditAnswerHtml(''); }} size="sm" variant="ghost" style={{ borderRadius: 8 }}>Batal</Button>
@@ -570,6 +637,18 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
                               <Pencil size={12} /> Edit
                             </button>
                           )}
+
+                          {/* Delete button - only for answer owner */}
+                          {user && answer.userId === user.id && editingAnswerId !== answer.id && (
+                            <button
+                              disabled={actionLoading === `delete-${answer.id}`}
+                              onClick={() => handleDeleteAnswer(answer.id)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: '#ef4444', background: 'rgba(239,68,68,0.06)', border: 'none', cursor: actionLoading === `delete-${answer.id}` ? 'wait' : 'pointer', padding: '6px 12px', borderRadius: 8, fontFamily: 'inherit', fontWeight: 500, transition: 'all 0.15s', opacity: actionLoading === `delete-${answer.id}` ? 0.6 : 1 }}
+                              title="Hapus jawaban"
+                            >
+                              <Trash2 size={12} /> {actionLoading === `delete-${answer.id}` ? '...' : 'Hapus'}
+                            </button>
+                          )}
                         </div>
 
                         {/* Report button - show login CTA for unauthenticated */}
@@ -607,6 +686,10 @@ export function QnaPublicView({ question: initialQuestion, relatedQuestions: ssr
                   onChange={setAnswerHtml}
                   placeholder="Tulis jawabanmu di sini... (min. 20 karakter)"
                   minHeight={150}
+                  onImageUpload={async (file) => {
+                    const res = await qnaService.uploadFile(file);
+                    return res.fileUrl;
+                  }}
                 />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
                   <span style={{ fontSize: 12, color: 'rgb(var(--text-muted))' }}>

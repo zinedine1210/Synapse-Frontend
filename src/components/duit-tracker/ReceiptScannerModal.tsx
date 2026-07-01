@@ -59,10 +59,7 @@ export function ReceiptScannerModal({ isOpen, onClose, onBulkCreate }: ReceiptSc
       showToast('Eh itu bukan gambar bestie, upload foto ya! 📷', 'error');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      showToast('Kegedean nih fotonya, maks 5MB ya! 📏', 'error');
-      return;
-    }
+    // No size limit — AI processing only (not stored)
     setScannedItems([]);
     try {
       const base64 = await new Promise<string>((resolve, reject) => {

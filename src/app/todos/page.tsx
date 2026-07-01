@@ -1126,7 +1126,7 @@ export default function TodosPage() {
 
                 {/* ─── Search bar ─── */}
                 <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
-                  <div style={{ flex: 1, position: 'relative' }}>
+                  <div style={{ flex: '1 1 0', minWidth: 0, position: 'relative' }}>
                     <TextInput
                       placeholder="Cari task..."
                       value={searchQuery}
@@ -1138,22 +1138,24 @@ export default function TodosPage() {
                   <button
                     onClick={() => { setSelectMode(!selectMode); setSelectedIds(new Set()); }}
                     style={{
-                      padding: '8px 14px', borderRadius: 12, border: '1px solid var(--border-default)',
+                      padding: '8px 10px', borderRadius: 12, border: '1px solid var(--border-default)',
                       background: selectMode ? 'rgb(var(--color-primary))' : 'var(--input-bg)',
                       color: selectMode ? '#fff' : 'rgb(var(--text-secondary))',
-                      cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6,
+                      cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                      flexShrink: 0, whiteSpace: 'nowrap',
                     }}
                   >
-                    <CheckCheck size={14} /> {selectMode ? 'Batal' : 'Pilih'}
+                    <CheckCheck size={14} /> <span className="hide-mobile">{selectMode ? 'Batal' : 'Pilih'}</span>
                   </button>
                   </FeatureLock>
                   <button
                     onClick={() => setShowTemplateModal(true)}
                     title="Template"
                     style={{
-                      padding: '8px 12px', borderRadius: 12, border: '1px solid var(--border-default)',
+                      padding: '8px 10px', borderRadius: 12, border: '1px solid var(--border-default)',
                       background: 'var(--input-bg)', color: 'rgb(var(--text-secondary))',
                       cursor: 'pointer', fontSize: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4,
+                      flexShrink: 0,
                     }}
                   >
                     <BookmarkPlus size={14} />
@@ -1827,19 +1829,19 @@ function CalendarView({ calendarData, calendarMonth, setCalendarMonth, customCat
     <div className="todo-calendar">
       {/* Month navigation */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, padding: '0 4px' }}>
-        <button onClick={() => setCalendarMonth(new Date(calendarData.year, calendarData.month - 1, 1))} style={{ background: 'var(--input-bg)', border: 'none', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={() => setCalendarMonth(new Date(calendarData.year, calendarData.month - 1, 1))} style={{ background: 'var(--input-bg)', border: 'none', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <ChevronLeft size={16} />
         </button>
         <button
           onClick={() => setShowJump(!showJump)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 12px', borderRadius: 8 }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px 12px', borderRadius: 8, flex: '1 1 auto', minWidth: 0, textAlign: 'center' }}
         >
-          <h3 style={{ fontSize: 17, fontWeight: 800, margin: 0, color: 'rgb(var(--text-primary))' }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: 'rgb(var(--text-primary))', whiteSpace: 'nowrap' }}>
             {MONTH_NAMES[calendarData.month]} {calendarData.year}
           </h3>
-          <span style={{ fontSize: 10, opacity: 0.5 }}>Tap untuk loncat</span>
+          <span style={{ fontSize: 10, opacity: 0.5, whiteSpace: 'nowrap' }}>Tap untuk loncat</span>
         </button>
-        <button onClick={() => setCalendarMonth(new Date(calendarData.year, calendarData.month + 1, 1))} style={{ background: 'var(--input-bg)', border: 'none', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <button onClick={() => setCalendarMonth(new Date(calendarData.year, calendarData.month + 1, 1))} style={{ background: 'var(--input-bg)', border: 'none', borderRadius: 10, width: 36, height: 36, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <ChevronRight size={16} />
         </button>
       </div>
